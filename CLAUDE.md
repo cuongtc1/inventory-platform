@@ -52,7 +52,7 @@ inventory-platform/
 └── README.md
 ```
 
-Current state: only `TASKS.md` and the HTML mockup exist. The mockup (`index.html`, `app.js`, `style.css`) currently sits in `frontend/`; task T0.1 moves it to `docs/mockup/` so `frontend/` can hold the real React app.
+The HTML mockup (`index.html`, `app.js`, `style.css`) lives in `docs/mockup/`. Empty folders are kept in Git with a `.gitkeep` file; delete it once the folder has real content.
 
 The mockup is the UI reference: dark collapsible sidebar, white content area, top bar with avatar and Log out, tables with Edit/Delete icon buttons, status badges, and a role switch ("View as") that hides menu items by role.
 

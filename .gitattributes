@@ -1,0 +1,16 @@
+# Normalize text files to LF in the repository
+* text=auto
+
+# Scripts that run on Linux (Docker images) must keep LF
+mvnw text eol=lf
+*.sh text eol=lf
+
+# Windows scripts keep CRLF
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary files
+*.jar binary
+*.png binary
+*.jpg binary
+*.ico binary
