@@ -1,24 +1,83 @@
-# Compiled class file
+# ===== Java / Maven (services/*) =====
+target/
 *.class
-
-# Log file
 *.log
-
-# BlueJ files
-*.ctxt
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
+hs_err_pid*
+replay_pid*
+# Keep the Maven wrapper jar, ignore other build artifacts
 *.jar
+!**/.mvn/wrapper/maven-wrapper.jar
 *.war
 *.nar
 *.ear
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+release.properties
+dependency-reduced-pom.xml
+.flattened-pom.xml
+
+# ===== Node / Vite / React (frontend/) =====
+node_modules/
+dist/
+dist-ssr/
+build/
+coverage/
+.vite/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ===== Environment and secrets =====
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+application-local.yml
+application-local.properties
+
+# ===== Docker / local data =====
+infra/data/
+infra/**/volumes/
+docker-compose.override.yml
+
+# ===== IDEs and editors =====
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+.classpath
+.project
+.settings/
+.factorypath
+.apt_generated/
+bin/
+nbproject/
+.nb-gradle/
+*.ctxt
+.mtj.tmp/
+*.swp
+*~
+
+# ===== OS files =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== Archives =====
 *.zip
 *.tar.gz
 *.rar
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
-hs_err_pid*
-replay_pid*
+# ===== Claude Code local settings =====
+.claude/settings.local.json
