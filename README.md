@@ -64,7 +64,8 @@ inventory-platform/
 ├── frontend/      React + Vite app
 ├── infra/         docker-compose.yml, mysql-init/ (schema init scripts)
 ├── docs/
-│   └── mockup/    Stockline HTML mockup (UI reference)
+│   ├── mockup/    Stockline HTML mockup (UI reference)
+│   └── conventions.md   coding, API, database, Kafka and Git conventions
 ├── TASKS.md       plan, acceptance criteria, task status
 └── CLAUDE.md      rules for Claude Code in this repo
 ```
@@ -91,4 +92,4 @@ To view the UI mockup, open `docs/mockup/index.html` in a browser.
 
 ## Workflow
 
-Each task in [TASKS.md](TASKS.md) is done on its own branch `feature/<task-id>-short-name`, reviewed, then merged to `main`. Commit messages start with the task id, for example `T1.3: Add category CRUD API`.
+Each task in [TASKS.md](TASKS.md) is done on its own branch `feature/<task-id>-short-name`, reviewed, then merged to `main`. Commit messages start with the task id, for example `T1.3: Add category CRUD API`. All code follows [docs/conventions.md](docs/conventions.md).

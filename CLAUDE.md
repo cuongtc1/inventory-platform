@@ -92,6 +92,7 @@ On Windows, use `mvnw.cmd`. `JAVA_HOME` must point to JDK 21 before running Mave
 
 ## Do
 
+- Follow [docs/conventions.md](docs/conventions.md) for packages, URLs, JSON, errors, pagination, database naming, Kafka events, config, tests and Git. Update that file when a convention changes.
 - Keep each service independent: its own `pom.xml`, Maven wrapper, `application.yml`, Flyway scripts, Dockerfile and tests.
 - Use the layered structure in every service: `controller` / `service` / `repository` / `entity` / `dto` (plus `mapper`, `exception`, `config`, `event` as needed). Base package `com.stockline.<service>`.
 - Return DTOs from controllers, never JPA entities. Validate input with Bean Validation (`@Valid`).
