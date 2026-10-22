@@ -86,7 +86,18 @@ cd infra
 docker compose up -d
 ```
 
-The services and frontend don't exist yet; this section will grow as each task is completed.
+Run a service (needs JDK 21; see each service's README):
+
+```bash
+cd services/product-service
+./mvnw spring-boot:run        # Windows: mvnw.cmd spring-boot:run
+```
+
+| Service | Status | Health | Swagger UI |
+|---|---|---|---|
+| product-service | scaffolded | http://localhost:8082/actuator/health | http://localhost:8082/swagger-ui.html |
+
+The other services and the frontend don't exist yet; this section will grow as each task is completed.
 
 To view the UI mockup, open `docs/mockup/index.html` in a browser.
 

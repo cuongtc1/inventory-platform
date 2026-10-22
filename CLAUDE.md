@@ -18,7 +18,7 @@ Business scope: product catalog (categories, suppliers, products), warehouses an
 | Gateway | Spring Cloud Gateway, validates JWT, handles CORS |
 | Auth | Plain JWT (no refresh token), BCrypt passwords, `user_type` = STAFF / MANAGER / ADMIN stored as a string |
 | Frontend | React + Vite + Ant Design + React Router + Axios |
-| Tests | JUnit 5 + Mockito, Spring slice tests (`@WebMvcTest`, `@DataJpaTest`) |
+| Tests | JUnit 5 + Mockito, Spring slice tests (`@WebMvcTest`, `@DataJpaTest`), Testcontainers (MySQL) for tests that need a database |
 | API docs | springdoc-openapi (Swagger UI) per service |
 
 ### Services and ports
@@ -67,10 +67,11 @@ docker compose --profile tools up -d   # also Kafka UI on :8090
 docker compose down                    # add -v to wipe data
 # MySQL app user: stockline/stockline. Kafka bootstrap: localhost:9092 from host, kafka:29092 from containers.
 
-# A backend service (from services/<name>/)
-./mvnw spring-boot:run
-./mvnw test
+# A backend service (from services/<name>/), e.g. product-service on :8082
+./mvnw spring-boot:run                 # needs infra running
+./mvnw test                            # needs Docker running (Testcontainers starts its own MySQL)
 ./mvnw clean package
+# Health: /actuator/health   Swagger UI: /swagger-ui.html
 
 # Frontend (from frontend/)
 npm install
@@ -79,6 +80,8 @@ npm run build
 ```
 
 On Windows, use `mvnw.cmd`. `JAVA_HOME` must point to JDK 21 before running Maven.
+
+New services follow `services/product-service` as the template: Spring Boot 4.1 from Initializr (YAML config), springdoc 3.x, Testcontainers MySQL for tests via `TestcontainersConfiguration` + `@ServiceConnection`, Mockito loaded as a `-javaagent` in Surefire. The developer knows Java 8/11 and Spring Boot 2: point out what is new in Java 21 / Boot 4 (libraries, packages, syntax) when it first appears.
 
 ## Workflow rules
 

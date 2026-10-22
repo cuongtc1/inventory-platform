@@ -1,0 +1,45 @@
+# product-service configuration.
+# ${NAME:default} reads environment variable NAME, or uses the default (local Docker setup in infra/).
+
+server:
+  port: ${SERVER_PORT:8082}
+
+spring:
+  application:
+    name: product-service
+
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/product_db}
+    username: ${DB_USERNAME:stockline}
+    password: ${DB_PASSWORD:stockline}
+
+  jpa:
+    hibernate:
+      # Flyway creates the tables; Hibernate only checks that entities match them
+      ddl-auto: validate
+    # Don't keep the database session open while the JSON response is written
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    # SQL files in src/main/resources/db/migration, named V<n>__description.sql
+    locations: classpath:db/migration
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      # Show each check (db, diskSpace, ...) in /actuator/health. Fine for local learning; use "when-authorized" in production
+      show-details: always
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
