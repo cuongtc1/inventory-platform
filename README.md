@@ -78,7 +78,14 @@ inventory-platform/
 
 ## Getting started
 
-The services, infrastructure and frontend don't exist yet; this section will grow as each task is completed.
+Start MySQL and Kafka (see [infra/README.md](infra/README.md) for connection details and the optional Kafka UI):
+
+```bash
+cd infra
+docker compose up -d
+```
+
+The services and frontend don't exist yet; this section will grow as each task is completed.
 
 To view the UI mockup, open `docs/mockup/index.html` in a browser.
 

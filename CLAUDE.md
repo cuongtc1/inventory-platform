@@ -61,9 +61,11 @@ The mockup is the UI reference: dark collapsible sidebar, white content area, to
 Fill these in as the pieces are created.
 
 ```bash
-# Infra (from infra/)
-docker compose up -d
-docker compose down
+# Infra (from infra/) - details in infra/README.md
+docker compose up -d                   # MySQL + Kafka
+docker compose --profile tools up -d   # also Kafka UI on :8090
+docker compose down                    # add -v to wipe data
+# MySQL app user: stockline/stockline. Kafka bootstrap: localhost:9092 from host, kafka:29092 from containers.
 
 # A backend service (from services/<name>/)
 ./mvnw spring-boot:run

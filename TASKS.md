@@ -47,7 +47,7 @@ inventory-platform/
 |---|---|---|---|---|
 | T0.1 | Repo skeleton | Folders above exist, `.gitignore` (Java, Node, IDE, env files), README with project overview, mockup unzipped into `docs/mockup/` | Claude | DONE |
 | T0.2 | Check toolchain | `java -version`, `git --version`, `docker --version`, `node -v` OK; Claude confirms Spring Boot supports your JDK | You | DONE |
-| T0.3 | Infra with Docker Compose | `docker compose up -d` in `infra/` starts MySQL (schemas `auth_db`, `product_db`, `inventory_db`, `order_db`, `notification_db` created by init script) and Kafka; Kafka UI optional. Connect from MySQL Workbench works | Claude | TODO |
+| T0.3 | Infra with Docker Compose | `docker compose up -d` in `infra/` starts MySQL (schemas `auth_db`, `product_db`, `inventory_db`, `order_db`, `notification_db` created by init script) and Kafka; Kafka UI optional. Connect from MySQL Workbench works | Claude | REVIEW |
 | T0.4 | Conventions | `docs/conventions.md`: package naming, REST URL style, JSON error format, pagination format, branch and commit style | Claude | TODO |
 
 ## 4. Phase 1: product-service (about 3 days)

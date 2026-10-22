@@ -1,0 +1,90 @@
+# Local infrastructure for Stockline: MySQL and Kafka.
+# Usage (from infra/):
+#   docker compose up -d                    MySQL + Kafka
+#   docker compose --profile tools up -d    also Kafka UI on http://localhost:8090
+#   docker compose down                     stop (data is kept in volumes)
+#   docker compose down -v                  stop and delete all data
+#
+# Values come from infra/.env (copy .env.example); the defaults below are for local dev only.
+
+name: stockline
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: stockline-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      # Application user, granted access to every service schema by mysql-init/01-schemas.sql
+      MYSQL_USER: stockline
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-stockline}
+      TZ: UTC
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      # Scripts here run once, only when the data volume is empty
+      - ./mysql-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  kafka:
+    image: apache/kafka:4.1.0
+    container_name: stockline-kafka
+    restart: unless-stopped
+    ports:
+      - "${KAFKA_PORT:-9092}:9092"
+    environment:
+      # Single node acting as both broker and controller (KRaft mode, no Zookeeper)
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      # Two client listeners:
+      #   PLAINTEXT      kafka:29092     for other containers on the compose network
+      #   PLAINTEXT_HOST localhost:9092  for services running on your machine (IDE, mvnw)
+      KAFKA_LISTENERS: PLAINTEXT://:29092,PLAINTEXT_HOST://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:${KAFKA_PORT:-9092}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      # One broker, so internal topics can only have one replica
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
+  # Optional web UI to browse topics and messages. Start with: docker compose --profile tools up -d
+  kafka-ui:
+    image: kafbat/kafka-ui:v1.2.0
+    container_name: stockline-kafka-ui
+    profiles: ["tools"]
+    ports:
+      - "${KAFKA_UI_PORT:-8090}:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: stockline
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+volumes:
+  mysql-data:
+  kafka-data:
