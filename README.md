@@ -66,6 +66,7 @@ inventory-platform/
 ├── docs/
 │   ├── mockup/    Stockline HTML mockup (UI reference)
 │   └── conventions.md   coding, API, database, Kafka and Git conventions
+├── .history/      what was done and learned in each finished task
 ├── TASKS.md       plan, acceptance criteria, task status
 └── CLAUDE.md      rules for Claude Code in this repo
 ```

@@ -47,6 +47,7 @@ inventory-platform/
 ├── frontend/        React + Vite app
 ├── infra/           docker-compose.yml, mysql-init/
 ├── docs/            mockup/ (Stockline HTML mockup), conventions.md
+├── .history/        one learning summary per finished task (T1-1.md, T1-2.md, ...)
 ├── TASKS.md
 ├── CLAUDE.md
 └── README.md
@@ -89,6 +90,7 @@ New services follow `services/product-service` as the template: Spring Boot 4.1 
 - **Branch per task:** `feature/<task-id>-short-name` (for example `feature/T1.3-category-crud`). Never commit directly to `main`. Never merge or push without being asked.
 - **Status:** move a task to `IN PROGRESS` when starting and `REVIEW` when finished. Never mark a task `DONE`; only the developer does that.
 - **Finish every task with a short summary:** what changed, how to run it, what to check.
+- **History file when a task is DONE** (from T1.1 on): when the developer marks a task `DONE`, write `.history/T<phase>-<n>.md` (e.g. `.history/T1-2.md` for T1.2) and commit it together with the `DONE` status change, on the task's branch, as `T1.2: Add history and mark task as done`. Content, following `.history/T1-1.md`: task info (branch, commit, dates, acceptance criteria), goal, steps done, problems and fixes, what's new vs Java 8/11 and Boot 2, concepts explained (including Q&A from the conversation), files changed, how it was verified, how to run it, next task.
 - **Definition of Done:** it builds, tests pass, acceptance criteria are met, README/docs updated if behavior changed, committed with a clear message.
 - **Ask when a requirement is unclear** instead of guessing. If a task is too big, propose splitting it before starting.
 - This is a learning project: explain new concepts briefly (Spring, JPA, Kafka, React) when they first appear, and keep code readable over clever.

@@ -56,7 +56,7 @@ Goal: learn the standard layered Spring Boot service (controller / service / rep
 
 | ID | Task | Acceptance criteria | Owner | Status |
 |---|---|---|---|---|
-| T1.1 | Scaffold service | Spring Boot project in `services/product-service` (Web, Data JPA, MySQL, Validation, Actuator, Flyway, OpenAPI/Swagger UI); connects to `product_db`; `/actuator/health` is UP | Claude | REVIEW |
+| T1.1 | Scaffold service | Spring Boot project in `services/product-service` (Web, Data JPA, MySQL, Validation, Actuator, Flyway, OpenAPI/Swagger UI); connects to `product_db`; `/actuator/health` is UP | Claude | DONE |
 | T1.2 | Database migrations and entities | Flyway scripts for `categories`, `suppliers`, `products` (SKU unique); JPA entities match | Claude | TODO |
 | T1.3 | Category CRUD API | Create, read, update, delete; optional parent category; validation | Claude | TODO |
 | T1.4 | Supplier CRUD API | Same pattern as T1.3 | Claude | TODO |
