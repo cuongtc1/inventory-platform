@@ -169,19 +169,28 @@ Error codes:
 
 | Code | Status | When |
 |---|---|---|
-| `VALIDATION_FAILED` | 400 | Bean Validation failed (`errors` lists the fields) |
-| `BAD_REQUEST` | 400 | Other invalid input, e.g. unreadable JSON or a wrong parameter type |
+| `VALIDATION_FAILED` | 400 | Bean Validation failed, or a body field or filter parameter has a value of the wrong type, e.g. `"status": "SOLD_OUT"` or `"categoryId": "abc"` (`errors` lists the fields) |
+| `BAD_REQUEST` | 400 | Other invalid input: broken or missing JSON, a wrong path variable type (`/api/products/abc`), an unknown sort field, a business rule such as a category loop |
 | `UNAUTHORIZED` | 401 | No token, bad token, expired token, or wrong login |
 | `FORBIDDEN` | 403 | The user's role is too low |
-| `NOT_FOUND` | 404 | The resource doesn't exist |
-| `DUPLICATE` | 409 | A unique value already exists, e.g. SKU or username |
-| `IN_USE` | 409 | Can't delete because other records still use it |
+| `NOT_FOUND` | 404 | The resource doesn't exist, a referenced record (e.g. `categoryId`) doesn't exist, or the URL doesn't exist |
+| `METHOD_NOT_ALLOWED` | 405 | The URL exists but not with this HTTP method, e.g. `PATCH` |
+| `NOT_ACCEPTABLE` | 406 | The client's `Accept` header asks for a format we don't produce |
+| `UNSUPPORTED_MEDIA_TYPE` | 415 | The body isn't `application/json` |
+| `DUPLICATE` | 409 | A unique value already exists, e.g. SKU or username. Found by the service check, or by the database's unique key when two requests arrive at the same moment |
+| `IN_USE` | 409 | Can't delete because other records still use it. Found by the service check, or by a foreign key |
 | `INVALID_STATUS_TRANSITION` | 409 | e.g. shipping an order that isn't paid |
 | `CONCURRENT_UPDATE` | 409 | Optimistic-lock failure; the client should reload and retry |
 | `INSUFFICIENT_STOCK` | 409 | A stock adjustment would make available stock negative |
 | `INTERNAL_ERROR` | 500 | Anything unexpected. `detail` is generic; the stack trace goes only to the log |
 
-Add new codes to this table when a task needs one.
+Add new codes to this table when a task needs one. Other errors raised by Spring MVC itself use the HTTP status name as the code (e.g. `PAYLOAD_TOO_LARGE`); every 5xx is `INTERNAL_ERROR`.
+
+How each service's `GlobalExceptionHandler` gets there (product-service is the reference):
+- The service throws an `ApiException` subclass (`ResourceNotFoundException`, `DuplicateResourceException`, ...) that carries status and code.
+- It extends `ResponseEntityExceptionHandler`, so Spring MVC's own errors already have a Problem Details body; `handleExceptionInternal` adds `type`, `instance`, `code` and `timestamp` to them.
+- `DataIntegrityViolationException` is mapped by the constraint that failed: unique key → `DUPLICATE`, row still referenced → `IN_USE`, referenced row missing → `NOT_FOUND`. Services still check first, so the usual case gets a precise message.
+- `@ExceptionHandler(Exception.class)` logs the stack trace at ERROR and returns a generic 500. Error responses never contain exception messages, SQL or stack traces.
 
 ## 4. Pagination, sorting and filtering
 

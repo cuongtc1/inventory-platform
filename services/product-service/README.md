@@ -26,6 +26,21 @@ From this folder:
 
 Try every endpoint in Swagger UI. Errors use the JSON format from [docs/conventions.md](../../docs/conventions.md#3-json-error-format).
 
+### Errors
+
+Every error, including Spring's own, has `type`, `title`, `status`, `detail`, `instance`, `code` and `timestamp` (`GlobalExceptionHandler`):
+
+| Situation | Status | `code` |
+|---|---|---|
+| A field breaks a rule, or has the wrong type (`"status": "SOLD_OUT"`, `"categoryId": "abc"`, `?status=WRONG`) | 400 | `VALIDATION_FAILED`, with `errors: [{ field, message }]` |
+| Broken or missing JSON, `/api/products/abc`, unknown sort field | 400 | `BAD_REQUEST` |
+| Unknown id, unknown referenced id, unknown URL | 404 | `NOT_FOUND` |
+| `PATCH` or another method an endpoint doesn't have | 405 | `METHOD_NOT_ALLOWED` |
+| Body that isn't `application/json` | 415 | `UNSUPPORTED_MEDIA_TYPE` |
+| Name or SKU already used (also when two requests arrive at once and only the database's unique key catches it) | 409 | `DUPLICATE` |
+| Delete while still used (also when only the foreign key catches it) | 409 | `IN_USE` |
+| Anything unexpected | 500 | `INTERNAL_ERROR`, with a generic `detail`; the stack trace is logged |
+
 ### Categories: `/api/categories`
 
 | Method and path | Result | Errors |
@@ -139,6 +154,8 @@ All settings are in `src/main/resources/application.yml`. Values that differ per
 | `src/test/java/.../repository/ProductSpecificationsTest.java` | `@DataJpaTest`: every product filter, combinations, sort by category name |
 | `src/test/java/.../service/*ServiceTest.java` | Mockito unit tests of the business rules |
 | `src/test/java/.../controller/*ControllerTest.java` | `@WebMvcTest`: URLs, status codes, JSON and error format |
+| `src/test/java/.../exception/GlobalExceptionHandlerTest.java` | `@WebMvcTest`: broken JSON, wrong types, 405, 415, unknown URL, 500, unique-key race |
+| `src/test/java/.../exception/GlobalExceptionHandlerMySqlTest.java` | Real MySQL constraint errors (unique key, foreign key both ways) through the handler |
 
 ## Database
 
@@ -179,4 +196,7 @@ Tests never use the MySQL from `infra/`. `TestcontainersConfiguration` starts a 
 | String concatenation for JSON in tests | Text blocks `"""..."""` (Java 15) | Multi-line strings without escaping quotes |
 | `list.get(0)` | `list.getFirst()` (Java 21) | Sequenced collections |
 | `Specification.where(null).and(...)` | `Specification.allOf(list)`, `Specification.unrestricted()` | Spring Data JPA 4; `JpaSpecificationExecutor` also gained `delete(PredicateSpecification)`, so `delete(any())` in Mockito is now ambiguous: use `any(Product.class)` |
+| `com.fasterxml.jackson.databind.exc.InvalidFormatException` (checked `IOException` subclass) | `tools.jackson.databind.exc.InvalidFormatException` (unchecked, `RuntimeException`) | Jackson 3 exceptions moved package and no longer need `throws` |
+| `if (x instanceof Foo) { Foo f = (Foo) x; ... }` | `if (x instanceof Foo f) { ... }` (Java 16) | Pattern matching for `instanceof`, used in the error handler |
+| `switch` statement with `break` | `switch` expression with `->` returning a value (Java 14) | Used to map the constraint kind to a response |
 | Query parameters bound to a JavaBean with setters | Bound to a `record` through its constructor | `ProductFilter` needs no annotation; `@ParameterObject` shows its fields in Swagger |
