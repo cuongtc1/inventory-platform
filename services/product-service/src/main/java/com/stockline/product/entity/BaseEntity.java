@@ -9,6 +9,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 /**
  * Columns every table has: {@code id}, {@code created_at}, {@code updated_at}.
@@ -32,14 +33,22 @@ public abstract class BaseEntity {
 
     @PrePersist
     void onCreate() {
-        Instant now = Instant.now();
+        Instant now = now();
         createdAt = now;
         updatedAt = now;
     }
 
     @PreUpdate
     void onUpdate() {
-        updatedAt = Instant.now();
+        updatedAt = now();
+    }
+
+    /**
+     * DATETIME(6) keeps microseconds and MySQL rounds anything finer, so cut the extra digits here.
+     * Otherwise the response to a save would show a different time than a later read of the same row.
+     */
+    private static Instant now() {
+        return Instant.now().truncatedTo(ChronoUnit.MICROS);
     }
 
     public Long getId() {

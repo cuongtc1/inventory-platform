@@ -22,6 +22,24 @@ From this folder:
 | http://localhost:8082/swagger-ui.html | Swagger UI: try every endpoint in the browser |
 | http://localhost:8082/v3/api-docs | OpenAPI description (JSON) that Swagger UI reads |
 
+## API
+
+Try every endpoint in Swagger UI. Errors use the JSON format from [docs/conventions.md](../../docs/conventions.md#3-json-error-format).
+
+### Categories: `/api/categories`
+
+| Method and path | Result | Errors |
+|---|---|---|
+| `GET /api/categories?search=&page=0&size=20&sort=name,asc` | `200`, a page of categories. `search` matches part of the name, ignoring case. Default sort `name,asc`, max size 100 | `400` unknown sort field |
+| `GET /api/categories/{id}` | `200`, one category | `404` |
+| `POST /api/categories` | `201`, `Location: /api/categories/{id}` | `400` validation, `404` parent not found, `409 DUPLICATE` name |
+| `PUT /api/categories/{id}` | `200`, the updated category | same as POST, plus `400` if the parent is the category itself or one of its subcategories |
+| `DELETE /api/categories/{id}` | `204` | `404`, `409 IN_USE` if it has subcategories or products |
+
+Request body: `{ "name": "Cables", "parentId": 1 }`. `name` is required (max 100 characters, trimmed), and names are unique ignoring case. `parentId` is optional; leave it out for a top-level category.
+
+Response: `{ "id", "name", "parentId", "parentName", "createdAt", "updatedAt" }`.
+
 ## Configuration
 
 All settings are in `src/main/resources/application.yml`. Values that differ per environment come from environment variables, with defaults for the local Docker setup:
@@ -43,9 +61,16 @@ All settings are in `src/main/resources/application.yml`. Values that differ per
 | `src/main/resources/db/migration/` | Flyway SQL migrations, run in order at startup (see [Database](#database)) |
 | `src/main/java/.../entity/` | JPA entities `Category`, `Supplier`, `Product`, the `ProductStatus` enum, and `BaseEntity` (id and timestamps) |
 | `src/main/java/.../repository/` | Spring Data JPA repositories, one per entity |
+| `src/main/java/.../controller/` | REST controllers (`CategoryController`) |
+| `src/main/java/.../service/` | Business rules and transactions (`CategoryService`) |
+| `src/main/java/.../dto/` | Request and response records, and `PageResponse` for lists |
+| `src/main/java/.../mapper/` | Entity → response conversion |
+| `src/main/java/.../exception/` | `ApiException` and its subclasses, and `GlobalExceptionHandler` (JSON errors) |
 | `src/test/java/.../TestcontainersConfiguration.java` | Starts a throwaway MySQL 8.4 container for tests |
 | `src/test/java/.../ProductServiceApplicationTests.java` | Starts the whole app against that container |
-| `src/test/java/.../repository/ProductRepositoryTest.java` | `@DataJpaTest`: saves and reloads products, checks the unique SKU |
+| `src/test/java/.../repository/*RepositoryTest.java` | `@DataJpaTest` on MySQL: mapping, unique keys, custom queries |
+| `src/test/java/.../service/CategoryServiceTest.java` | Mockito unit test of the category rules |
+| `src/test/java/.../controller/CategoryControllerTest.java` | `@WebMvcTest`: URLs, status codes, JSON and error format |
 
 ## Database
 
@@ -79,3 +104,9 @@ Tests never use the MySQL from `infra/`. `TestcontainersConfiguration` starts a 
 | Jackson 2 (`com.fasterxml.jackson`) | Jackson 3 (`tools.jackson`) for JSON | Annotations like `@JsonProperty` keep their old package |
 | `java.util.Date` / `LocalDateTime` in entities | `java.time.Instant` | Hibernate 6+ maps `Instant` directly to a UTC timestamp; with `hibernate.jdbc.time_zone: UTC` it is stored as UTC in `DATETIME(6)` |
 | `org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest` | `org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest` | Moved with the Boot 4 module split; `TestEntityManager` is now in `org.springframework.boot.jpa.test.autoconfigure` |
+| `org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest` | `org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest` | Same module split |
+| `org.springframework.data.mapping.PropertyReferenceException` | `org.springframework.data.core.PropertyReferenceException` | Moved in Spring Data 4 |
+| DTO classes with getters, `equals`, `hashCode` | Java `record` (Java 16) | One line per field; immutable; Jackson and Bean Validation support them |
+| Custom error JSON classes | `ProblemDetail` (Spring 6, RFC 9457) | Spring 7 leaves out `"type"` while it is `about:blank`, so the handler sets it explicitly |
+| String concatenation for JSON in tests | Text blocks `"""..."""` (Java 15) | Multi-line strings without escaping quotes |
+| `list.get(0)` | `list.getFirst()` (Java 21) | Sequenced collections |

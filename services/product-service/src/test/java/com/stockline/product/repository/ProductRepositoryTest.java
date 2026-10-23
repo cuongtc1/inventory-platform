@@ -75,6 +75,19 @@ class ProductRepositoryTest {
     }
 
     @Test
+    void existsByCategoryId_categoryWithAndWithoutProducts() {
+        // given
+        Category cables = entityManager.persist(new Category("Cables", null));
+        Category displays = entityManager.persist(new Category("Displays", null));
+        productRepository.saveAndFlush(new Product("A02", "USB-C Cable", cables, null,
+                new BigDecimal("1.20"), new BigDecimal("3.50"), 20, ProductStatus.ACTIVE));
+
+        // when / then
+        assertThat(productRepository.existsByCategoryId(cables.getId())).isTrue();
+        assertThat(productRepository.existsByCategoryId(displays.getId())).isFalse();
+    }
+
+    @Test
     void save_duplicateSku_throwsDataIntegrityViolationException() {
         // given
         Category cables = entityManager.persist(new Category("Cables", null));
