@@ -5,6 +5,6 @@ package com.stockline.product.entity;
  * "Low stock" is not a product status; inventory-service works that out from stock levels.
  */
 public enum ProductStatus {
-    ACTIVE,
-    INACTIVE
+	ACTIVE,
+	INACTIVE
 }

@@ -27,45 +27,45 @@ import java.util.List;
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
-    @ExceptionHandler(ApiException.class)
-    ResponseEntity<ProblemDetail> handleApiException(ApiException ex, HttpServletRequest request) {
-        ProblemDetail problem = problem(ex.getStatus(), ex.getMessage(), ex.getCode(), request.getRequestURI());
-        return ResponseEntity.status(ex.getStatus()).body(problem);
-    }
+	@ExceptionHandler(ApiException.class)
+	ResponseEntity<ProblemDetail> handleApiException(ApiException ex, HttpServletRequest request) {
+		ProblemDetail problem = problem(ex.getStatus(), ex.getMessage(), ex.getCode(), request.getRequestURI());
+		return ResponseEntity.status(ex.getStatus()).body(problem);
+	}
 
-    /**
-     * Unknown sort field, e.g. {@code ?sort=color,asc}. Spring Data throws this when it builds the query.
-     */
-    @ExceptionHandler(PropertyReferenceException.class)
-    ResponseEntity<ProblemDetail> handleUnknownSortField(PropertyReferenceException ex, HttpServletRequest request) {
-        String detail = "Unknown sort field: " + ex.getPropertyName();
-        ProblemDetail problem = problem(HttpStatus.BAD_REQUEST, detail, "BAD_REQUEST", request.getRequestURI());
-        return ResponseEntity.badRequest().body(problem);
-    }
+	/**
+	 * Unknown sort field, e.g. {@code ?sort=color,asc}. Spring Data throws this when it builds the query.
+	 */
+	@ExceptionHandler(PropertyReferenceException.class)
+	ResponseEntity<ProblemDetail> handleUnknownSortField(PropertyReferenceException ex, HttpServletRequest request) {
+		String detail = "Unknown sort field: " + ex.getPropertyName();
+		ProblemDetail problem = problem(HttpStatus.BAD_REQUEST, detail, "BAD_REQUEST", request.getRequestURI());
+		return ResponseEntity.badRequest().body(problem);
+	}
 
-    /**
-     * {@code @Valid} failed on a request body. Lists every invalid field.
-     */
-    @Override
-    protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
-            HttpHeaders headers, HttpStatusCode status, WebRequest request) {
-        List<FieldValidationError> errors = ex.getBindingResult().getFieldErrors().stream()
-                .map(error -> new FieldValidationError(error.getField(), error.getDefaultMessage()))
-                .toList();
+	/**
+	 * {@code @Valid} failed on a request body. Lists every invalid field.
+	 */
+	@Override
+	protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
+			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+		List<FieldValidationError> errors = ex.getBindingResult().getFieldErrors().stream()
+				.map(error -> new FieldValidationError(error.getField(), error.getDefaultMessage()))
+				.toList();
 
-        String path = ((ServletWebRequest) request).getRequest().getRequestURI();
-        ProblemDetail problem = problem(HttpStatus.BAD_REQUEST, "Validation failed", "VALIDATION_FAILED", path);
-        problem.setProperty("errors", errors);
-        return ResponseEntity.badRequest().body(problem);
-    }
+		String path = ((ServletWebRequest) request).getRequest().getRequestURI();
+		ProblemDetail problem = problem(HttpStatus.BAD_REQUEST, "Validation failed", "VALIDATION_FAILED", path);
+		problem.setProperty("errors", errors);
+		return ResponseEntity.badRequest().body(problem);
+	}
 
-    private static ProblemDetail problem(HttpStatus status, String detail, String code, String path) {
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
-        // Spring leaves "type" out of the JSON while it has the default value; our convention always includes it
-        problem.setType(URI.create("about:blank"));
-        problem.setInstance(URI.create(path));
-        problem.setProperty("code", code);
-        problem.setProperty("timestamp", Instant.now());
-        return problem;
-    }
+	private static ProblemDetail problem(HttpStatus status, String detail, String code, String path) {
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
+		// Spring leaves "type" out of the JSON while it has the default value; our convention always includes it
+		problem.setType(URI.create("about:blank"));
+		problem.setInstance(URI.create(path));
+		problem.setProperty("code", code);
+		problem.setProperty("timestamp", Instant.now());
+		return problem;
+	}
 }

@@ -14,36 +14,36 @@ import jakarta.persistence.Table;
 @Table(name = "categories")
 public class Category extends BaseEntity {
 
-    @Column(nullable = false, length = 100)
-    private String name;
+	@Column(nullable = false, length = 100)
+	private String name;
 
-    // Self-reference: many categories can share one parent. LAZY loads the parent only when it is used
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_id")
-    private Category parent;
+	// Self-reference: many categories can share one parent. LAZY loads the parent only when it is used
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "parent_id")
+	private Category parent;
 
-    protected Category() {
-        // for JPA
-    }
+	protected Category() {
+		// for JPA
+	}
 
-    public Category(String name, Category parent) {
-        this.name = name;
-        this.parent = parent;
-    }
+	public Category(String name, Category parent) {
+		this.name = name;
+		this.parent = parent;
+	}
 
-    public String getName() {
-        return name;
-    }
+	public String getName() {
+		return name;
+	}
 
-    public void setName(String name) {
-        this.name = name;
-    }
+	public void setName(String name) {
+		this.name = name;
+	}
 
-    public Category getParent() {
-        return parent;
-    }
+	public Category getParent() {
+		return parent;
+	}
 
-    public void setParent(Category parent) {
-        this.parent = parent;
-    }
+	public void setParent(Category parent) {
+		this.parent = parent;
+	}
 }

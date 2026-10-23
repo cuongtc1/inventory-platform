@@ -17,10 +17,10 @@ import org.testcontainers.utility.DockerImageName;
 @TestConfiguration(proxyBeanMethods = false)
 public class TestcontainersConfiguration {
 
-    @Bean
-    @ServiceConnection
-    MySQLContainer mysqlContainer() {
-        // Same image as infra/docker-compose.yml, so tests run on the same MySQL version
-        return new MySQLContainer(DockerImageName.parse("mysql:8.4"));
-    }
+	@Bean
+	@ServiceConnection
+	MySQLContainer mysqlContainer() {
+		// Same image as infra/docker-compose.yml, so tests run on the same MySQL version
+		return new MySQLContainer(DockerImageName.parse("mysql:8.4"));
+	}
 }

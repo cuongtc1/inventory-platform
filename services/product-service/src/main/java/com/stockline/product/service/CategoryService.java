@@ -30,94 +30,94 @@ import java.util.Objects;
 @Transactional(readOnly = true)
 public class CategoryService {
 
-    private final CategoryRepository categoryRepository;
-    private final ProductRepository productRepository;
-    private final CategoryMapper categoryMapper;
+	private final CategoryRepository categoryRepository;
+	private final ProductRepository productRepository;
+	private final CategoryMapper categoryMapper;
 
-    public CategoryService(CategoryRepository categoryRepository, ProductRepository productRepository,
-                           CategoryMapper categoryMapper) {
-        this.categoryRepository = categoryRepository;
-        this.productRepository = productRepository;
-        this.categoryMapper = categoryMapper;
-    }
+	public CategoryService(CategoryRepository categoryRepository, ProductRepository productRepository,
+						   CategoryMapper categoryMapper) {
+		this.categoryRepository = categoryRepository;
+		this.productRepository = productRepository;
+		this.categoryMapper = categoryMapper;
+	}
 
-    public PageResponse<CategoryResponse> list(String search, Pageable pageable) {
-        String text = search == null ? "" : search.strip();
-        return PageResponse.from(
-                categoryRepository.findByNameContainingIgnoreCase(text, pageable).map(categoryMapper::toResponse));
-    }
+	public PageResponse<CategoryResponse> list(String search, Pageable pageable) {
+		String text = search == null ? "" : search.strip();
+		return PageResponse.from(
+				categoryRepository.findByNameContainingIgnoreCase(text, pageable).map(categoryMapper::toResponse));
+	}
 
-    public CategoryResponse get(Long id) {
-        return categoryMapper.toResponse(findCategory(id));
-    }
+	public CategoryResponse get(Long id) {
+		return categoryMapper.toResponse(findCategory(id));
+	}
 
-    @Transactional
-    public CategoryResponse create(CategoryRequest request) {
-        String name = request.name().strip();
-        if (categoryRepository.existsByName(name)) {
-            throw duplicateName(name);
-        }
-        Category parent = findParent(request.parentId());
+	@Transactional
+	public CategoryResponse create(CategoryRequest request) {
+		String name = request.name().strip();
+		if (categoryRepository.existsByName(name)) {
+			throw duplicateName(name);
+		}
+		Category parent = findParent(request.parentId());
 
-        Category saved = categoryRepository.save(new Category(name, parent));
-        return categoryMapper.toResponse(saved);
-    }
+		Category saved = categoryRepository.save(new Category(name, parent));
+		return categoryMapper.toResponse(saved);
+	}
 
-    @Transactional
-    public CategoryResponse update(Long id, CategoryRequest request) {
-        Category category = findCategory(id);
-        String name = request.name().strip();
-        if (categoryRepository.existsByNameAndIdNot(name, id)) {
-            throw duplicateName(name);
-        }
-        Category parent = findParent(request.parentId());
-        checkNotOwnAncestor(category, parent);
+	@Transactional
+	public CategoryResponse update(Long id, CategoryRequest request) {
+		Category category = findCategory(id);
+		String name = request.name().strip();
+		if (categoryRepository.existsByNameAndIdNot(name, id)) {
+			throw duplicateName(name);
+		}
+		Category parent = findParent(request.parentId());
+		checkNotOwnAncestor(category, parent);
 
-        // No save() needed: the entity is managed, so JPA writes the changes when the transaction commits
-        category.setName(name);
-        category.setParent(parent);
-        // Run the UPDATE now so @PreUpdate sets updatedAt before we build the response
-        categoryRepository.flush();
-        return categoryMapper.toResponse(category);
-    }
+		// No save() needed: the entity is managed, so JPA writes the changes when the transaction commits
+		category.setName(name);
+		category.setParent(parent);
+		// Run the UPDATE now so @PreUpdate sets updatedAt before we build the response
+		categoryRepository.flush();
+		return categoryMapper.toResponse(category);
+	}
 
-    @Transactional
-    public void delete(Long id) {
-        Category category = findCategory(id);
-        if (categoryRepository.existsByParentId(id)) {
-            throw new ResourceInUseException(
-                    "Category '" + category.getName() + "' has subcategories; move or delete them first");
-        }
-        if (productRepository.existsByCategoryId(id)) {
-            throw new ResourceInUseException(
-                    "Category '" + category.getName() + "' still has products; move or delete them first");
-        }
-        categoryRepository.delete(category);
-    }
+	@Transactional
+	public void delete(Long id) {
+		Category category = findCategory(id);
+		if (categoryRepository.existsByParentId(id)) {
+			throw new ResourceInUseException(
+					"Category '" + category.getName() + "' has subcategories; move or delete them first");
+		}
+		if (productRepository.existsByCategoryId(id)) {
+			throw new ResourceInUseException(
+					"Category '" + category.getName() + "' still has products; move or delete them first");
+		}
+		categoryRepository.delete(category);
+	}
 
-    private Category findCategory(Long id) {
-        return categoryRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Category", id));
-    }
+	private Category findCategory(Long id) {
+		return categoryRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Category", id));
+	}
 
-    private Category findParent(Long parentId) {
-        return parentId == null ? null : findCategory(parentId);
-    }
+	private Category findParent(Long parentId) {
+		return parentId == null ? null : findCategory(parentId);
+	}
 
-    /**
-     * Walks up from the new parent to the top. Meeting {@code category} on the way means the move would
-     * create a loop (A under B under A), which would make the tree endless.
-     */
-    private static void checkNotOwnAncestor(Category category, Category newParent) {
-        for (Category current = newParent; current != null; current = current.getParent()) {
-            if (Objects.equals(current.getId(), category.getId())) {
-                throw new InvalidRequestException(
-                        "A category can't be its own parent or be moved under one of its subcategories");
-            }
-        }
-    }
+	/**
+	 * Walks up from the new parent to the top. Meeting {@code category} on the way means the move would
+	 * create a loop (A under B under A), which would make the tree endless.
+	 */
+	private static void checkNotOwnAncestor(Category category, Category newParent) {
+		for (Category current = newParent; current != null; current = current.getParent()) {
+			if (Objects.equals(current.getId(), category.getId())) {
+				throw new InvalidRequestException(
+						"A category can't be its own parent or be moved under one of its subcategories");
+			}
+		}
+	}
 
-    private static DuplicateResourceException duplicateName(String name) {
-        return new DuplicateResourceException("Category '" + name + "' already exists");
-    }
+	private static DuplicateResourceException duplicateName(String name) {
+		return new DuplicateResourceException("Category '" + name + "' already exists");
+	}
 }

@@ -31,129 +31,129 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class SupplierServiceTest {
 
-    @Mock
-    private SupplierRepository supplierRepository;
+	@Mock
+	private SupplierRepository supplierRepository;
 
-    @Mock
-    private ProductRepository productRepository;
+	@Mock
+	private ProductRepository productRepository;
 
-    private SupplierService supplierService;
+	private SupplierService supplierService;
 
-    @BeforeEach
-    void setUp() {
-        supplierService = new SupplierService(supplierRepository, productRepository, new SupplierMapper());
-    }
+	@BeforeEach
+	void setUp() {
+		supplierService = new SupplierService(supplierRepository, productRepository, new SupplierMapper());
+	}
 
-    @Test
-    void get_unknownId_throwsResourceNotFoundException() {
-        // given
-        when(supplierRepository.findById(99L)).thenReturn(Optional.empty());
+	@Test
+	void get_unknownId_throwsResourceNotFoundException() {
+		// given
+		when(supplierRepository.findById(99L)).thenReturn(Optional.empty());
 
-        // when / then
-        assertThatThrownBy(() -> supplierService.get(99L))
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessage("Supplier with id 99 not found");
-    }
+		// when / then
+		assertThatThrownBy(() -> supplierService.get(99L))
+				.isInstanceOf(ResourceNotFoundException.class)
+				.hasMessage("Supplier with id 99 not found");
+	}
 
-    @Test
-    void create_newName_trimsFieldsAndStoresBlankAsNull() {
-        // given
-        when(supplierRepository.existsByName("LogiCo")).thenReturn(false);
-        when(supplierRepository.save(any(Supplier.class))).thenAnswer(invocation -> invocation.getArgument(0));
+	@Test
+	void create_newName_trimsFieldsAndStoresBlankAsNull() {
+		// given
+		when(supplierRepository.existsByName("LogiCo")).thenReturn(false);
+		when(supplierRepository.save(any(Supplier.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        // when
-        SupplierResponse response = supplierService.create(
-                new SupplierRequest(" LogiCo ", "  Anna Pham ", "", "   "));
+		// when
+		SupplierResponse response = supplierService.create(
+				new SupplierRequest(" LogiCo ", "  Anna Pham ", "", "   "));
 
-        // then
-        assertThat(response.name()).isEqualTo("LogiCo");
-        assertThat(response.contactName()).isEqualTo("Anna Pham");
-        assertThat(response.email()).isNull();
-        assertThat(response.phone()).isNull();
-    }
+		// then
+		assertThat(response.name()).isEqualTo("LogiCo");
+		assertThat(response.contactName()).isEqualTo("Anna Pham");
+		assertThat(response.email()).isNull();
+		assertThat(response.phone()).isNull();
+	}
 
-    @Test
-    void create_duplicateName_throwsDuplicateResourceException() {
-        // given
-        when(supplierRepository.existsByName("LogiCo")).thenReturn(true);
+	@Test
+	void create_duplicateName_throwsDuplicateResourceException() {
+		// given
+		when(supplierRepository.existsByName("LogiCo")).thenReturn(true);
 
-        // when / then
-        assertThatThrownBy(() -> supplierService.create(new SupplierRequest("LogiCo", null, null, null)))
-                .isInstanceOf(DuplicateResourceException.class)
-                .hasMessage("Supplier 'LogiCo' already exists");
-        verify(supplierRepository, never()).save(any());
-    }
+		// when / then
+		assertThatThrownBy(() -> supplierService.create(new SupplierRequest("LogiCo", null, null, null)))
+				.isInstanceOf(DuplicateResourceException.class)
+				.hasMessage("Supplier 'LogiCo' already exists");
+		verify(supplierRepository, never()).save(any());
+	}
 
-    @Test
-    void update_validRequest_replacesAllFields() {
-        // given
-        Supplier logiCo = supplier(1L, "Logico", "Anna Pham", "anna@logico.com", "+84 90 111 2233");
-        when(supplierRepository.findById(1L)).thenReturn(Optional.of(logiCo));
-        when(supplierRepository.existsByNameAndIdNot("LogiCo", 1L)).thenReturn(false);
+	@Test
+	void update_validRequest_replacesAllFields() {
+		// given
+		Supplier logiCo = supplier(1L, "Logico", "Anna Pham", "anna@logico.com", "+84 90 111 2233");
+		when(supplierRepository.findById(1L)).thenReturn(Optional.of(logiCo));
+		when(supplierRepository.existsByNameAndIdNot("LogiCo", 1L)).thenReturn(false);
 
-        // when: PUT replaces every field, so a missing phone clears it
-        SupplierResponse response = supplierService.update(1L,
-                new SupplierRequest("LogiCo", "Tom Lee", "tom@logico.com", null));
+		// when: PUT replaces every field, so a missing phone clears it
+		SupplierResponse response = supplierService.update(1L,
+				new SupplierRequest("LogiCo", "Tom Lee", "tom@logico.com", null));
 
-        // then
-        assertThat(response.name()).isEqualTo("LogiCo");
-        assertThat(response.contactName()).isEqualTo("Tom Lee");
-        assertThat(response.email()).isEqualTo("tom@logico.com");
-        assertThat(response.phone()).isNull();
-        verify(supplierRepository).flush();
-    }
+		// then
+		assertThat(response.name()).isEqualTo("LogiCo");
+		assertThat(response.contactName()).isEqualTo("Tom Lee");
+		assertThat(response.email()).isEqualTo("tom@logico.com");
+		assertThat(response.phone()).isNull();
+		verify(supplierRepository).flush();
+	}
 
-    @Test
-    void update_duplicateName_throwsDuplicateResourceException() {
-        // given
-        when(supplierRepository.findById(1L)).thenReturn(Optional.of(supplier(1L, "LogiCo", null, null, null)));
-        when(supplierRepository.existsByNameAndIdNot("WireCo", 1L)).thenReturn(true);
+	@Test
+	void update_duplicateName_throwsDuplicateResourceException() {
+		// given
+		when(supplierRepository.findById(1L)).thenReturn(Optional.of(supplier(1L, "LogiCo", null, null, null)));
+		when(supplierRepository.existsByNameAndIdNot("WireCo", 1L)).thenReturn(true);
 
-        // when / then
-        assertThatThrownBy(() -> supplierService.update(1L, new SupplierRequest("WireCo", null, null, null)))
-                .isInstanceOf(DuplicateResourceException.class);
-    }
+		// when / then
+		assertThatThrownBy(() -> supplierService.update(1L, new SupplierRequest("WireCo", null, null, null)))
+				.isInstanceOf(DuplicateResourceException.class);
+	}
 
-    @Test
-    void update_unknownId_throwsResourceNotFoundException() {
-        // given
-        when(supplierRepository.findById(99L)).thenReturn(Optional.empty());
+	@Test
+	void update_unknownId_throwsResourceNotFoundException() {
+		// given
+		when(supplierRepository.findById(99L)).thenReturn(Optional.empty());
 
-        // when / then
-        assertThatThrownBy(() -> supplierService.update(99L, new SupplierRequest("LogiCo", null, null, null)))
-                .isInstanceOf(ResourceNotFoundException.class);
-    }
+		// when / then
+		assertThatThrownBy(() -> supplierService.update(99L, new SupplierRequest("LogiCo", null, null, null)))
+				.isInstanceOf(ResourceNotFoundException.class);
+	}
 
-    @Test
-    void delete_unusedSupplier_deletesIt() {
-        // given
-        Supplier logiCo = supplier(1L, "LogiCo", null, null, null);
-        when(supplierRepository.findById(1L)).thenReturn(Optional.of(logiCo));
-        when(productRepository.existsBySupplierId(1L)).thenReturn(false);
+	@Test
+	void delete_unusedSupplier_deletesIt() {
+		// given
+		Supplier logiCo = supplier(1L, "LogiCo", null, null, null);
+		when(supplierRepository.findById(1L)).thenReturn(Optional.of(logiCo));
+		when(productRepository.existsBySupplierId(1L)).thenReturn(false);
 
-        // when
-        supplierService.delete(1L);
+		// when
+		supplierService.delete(1L);
 
-        // then
-        verify(supplierRepository).delete(logiCo);
-    }
+		// then
+		verify(supplierRepository).delete(logiCo);
+	}
 
-    @Test
-    void delete_withProducts_throwsResourceInUseException() {
-        // given
-        when(supplierRepository.findById(1L)).thenReturn(Optional.of(supplier(1L, "LogiCo", null, null, null)));
-        when(productRepository.existsBySupplierId(1L)).thenReturn(true);
+	@Test
+	void delete_withProducts_throwsResourceInUseException() {
+		// given
+		when(supplierRepository.findById(1L)).thenReturn(Optional.of(supplier(1L, "LogiCo", null, null, null)));
+		when(productRepository.existsBySupplierId(1L)).thenReturn(true);
 
-        // when / then
-        assertThatThrownBy(() -> supplierService.delete(1L))
-                .isInstanceOf(ResourceInUseException.class)
-                .hasMessageContaining("products");
-        verify(supplierRepository, never()).delete(any());
-    }
+		// when / then
+		assertThatThrownBy(() -> supplierService.delete(1L))
+				.isInstanceOf(ResourceInUseException.class)
+				.hasMessageContaining("products");
+		verify(supplierRepository, never()).delete(any());
+	}
 
-    private static Supplier supplier(Long id, String name, String contactName, String email, String phone) {
-        Supplier supplier = new Supplier(name, contactName, email, phone);
-        ReflectionTestUtils.setField(supplier, "id", id);
-        return supplier;
-    }
+	private static Supplier supplier(Long id, String name, String contactName, String email, String phone) {
+		Supplier supplier = new Supplier(name, contactName, email, phone);
+		ReflectionTestUtils.setField(supplier, "id", id);
+		return supplier;
+	}
 }

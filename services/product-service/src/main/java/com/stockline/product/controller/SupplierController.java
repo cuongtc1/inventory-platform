@@ -30,44 +30,44 @@ import java.net.URI;
 @Tag(name = "Suppliers")
 public class SupplierController {
 
-    private final SupplierService supplierService;
+	private final SupplierService supplierService;
 
-    public SupplierController(SupplierService supplierService) {
-        this.supplierService = supplierService;
-    }
+	public SupplierController(SupplierService supplierService) {
+		this.supplierService = supplierService;
+	}
 
-    @GetMapping
-    @Operation(summary = "List suppliers", description = "`search` matches part of the name, ignoring case")
-    public PageResponse<SupplierResponse> list(
-            @RequestParam(required = false) String search,
-            // size must be repeated here: @PageableDefault's own default is 10, not the global 20
-            @ParameterObject @PageableDefault(size = 20, sort = "name") Pageable pageable) {
-        return supplierService.list(search, pageable);
-    }
+	@GetMapping
+	@Operation(summary = "List suppliers", description = "`search` matches part of the name, ignoring case")
+	public PageResponse<SupplierResponse> list(
+			@RequestParam(required = false) String search,
+			// size must be repeated here: @PageableDefault's own default is 10, not the global 20
+			@ParameterObject @PageableDefault(size = 20, sort = "name") Pageable pageable) {
+		return supplierService.list(search, pageable);
+	}
 
-    @GetMapping("/{id}")
-    @Operation(summary = "Get one supplier")
-    public SupplierResponse get(@PathVariable Long id) {
-        return supplierService.get(id);
-    }
+	@GetMapping("/{id}")
+	@Operation(summary = "Get one supplier")
+	public SupplierResponse get(@PathVariable Long id) {
+		return supplierService.get(id);
+	}
 
-    @PostMapping
-    @Operation(summary = "Create a supplier")
-    public ResponseEntity<SupplierResponse> create(@Valid @RequestBody SupplierRequest request) {
-        SupplierResponse created = supplierService.create(request);
-        return ResponseEntity.created(URI.create("/api/suppliers/" + created.id())).body(created);
-    }
+	@PostMapping
+	@Operation(summary = "Create a supplier")
+	public ResponseEntity<SupplierResponse> create(@Valid @RequestBody SupplierRequest request) {
+		SupplierResponse created = supplierService.create(request);
+		return ResponseEntity.created(URI.create("/api/suppliers/" + created.id())).body(created);
+	}
 
-    @PutMapping("/{id}")
-    @Operation(summary = "Update a supplier")
-    public SupplierResponse update(@PathVariable Long id, @Valid @RequestBody SupplierRequest request) {
-        return supplierService.update(id, request);
-    }
+	@PutMapping("/{id}")
+	@Operation(summary = "Update a supplier")
+	public SupplierResponse update(@PathVariable Long id, @Valid @RequestBody SupplierRequest request) {
+		return supplierService.update(id, request);
+	}
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Delete a supplier", description = "Fails with 409 IN_USE if it has products")
-    public void delete(@PathVariable Long id) {
-        supplierService.delete(id);
-    }
+	@DeleteMapping("/{id}")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	@Operation(summary = "Delete a supplier", description = "Fails with 409 IN_USE if it has products")
+	public void delete(@PathVariable Long id) {
+		supplierService.delete(id);
+	}
 }

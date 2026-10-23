@@ -41,135 +41,135 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(SupplierController.class)
 class SupplierControllerTest {
 
-    private static final Instant NOW = Instant.parse("2026-10-23T08:00:00Z");
+	private static final Instant NOW = Instant.parse("2026-10-23T08:00:00Z");
 
-    @Autowired
-    private MockMvc mockMvc;
+	@Autowired
+	private MockMvc mockMvc;
 
-    @MockitoBean
-    private SupplierService supplierService;
+	@MockitoBean
+	private SupplierService supplierService;
 
-    @Test
-    void list_withSearch_usesDefaultPageAndReturnsPageJson() throws Exception {
-        // given
-        SupplierResponse logiCo = new SupplierResponse(1L, "LogiCo", "Anna Pham", "anna@logico.com",
-                "+84 90 111 2233", NOW, NOW);
-        when(supplierService.list(eq("logi"), any(Pageable.class)))
-                .thenReturn(new PageResponse<>(List.of(logiCo), 0, 20, 1, 1));
+	@Test
+	void list_withSearch_usesDefaultPageAndReturnsPageJson() throws Exception {
+		// given
+		SupplierResponse logiCo = new SupplierResponse(1L, "LogiCo", "Anna Pham", "anna@logico.com",
+				"+84 90 111 2233", NOW, NOW);
+		when(supplierService.list(eq("logi"), any(Pageable.class)))
+				.thenReturn(new PageResponse<>(List.of(logiCo), 0, 20, 1, 1));
 
-        // when / then
-        mockMvc.perform(get("/api/suppliers").param("search", "logi"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].name").value("LogiCo"))
-                .andExpect(jsonPath("$.content[0].contactName").value("Anna Pham"))
-                .andExpect(jsonPath("$.content[0].email").value("anna@logico.com"))
-                .andExpect(jsonPath("$.content[0].phone").value("+84 90 111 2233"))
-                .andExpect(jsonPath("$.totalElements").value(1));
-        verify(supplierService).list(eq("logi"), argThat(pageable ->
-                pageable.getPageNumber() == 0
-                        && pageable.getPageSize() == 20
-                        && pageable.getSort().equals(Sort.by("name"))));
-    }
+		// when / then
+		mockMvc.perform(get("/api/suppliers").param("search", "logi"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.content[0].name").value("LogiCo"))
+				.andExpect(jsonPath("$.content[0].contactName").value("Anna Pham"))
+				.andExpect(jsonPath("$.content[0].email").value("anna@logico.com"))
+				.andExpect(jsonPath("$.content[0].phone").value("+84 90 111 2233"))
+				.andExpect(jsonPath("$.totalElements").value(1));
+		verify(supplierService).list(eq("logi"), argThat(pageable ->
+				pageable.getPageNumber() == 0
+						&& pageable.getPageSize() == 20
+						&& pageable.getSort().equals(Sort.by("name"))));
+	}
 
-    @Test
-    void get_unknownId_returns404ProblemJson() throws Exception {
-        // given
-        when(supplierService.get(99L)).thenThrow(new ResourceNotFoundException("Supplier", 99L));
+	@Test
+	void get_unknownId_returns404ProblemJson() throws Exception {
+		// given
+		when(supplierService.get(99L)).thenThrow(new ResourceNotFoundException("Supplier", 99L));
 
-        // when / then
-        mockMvc.perform(get("/api/suppliers/99"))
-                .andExpect(status().isNotFound())
-                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-                .andExpect(jsonPath("$.detail").value("Supplier with id 99 not found"))
-                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
-    }
+		// when / then
+		mockMvc.perform(get("/api/suppliers/99"))
+				.andExpect(status().isNotFound())
+				.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.detail").value("Supplier with id 99 not found"))
+				.andExpect(jsonPath("$.code").value("NOT_FOUND"));
+	}
 
-    @Test
-    void create_validRequest_returns201WithLocation() throws Exception {
-        // given
-        when(supplierService.create(new SupplierRequest("WireCo", "Tom Lee", "tom@wireco.com", "+84 91 222 3344")))
-                .thenReturn(new SupplierResponse(7L, "WireCo", "Tom Lee", "tom@wireco.com", "+84 91 222 3344", NOW, NOW));
+	@Test
+	void create_validRequest_returns201WithLocation() throws Exception {
+		// given
+		when(supplierService.create(new SupplierRequest("WireCo", "Tom Lee", "tom@wireco.com", "+84 91 222 3344")))
+				.thenReturn(new SupplierResponse(7L, "WireCo", "Tom Lee", "tom@wireco.com", "+84 91 222 3344", NOW, NOW));
 
-        // when / then
-        mockMvc.perform(post("/api/suppliers")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                { "name": "WireCo", "contactName": "Tom Lee",
-                                  "email": "tom@wireco.com", "phone": "+84 91 222 3344" }
-                                """))
-                .andExpect(status().isCreated())
-                .andExpect(header().string("Location", "/api/suppliers/7"))
-                .andExpect(jsonPath("$.id").value(7));
-    }
+		// when / then
+		mockMvc.perform(post("/api/suppliers")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{ "name": "WireCo", "contactName": "Tom Lee",
+								  "email": "tom@wireco.com", "phone": "+84 91 222 3344" }
+								"""))
+				.andExpect(status().isCreated())
+				.andExpect(header().string("Location", "/api/suppliers/7"))
+				.andExpect(jsonPath("$.id").value(7));
+	}
 
-    @Test
-    void create_onlyName_returns201() throws Exception {
-        // given
-        when(supplierService.create(new SupplierRequest("DeskPro", null, null, null)))
-                .thenReturn(new SupplierResponse(8L, "DeskPro", null, null, null, NOW, NOW));
+	@Test
+	void create_onlyName_returns201() throws Exception {
+		// given
+		when(supplierService.create(new SupplierRequest("DeskPro", null, null, null)))
+				.thenReturn(new SupplierResponse(8L, "DeskPro", null, null, null, NOW, NOW));
 
-        // when / then
-        mockMvc.perform(post("/api/suppliers")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                { "name": "DeskPro" }
-                                """))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.email").isEmpty());
-    }
+		// when / then
+		mockMvc.perform(post("/api/suppliers")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{ "name": "DeskPro" }
+								"""))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.email").isEmpty());
+	}
 
-    @Test
-    void create_invalidFields_returns400WithFieldErrors() throws Exception {
-        // when / then
-        mockMvc.perform(post("/api/suppliers")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                { "name": "", "email": "not-an-email", "phone": "call me" }
-                                """))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
-                .andExpect(jsonPath("$.errors.length()").value(3))
-                .andExpect(jsonPath("$.errors[?(@.field == 'name')].message").value("must not be blank"))
-                .andExpect(jsonPath("$.errors[?(@.field == 'email')].message")
-                        .value("must be a well-formed email address"))
-                .andExpect(jsonPath("$.errors[?(@.field == 'phone')].message")
-                        .value("may contain only digits, spaces, +, -, ( and )"));
-        verifyNoInteractions(supplierService);
-    }
+	@Test
+	void create_invalidFields_returns400WithFieldErrors() throws Exception {
+		// when / then
+		mockMvc.perform(post("/api/suppliers")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{ "name": "", "email": "not-an-email", "phone": "call me" }
+								"""))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+				.andExpect(jsonPath("$.errors.length()").value(3))
+				.andExpect(jsonPath("$.errors[?(@.field == 'name')].message").value("must not be blank"))
+				.andExpect(jsonPath("$.errors[?(@.field == 'email')].message")
+						.value("must be a well-formed email address"))
+				.andExpect(jsonPath("$.errors[?(@.field == 'phone')].message")
+						.value("may contain only digits, spaces, +, -, ( and )"));
+		verifyNoInteractions(supplierService);
+	}
 
-    @Test
-    void update_duplicateName_returns409Duplicate() throws Exception {
-        // given
-        when(supplierService.update(1L, new SupplierRequest("WireCo", null, null, null)))
-                .thenThrow(new DuplicateResourceException("Supplier 'WireCo' already exists"));
+	@Test
+	void update_duplicateName_returns409Duplicate() throws Exception {
+		// given
+		when(supplierService.update(1L, new SupplierRequest("WireCo", null, null, null)))
+				.thenThrow(new DuplicateResourceException("Supplier 'WireCo' already exists"));
 
-        // when / then
-        mockMvc.perform(put("/api/suppliers/1")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                { "name": "WireCo" }
-                                """))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("DUPLICATE"));
-    }
+		// when / then
+		mockMvc.perform(put("/api/suppliers/1")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{ "name": "WireCo" }
+								"""))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("DUPLICATE"));
+	}
 
-    @Test
-    void delete_existingSupplier_returns204() throws Exception {
-        // when / then
-        mockMvc.perform(delete("/api/suppliers/1"))
-                .andExpect(status().isNoContent());
-        verify(supplierService).delete(1L);
-    }
+	@Test
+	void delete_existingSupplier_returns204() throws Exception {
+		// when / then
+		mockMvc.perform(delete("/api/suppliers/1"))
+				.andExpect(status().isNoContent());
+		verify(supplierService).delete(1L);
+	}
 
-    @Test
-    void delete_supplierInUse_returns409InUse() throws Exception {
-        // given
-        doThrow(new ResourceInUseException("Supplier 'LogiCo' still has products; move or delete them first"))
-                .when(supplierService).delete(1L);
+	@Test
+	void delete_supplierInUse_returns409InUse() throws Exception {
+		// given
+		doThrow(new ResourceInUseException("Supplier 'LogiCo' still has products; move or delete them first"))
+				.when(supplierService).delete(1L);
 
-        // when / then
-        mockMvc.perform(delete("/api/suppliers/1"))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("IN_USE"));
-    }
+		// when / then
+		mockMvc.perform(delete("/api/suppliers/1"))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("IN_USE"));
+	}
 }

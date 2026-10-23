@@ -20,46 +20,46 @@ import java.time.temporal.ChronoUnit;
 @MappedSuperclass
 public abstract class BaseEntity {
 
-    @Id
-    // AUTO_INCREMENT in MySQL: the database generates the id on INSERT
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+	@Id
+	// AUTO_INCREMENT in MySQL: the database generates the id on INSERT
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+	@Column(name = "created_at", nullable = false, updatable = false)
+	private Instant createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+	@Column(name = "updated_at", nullable = false)
+	private Instant updatedAt;
 
-    @PrePersist
-    void onCreate() {
-        Instant now = now();
-        createdAt = now;
-        updatedAt = now;
-    }
+	@PrePersist
+	void onCreate() {
+		Instant now = now();
+		createdAt = now;
+		updatedAt = now;
+	}
 
-    @PreUpdate
-    void onUpdate() {
-        updatedAt = now();
-    }
+	@PreUpdate
+	void onUpdate() {
+		updatedAt = now();
+	}
 
-    /**
-     * DATETIME(6) keeps microseconds and MySQL rounds anything finer, so cut the extra digits here.
-     * Otherwise the response to a save would show a different time than a later read of the same row.
-     */
-    private static Instant now() {
-        return Instant.now().truncatedTo(ChronoUnit.MICROS);
-    }
+	/**
+	 * DATETIME(6) keeps microseconds and MySQL rounds anything finer, so cut the extra digits here.
+	 * Otherwise the response to a save would show a different time than a later read of the same row.
+	 */
+	private static Instant now() {
+		return Instant.now().truncatedTo(ChronoUnit.MICROS);
+	}
 
-    public Long getId() {
-        return id;
-    }
+	public Long getId() {
+		return id;
+	}
 
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
+	public Instant getCreatedAt() {
+		return createdAt;
+	}
 
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
+	public Instant getUpdatedAt() {
+		return updatedAt;
+	}
 }

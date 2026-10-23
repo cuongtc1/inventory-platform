@@ -26,79 +26,79 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class SupplierService {
 
-    private final SupplierRepository supplierRepository;
-    private final ProductRepository productRepository;
-    private final SupplierMapper supplierMapper;
+	private final SupplierRepository supplierRepository;
+	private final ProductRepository productRepository;
+	private final SupplierMapper supplierMapper;
 
-    public SupplierService(SupplierRepository supplierRepository, ProductRepository productRepository,
-                           SupplierMapper supplierMapper) {
-        this.supplierRepository = supplierRepository;
-        this.productRepository = productRepository;
-        this.supplierMapper = supplierMapper;
-    }
+	public SupplierService(SupplierRepository supplierRepository, ProductRepository productRepository,
+						   SupplierMapper supplierMapper) {
+		this.supplierRepository = supplierRepository;
+		this.productRepository = productRepository;
+		this.supplierMapper = supplierMapper;
+	}
 
-    public PageResponse<SupplierResponse> list(String search, Pageable pageable) {
-        String text = search == null ? "" : search.strip();
-        return PageResponse.from(
-                supplierRepository.findByNameContainingIgnoreCase(text, pageable).map(supplierMapper::toResponse));
-    }
+	public PageResponse<SupplierResponse> list(String search, Pageable pageable) {
+		String text = search == null ? "" : search.strip();
+		return PageResponse.from(
+				supplierRepository.findByNameContainingIgnoreCase(text, pageable).map(supplierMapper::toResponse));
+	}
 
-    public SupplierResponse get(Long id) {
-        return supplierMapper.toResponse(findSupplier(id));
-    }
+	public SupplierResponse get(Long id) {
+		return supplierMapper.toResponse(findSupplier(id));
+	}
 
-    @Transactional
-    public SupplierResponse create(SupplierRequest request) {
-        String name = request.name().strip();
-        if (supplierRepository.existsByName(name)) {
-            throw duplicateName(name);
-        }
+	@Transactional
+	public SupplierResponse create(SupplierRequest request) {
+		String name = request.name().strip();
+		if (supplierRepository.existsByName(name)) {
+			throw duplicateName(name);
+		}
 
-        Supplier saved = supplierRepository.save(new Supplier(
-                name, blankToNull(request.contactName()), blankToNull(request.email()), blankToNull(request.phone())));
-        return supplierMapper.toResponse(saved);
-    }
+		Supplier saved = supplierRepository.save(new Supplier(
+				name, blankToNull(request.contactName()), blankToNull(request.email()), blankToNull(request.phone())));
+		return supplierMapper.toResponse(saved);
+	}
 
-    @Transactional
-    public SupplierResponse update(Long id, SupplierRequest request) {
-        Supplier supplier = findSupplier(id);
-        String name = request.name().strip();
-        if (supplierRepository.existsByNameAndIdNot(name, id)) {
-            throw duplicateName(name);
-        }
+	@Transactional
+	public SupplierResponse update(Long id, SupplierRequest request) {
+		Supplier supplier = findSupplier(id);
+		String name = request.name().strip();
+		if (supplierRepository.existsByNameAndIdNot(name, id)) {
+			throw duplicateName(name);
+		}
 
-        supplier.setName(name);
-        supplier.setContactName(blankToNull(request.contactName()));
-        supplier.setEmail(blankToNull(request.email()));
-        supplier.setPhone(blankToNull(request.phone()));
-        // Run the UPDATE now so @PreUpdate sets updatedAt before we build the response
-        supplierRepository.flush();
-        return supplierMapper.toResponse(supplier);
-    }
+		supplier.setName(name);
+		supplier.setContactName(blankToNull(request.contactName()));
+		supplier.setEmail(blankToNull(request.email()));
+		supplier.setPhone(blankToNull(request.phone()));
+		// Run the UPDATE now so @PreUpdate sets updatedAt before we build the response
+		supplierRepository.flush();
+		return supplierMapper.toResponse(supplier);
+	}
 
-    @Transactional
-    public void delete(Long id) {
-        Supplier supplier = findSupplier(id);
-        if (productRepository.existsBySupplierId(id)) {
-            throw new ResourceInUseException(
-                    "Supplier '" + supplier.getName() + "' still has products; move or delete them first");
-        }
-        supplierRepository.delete(supplier);
-    }
+	@Transactional
+	public void delete(Long id) {
+		Supplier supplier = findSupplier(id);
+		if (productRepository.existsBySupplierId(id)) {
+			throw new ResourceInUseException(
+					"Supplier '" + supplier.getName() + "' still has products; move or delete them first");
+		}
+		supplierRepository.delete(supplier);
+	}
 
-    private Supplier findSupplier(Long id) {
-        return supplierRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Supplier", id));
-    }
+	private Supplier findSupplier(Long id) {
+		return supplierRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Supplier", id));
+	}
 
-    /**
-     * " Anna " becomes "Anna"; null, "" and "   " become null, so the table never holds empty strings.
-     */
-    private static String blankToNull(String value) {
-        return value == null || value.isBlank() ? null : value.strip();
-    }
+	/**
+	 * " Anna " becomes "Anna"; null, "" and "   " become null, so the table never holds empty strings.
+	 */
+	private static String blankToNull(String value) {
+		return value == null || value.isBlank() ? null : value.strip();
+	}
 
-    private static DuplicateResourceException duplicateName(String name) {
-        return new DuplicateResourceException("Supplier '" + name + "' already exists");
-    }
+	private static DuplicateResourceException duplicateName(String name) {
+		return new DuplicateResourceException("Supplier '" + name + "' already exists");
+	}
 }

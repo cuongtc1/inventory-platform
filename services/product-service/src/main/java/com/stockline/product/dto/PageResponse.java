@@ -9,19 +9,19 @@ import java.util.List;
  * Used instead of Spring's {@link Page}, whose JSON contains many internal fields.
  */
 public record PageResponse<T>(
-        List<T> content,
-        int page,
-        int size,
-        long totalElements,
-        int totalPages
+		List<T> content,
+		int page,
+		int size,
+		long totalElements,
+		int totalPages
 ) {
 
-    public static <T> PageResponse<T> from(Page<T> page) {
-        return new PageResponse<>(
-                page.getContent(),
-                page.getNumber(),
-                page.getSize(),
-                page.getTotalElements(),
-                page.getTotalPages());
-    }
+	public static <T> PageResponse<T> from(Page<T> page) {
+		return new PageResponse<>(
+				page.getContent(),
+				page.getNumber(),
+				page.getSize(),
+				page.getTotalElements(),
+				page.getTotalPages());
+	}
 }

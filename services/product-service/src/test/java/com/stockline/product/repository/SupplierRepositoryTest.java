@@ -23,49 +23,49 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @Import(TestcontainersConfiguration.class)
 class SupplierRepositoryTest {
 
-    @Autowired
-    private SupplierRepository supplierRepository;
+	@Autowired
+	private SupplierRepository supplierRepository;
 
-    @Autowired
-    private TestEntityManager entityManager;
+	@Autowired
+	private TestEntityManager entityManager;
 
-    private Supplier logiCo;
+	private Supplier logiCo;
 
-    @BeforeEach
-    void setUp() {
-        logiCo = entityManager.persist(new Supplier("LogiCo", "Anna Pham", "anna@logico.com", "+84 90 111 2233"));
-        entityManager.persist(new Supplier("WireCo", "Tom Lee", "tom@wireco.com", null));
-        entityManager.persist(new Supplier("ViewTech", null, null, null));
-        entityManager.flush();
-        entityManager.clear();
-    }
+	@BeforeEach
+	void setUp() {
+		logiCo = entityManager.persist(new Supplier("LogiCo", "Anna Pham", "anna@logico.com", "+84 90 111 2233"));
+		entityManager.persist(new Supplier("WireCo", "Tom Lee", "tom@wireco.com", null));
+		entityManager.persist(new Supplier("ViewTech", null, null, null));
+		entityManager.flush();
+		entityManager.clear();
+	}
 
-    @Test
-    void findByNameContainingIgnoreCase_partOfName_returnsMatches() {
-        // when
-        Page<Supplier> page = supplierRepository.findByNameContainingIgnoreCase(
-                "CO", PageRequest.of(0, 20, Sort.by("name")));
+	@Test
+	void findByNameContainingIgnoreCase_partOfName_returnsMatches() {
+		// when
+		Page<Supplier> page = supplierRepository.findByNameContainingIgnoreCase(
+				"CO", PageRequest.of(0, 20, Sort.by("name")));
 
-        // then
-        assertThat(page.getContent()).extracting(Supplier::getName).containsExactly("LogiCo", "WireCo");
-    }
+		// then
+		assertThat(page.getContent()).extracting(Supplier::getName).containsExactly("LogiCo", "WireCo");
+	}
 
-    @Test
-    void existsByName_differentCase_returnsTrue() {
-        assertThat(supplierRepository.existsByName("logico")).isTrue();
-        assertThat(supplierRepository.existsByName("DeskPro")).isFalse();
-    }
+	@Test
+	void existsByName_differentCase_returnsTrue() {
+		assertThat(supplierRepository.existsByName("logico")).isTrue();
+		assertThat(supplierRepository.existsByName("DeskPro")).isFalse();
+	}
 
-    @Test
-    void existsByNameAndIdNot_sameRow_returnsFalse() {
-        assertThat(supplierRepository.existsByNameAndIdNot("LogiCo", logiCo.getId())).isFalse();
-        assertThat(supplierRepository.existsByNameAndIdNot("LogiCo", logiCo.getId() + 100)).isTrue();
-    }
+	@Test
+	void existsByNameAndIdNot_sameRow_returnsFalse() {
+		assertThat(supplierRepository.existsByNameAndIdNot("LogiCo", logiCo.getId())).isFalse();
+		assertThat(supplierRepository.existsByNameAndIdNot("LogiCo", logiCo.getId() + 100)).isTrue();
+	}
 
-    @Test
-    void save_duplicateName_throwsDataIntegrityViolationException() {
-        // uk_suppliers_name is the last line of defence if two requests pass the service check at the same time
-        assertThatThrownBy(() -> supplierRepository.saveAndFlush(new Supplier("WIRECO", null, null, null)))
-                .isInstanceOf(DataIntegrityViolationException.class);
-    }
+	@Test
+	void save_duplicateName_throwsDataIntegrityViolationException() {
+		// uk_suppliers_name is the last line of defence if two requests pass the service check at the same time
+		assertThatThrownBy(() -> supplierRepository.saveAndFlush(new Supplier("WIRECO", null, null, null)))
+				.isInstanceOf(DataIntegrityViolationException.class);
+	}
 }

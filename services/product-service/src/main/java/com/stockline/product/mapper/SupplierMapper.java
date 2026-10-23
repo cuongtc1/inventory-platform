@@ -7,14 +7,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class SupplierMapper {
 
-    public SupplierResponse toResponse(Supplier supplier) {
-        return new SupplierResponse(
-                supplier.getId(),
-                supplier.getName(),
-                supplier.getContactName(),
-                supplier.getEmail(),
-                supplier.getPhone(),
-                supplier.getCreatedAt(),
-                supplier.getUpdatedAt());
-    }
+	public SupplierResponse toResponse(Supplier supplier) {
+		return new SupplierResponse(
+				supplier.getId(),
+				supplier.getName(),
+				supplier.getContactName(),
+				supplier.getEmail(),
+				supplier.getPhone(),
+				supplier.getCreatedAt(),
+				supplier.getUpdatedAt());
+	}
 }

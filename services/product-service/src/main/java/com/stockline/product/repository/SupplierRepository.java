@@ -10,10 +10,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
  */
 public interface SupplierRepository extends JpaRepository<Supplier, Long> {
 
-    Page<Supplier> findByNameContainingIgnoreCase(String text, Pageable pageable);
+	Page<Supplier> findByNameContainingIgnoreCase(String text, Pageable pageable);
 
-    // Case-insensitive through MySQL's default collation
-    boolean existsByName(String name);
+	// Case-insensitive through MySQL's default collation
+	boolean existsByName(String name);
 
-    boolean existsByNameAndIdNot(String name, Long id);
+	boolean existsByNameAndIdNot(String name, Long id);
 }

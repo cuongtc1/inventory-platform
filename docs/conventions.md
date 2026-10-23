@@ -49,6 +49,7 @@ The flow is always `controller → service → repository`. A controller never c
 | Kafka event | `<Thing><PastTenseVerb>Event` | `OrderCreatedEvent`, `StockReservedEvent` |
 
 Code style:
+- Indent Java files with **tabs**, one tab per level. Wrapped (continuation) lines get two extra tabs.
 - DTOs are Java `record`s with Bean Validation annotations, for example `@NotBlank`, `@Size` and `@Positive`.
 - Use constructor injection with `final` fields. Don't put `@Autowired` on fields.
 - Mappers are small hand-written classes (`@Component`), not MapStruct. They're easy to read and debug.

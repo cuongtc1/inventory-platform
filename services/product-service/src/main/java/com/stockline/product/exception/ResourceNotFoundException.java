@@ -7,7 +7,7 @@ import org.springframework.http.HttpStatus;
  */
 public class ResourceNotFoundException extends ApiException {
 
-    public ResourceNotFoundException(String resource, Long id) {
-        super(HttpStatus.NOT_FOUND, "NOT_FOUND", resource + " with id " + id + " not found");
-    }
+	public ResourceNotFoundException(String resource, Long id) {
+		super(HttpStatus.NOT_FOUND, "NOT_FOUND", resource + " with id " + id + " not found");
+	}
 }
