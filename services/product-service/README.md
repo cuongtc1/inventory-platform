@@ -40,6 +40,29 @@ Request body: `{ "name": "Cables", "parentId": 1 }`. `name` is required (max 100
 
 Response: `{ "id", "name", "parentId", "parentName", "createdAt", "updatedAt" }`.
 
+### Suppliers: `/api/suppliers`
+
+| Method and path | Result | Errors |
+|---|---|---|
+| `GET /api/suppliers?search=&page=0&size=20&sort=name,asc` | `200`, a page of suppliers. `search` matches part of the name, ignoring case. Default sort `name,asc`, max size 100 | `400` unknown sort field |
+| `GET /api/suppliers/{id}` | `200`, one supplier | `404` |
+| `POST /api/suppliers` | `201`, `Location: /api/suppliers/{id}` | `400` validation, `409 DUPLICATE` name |
+| `PUT /api/suppliers/{id}` | `200`, the updated supplier (every field is replaced; a missing field is cleared) | `400`, `404`, `409 DUPLICATE` |
+| `DELETE /api/suppliers/{id}` | `204` | `404`, `409 IN_USE` if products still use it |
+
+Request body: `{ "name": "LogiCo", "contactName": "Anna Pham", "email": "anna@logico.com", "phone": "+84 90 111 2233" }`.
+
+| Field | Rules |
+|---|---|
+| `name` | Required, max 150, unique ignoring case |
+| `contactName` | Optional, max 100 |
+| `email` | Optional, max 150, must be a valid email address |
+| `phone` | Optional, max 30, only digits, spaces, `+`, `-`, `(`, `)` |
+
+Text is trimmed. An empty or blank optional field is stored as `null`.
+
+Response: `{ "id", "name", "contactName", "email", "phone", "createdAt", "updatedAt" }`.
+
 ## Configuration
 
 All settings are in `src/main/resources/application.yml`. Values that differ per environment come from environment variables, with defaults for the local Docker setup:
@@ -61,16 +84,16 @@ All settings are in `src/main/resources/application.yml`. Values that differ per
 | `src/main/resources/db/migration/` | Flyway SQL migrations, run in order at startup (see [Database](#database)) |
 | `src/main/java/.../entity/` | JPA entities `Category`, `Supplier`, `Product`, the `ProductStatus` enum, and `BaseEntity` (id and timestamps) |
 | `src/main/java/.../repository/` | Spring Data JPA repositories, one per entity |
-| `src/main/java/.../controller/` | REST controllers (`CategoryController`) |
-| `src/main/java/.../service/` | Business rules and transactions (`CategoryService`) |
+| `src/main/java/.../controller/` | REST controllers (`CategoryController`, `SupplierController`) |
+| `src/main/java/.../service/` | Business rules and transactions (`CategoryService`, `SupplierService`) |
 | `src/main/java/.../dto/` | Request and response records, and `PageResponse` for lists |
 | `src/main/java/.../mapper/` | Entity → response conversion |
 | `src/main/java/.../exception/` | `ApiException` and its subclasses, and `GlobalExceptionHandler` (JSON errors) |
 | `src/test/java/.../TestcontainersConfiguration.java` | Starts a throwaway MySQL 8.4 container for tests |
 | `src/test/java/.../ProductServiceApplicationTests.java` | Starts the whole app against that container |
 | `src/test/java/.../repository/*RepositoryTest.java` | `@DataJpaTest` on MySQL: mapping, unique keys, custom queries |
-| `src/test/java/.../service/CategoryServiceTest.java` | Mockito unit test of the category rules |
-| `src/test/java/.../controller/CategoryControllerTest.java` | `@WebMvcTest`: URLs, status codes, JSON and error format |
+| `src/test/java/.../service/*ServiceTest.java` | Mockito unit tests of the business rules |
+| `src/test/java/.../controller/*ControllerTest.java` | `@WebMvcTest`: URLs, status codes, JSON and error format |
 
 ## Database
 
