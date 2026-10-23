@@ -61,7 +61,7 @@ Goal: learn the standard layered Spring Boot service (controller / service / rep
 | T1.3 | Category CRUD API | Create, read, update, delete; optional parent category; validation | Claude | DONE |
 | T1.4 | Supplier CRUD API | Same pattern as T1.3 | Claude | DONE |
 | T1.5 | Product CRUD API | CRUD plus list with pagination, sort, search by name/SKU, filter by category, supplier and status | Claude | DONE |
-| T1.6 | Error handling | Global exception handler; consistent JSON errors (400 validation, 404, 409 duplicate SKU) | Claude | REVIEW |
+| T1.6 | Error handling | Global exception handler; consistent JSON errors (400 validation, 404, 409 duplicate SKU) | Claude | DONE |
 | T1.7 | Unit tests | Service tests with Mockito; controller tests; at least one repository test; `mvn test` passes | Claude | TODO |
 | T1.8 | Dockerize | Dockerfile (multi-stage); service added to compose and runs in a container | Claude | TODO |
 | T1.9 | Review | Try all endpoints in Swagger UI; read the code and ask questions | You | TODO |
