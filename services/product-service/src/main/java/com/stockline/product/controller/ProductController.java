@@ -1,6 +1,6 @@
 package com.stockline.product.controller;
 
-import com.stockline.product.dto.PageResponse;
+import com.stockline.common.dto.PageResponse;
 import com.stockline.product.dto.ProductFilter;
 import com.stockline.product.dto.ProductRequest;
 import com.stockline.product.dto.ProductResponse;

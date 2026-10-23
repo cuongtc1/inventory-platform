@@ -1,0 +1,290 @@
+package com.stockline.common.exception;
+
+import com.stockline.common.constant.ErrorCode;
+import com.stockline.common.constant.CommonMessageKeys;
+import jakarta.servlet.http.HttpServletRequest;
+import org.hibernate.exception.ConstraintViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.TypeMismatchException;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.core.PropertyReferenceException;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.exc.InvalidFormatException;
+import tools.jackson.databind.exc.MismatchedInputException;
+
+import java.net.URI;
+import java.time.Clock;
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * Turns every exception into the JSON error format from docs/conventions.md section 3 (Problem Details, RFC 9457).
+ *
+ * <ul>
+ *   <li>Our own {@link ApiException}s carry their {@link ErrorCode} and message key.</li>
+ *   <li>Spring MVC's errors (405, 415, unknown URL, ...) are handled by {@link ResponseEntityExceptionHandler};
+ *       {@link #handleExceptionInternal} adds our fields to them. A few get a clearer message below.</li>
+ *   <li>Database constraint errors that slip past the service checks (two requests at the same moment)
+ *       become 409 instead of 500.</li>
+ *   <li>Anything else is a 500 with a generic message; the details go only to the log.</li>
+ * </ul>
+ *
+ * <p>Every text comes from the messages files through {@link MessageSource}; the timestamp comes from the
+ * {@link Clock} bean, so tests can fix the time.
+ *
+ * <p>Not a component found by scanning: services don't scan {@code com.stockline.common}.
+ * {@code CommonWebAutoConfiguration} creates it as a bean, and the {@code @RestControllerAdvice} annotation
+ * then makes Spring MVC use it for every controller.
+ */
+@RestControllerAdvice
+public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+	private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+	// MySQL error code for "Cannot delete or update a parent row: a foreign key constraint fails"
+	private static final int MYSQL_ROW_IS_REFERENCED = 1451;
+
+	private final MessageSource messageSource;
+	private final Clock clock;
+
+	public GlobalExceptionHandler(MessageSource messageSource, Clock clock) {
+		this.messageSource = messageSource;
+		this.clock = clock;
+	}
+
+	@ExceptionHandler(ApiException.class)
+	public ResponseEntity<ProblemDetail> handleApiException(ApiException ex, HttpServletRequest request) {
+		return response(ex.getErrorCode(), message(ex.getMessageKey(), ex.getMessageArgs()), request.getRequestURI());
+	}
+
+	/**
+	 * Unknown sort field, e.g. {@code ?sort=color,asc}. Spring Data throws this when it builds the query.
+	 */
+	@ExceptionHandler(PropertyReferenceException.class)
+	public ResponseEntity<ProblemDetail> handleUnknownSortField(PropertyReferenceException ex,
+			HttpServletRequest request) {
+		return response(ErrorCode.BAD_REQUEST, message(CommonMessageKeys.REQUEST_UNKNOWN_SORT_FIELD, ex.getPropertyName()),
+				request.getRequestURI());
+	}
+
+	/**
+	 * A unique key or foreign key rejected the change. The services check these rules first and give a precise
+	 * message; this only happens when two requests pass the check at the same moment, e.g. both create SKU "A01".
+	 */
+	@ExceptionHandler(DataIntegrityViolationException.class)
+	public ResponseEntity<ProblemDetail> handleDataIntegrityViolation(DataIntegrityViolationException ex,
+			HttpServletRequest request) {
+		String path = request.getRequestURI();
+		ConstraintViolationException violation = findCause(ex, ConstraintViolationException.class);
+		if (violation == null) {
+			return handleUnexpected(ex, request);
+		}
+
+		String constraint = violation.getConstraintName() == null ? "" : violation.getConstraintName();
+		return switch (violation.getKind()) {
+			case UNIQUE -> response(ErrorCode.DUPLICATE, uniqueKeyMessage(constraint), path);
+			case FOREIGN_KEY -> violation.getErrorCode() == MYSQL_ROW_IS_REFERENCED
+					? response(ErrorCode.IN_USE, message(CommonMessageKeys.RESOURCE_IN_USE), path)
+					// The other direction: the row we point to (category, supplier) was deleted meanwhile
+					: response(ErrorCode.NOT_FOUND, message(CommonMessageKeys.RESOURCE_REFERENCE_MISSING), path);
+			default -> handleUnexpected(ex, request);
+		};
+	}
+
+	/**
+	 * Last resort for bugs and outages (database down, ...). The client gets no internal details.
+	 */
+	@ExceptionHandler(Exception.class)
+	public ResponseEntity<ProblemDetail> handleUnexpected(Exception ex, HttpServletRequest request) {
+		log.error(message(CommonMessageKeys.SYSTEM_ERROR_UNEXPECTED, request.getMethod(), request.getRequestURI()), ex);
+		return response(ErrorCode.INTERNAL_ERROR, message(CommonMessageKeys.ERROR_UNEXPECTED), request.getRequestURI());
+	}
+
+	/**
+	 * {@code @Valid} failed on a request body, or query parameters couldn't be bound to an object.
+	 * Lists every invalid field. The field messages come from messages.properties through the validator.
+	 */
+	@Override
+	protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
+			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+		// Also thrown when a query parameter can't be converted, e.g. ?status=WRONG for the product filter.
+		// That error's default message is a long Java exception text, so it gets a short one instead
+		List<FieldValidationError> errors = ex.getBindingResult().getFieldErrors().stream()
+				.map(error -> new FieldValidationError(error.getField(), error.isBindingFailure()
+						? message(CommonMessageKeys.VALIDATION_INVALID_VALUE, error.getRejectedValue())
+						: error.getDefaultMessage()))
+				.toList();
+		return validationFailed(errors, path(request));
+	}
+
+	/**
+	 * The body couldn't be turned into the request object. A field with a value of the wrong type
+	 * ({@code "categoryId": "abc"}, an unknown enum value) is reported like a validation error, so the
+	 * frontend can show it next to the field. Broken or missing JSON is a plain 400.
+	 */
+	@Override
+	protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
+			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+		// Pattern matching for instanceof (Java 16): tests the type and declares the variable in one step
+		if (ex.getCause() instanceof MismatchedInputException mismatch && !mismatch.getPath().isEmpty()) {
+			String text = mismatch instanceof InvalidFormatException invalid
+					? message(CommonMessageKeys.VALIDATION_INVALID_VALUE, invalid.getValue())
+					: message(CommonMessageKeys.VALIDATION_WRONG_TYPE);
+			return validationFailed(List.of(new FieldValidationError(fieldPath(mismatch), text)), path(request));
+		}
+		return objectResponse(ErrorCode.BAD_REQUEST, message(CommonMessageKeys.REQUEST_UNREADABLE), path(request));
+	}
+
+	/**
+	 * A path variable or simple query parameter has the wrong type, e.g. {@code /api/products/abc}.
+	 */
+	@Override
+	protected ResponseEntity<Object> handleTypeMismatch(TypeMismatchException ex, HttpHeaders headers,
+			HttpStatusCode status, WebRequest request) {
+		String name = ex instanceof MethodArgumentTypeMismatchException argument ? argument.getName()
+				: ex.getPropertyName();
+		String detail = message(CommonMessageKeys.REQUEST_INVALID_PARAMETER, name, ex.getValue());
+		return objectResponse(ErrorCode.BAD_REQUEST, detail, path(request));
+	}
+
+	/**
+	 * Unknown URL. Spring's own message ("No static resource api/unknown.") talks about files, not endpoints.
+	 */
+	@Override
+	protected ResponseEntity<Object> handleNoResourceFoundException(NoResourceFoundException ex,
+			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+		String detail = message(CommonMessageKeys.REQUEST_NO_ENDPOINT, ex.getHttpMethod(), path(request));
+		return objectResponse(ErrorCode.NOT_FOUND, detail, path(request));
+	}
+
+	/**
+	 * Every other Spring MVC error passes through here with Spring's own Problem Details body
+	 * (405 method not allowed, 415 unsupported media type, ...). Spring takes its detail text from
+	 * messages.properties too (keys "problemDetail.&lt;exception class&gt;"). Add our fields to it.
+	 */
+	@Override
+	protected ResponseEntity<Object> handleExceptionInternal(Exception ex, Object body, HttpHeaders headers,
+			HttpStatusCode statusCode, WebRequest request) {
+		ResponseEntity<Object> response = super.handleExceptionInternal(ex, body, headers, statusCode, request);
+		if (response != null && response.getBody() instanceof ProblemDetail problem) {
+			if (statusCode.is5xxServerError()) {
+				String method = ((ServletWebRequest) request).getRequest().getMethod();
+				log.error(message(CommonMessageKeys.SYSTEM_ERROR_UNEXPECTED, method, path(request)), ex);
+				problem.setDetail(message(CommonMessageKeys.ERROR_UNEXPECTED));
+			}
+			addStandardFields(problem, codeFor(statusCode), path(request));
+		}
+		return response;
+	}
+
+	/**
+	 * Looks up a text in messages.properties, in the request's language (only English exists for now).
+	 * Numbers are passed as text: MessageFormat would otherwise print the id 1234 as "1,234".
+	 */
+	private String message(String key, Object... args) {
+		Object[] textArgs = Arrays.stream(args)
+				.map(arg -> arg instanceof Number ? arg.toString() : arg)
+				.toArray();
+		return messageSource.getMessage(key, textArgs, LocaleContextHolder.getLocale());
+	}
+
+	private ResponseEntity<Object> validationFailed(List<FieldValidationError> errors, String path) {
+		ProblemDetail problem = problem(ErrorCode.VALIDATION_FAILED, message(CommonMessageKeys.VALIDATION_FAILED), path);
+		problem.setProperty("errors", errors);
+		return ResponseEntity.badRequest().body(problem);
+	}
+
+	private ResponseEntity<ProblemDetail> response(ErrorCode code, String detail, String path) {
+		return ResponseEntity.status(code.getStatus()).body(problem(code, detail, path));
+	}
+
+	// Same as response(), typed for the ResponseEntityExceptionHandler methods, which return ResponseEntity<Object>
+	private ResponseEntity<Object> objectResponse(ErrorCode code, String detail, String path) {
+		return ResponseEntity.status(code.getStatus()).body(problem(code, detail, path));
+	}
+
+	private ProblemDetail problem(ErrorCode code, String detail, String path) {
+		return addStandardFields(ProblemDetail.forStatusAndDetail(code.getStatus(), detail), code.name(), path);
+	}
+
+	private ProblemDetail addStandardFields(ProblemDetail problem, String code, String path) {
+		// Spring leaves "type" out of the JSON while it has the default value; our convention always includes it
+		problem.setType(URI.create("about:blank"));
+		problem.setInstance(URI.create(path));
+		problem.setProperty("code", code);
+		problem.setProperty("timestamp", clock.instant());
+		return problem;
+	}
+
+	/**
+	 * Spring MVC errors use our {@link ErrorCode} when one has the status name (METHOD_NOT_ALLOWED, ...),
+	 * otherwise the HTTP status name; server errors are all INTERNAL_ERROR.
+	 */
+	private static String codeFor(HttpStatusCode statusCode) {
+		if (statusCode.is5xxServerError()) {
+			return ErrorCode.INTERNAL_ERROR.name();
+		}
+		HttpStatus status = HttpStatus.resolve(statusCode.value());
+		return status == null ? ErrorCode.BAD_REQUEST.name() : status.name();
+	}
+
+	/**
+	 * The library doesn't know the services' tables, so each service names the text for its unique keys in its own
+	 * messages.properties: {@code constraint.uk_products_sku=...}. Without such a line, the common text is used.
+	 */
+	private String uniqueKeyMessage(String constraint) {
+		// MySQL may prefix the key with the table name ("products.uk_products_sku")
+		String keyName = constraint.substring(constraint.lastIndexOf('.') + 1);
+		String fallback = message(CommonMessageKeys.RESOURCE_DUPLICATE);
+		return messageSource.getMessage(CommonMessageKeys.CONSTRAINT_PREFIX + keyName, null, fallback,
+				LocaleContextHolder.getLocale());
+	}
+
+	/**
+	 * Jackson's path to the bad value, e.g. {@code status} or, for nested data, {@code items[0].quantity}.
+	 */
+	private static String fieldPath(JacksonException ex) {
+		StringBuilder path = new StringBuilder();
+		for (JacksonException.Reference reference : ex.getPath()) {
+			if (reference.getPropertyName() != null) {
+				if (!path.isEmpty()) {
+					path.append('.');
+				}
+				path.append(reference.getPropertyName());
+			} else if (reference.getIndex() >= 0) {
+				path.append('[').append(reference.getIndex()).append(']');
+			}
+		}
+		return path.toString();
+	}
+
+	private static String path(WebRequest request) {
+		return ((ServletWebRequest) request).getRequest().getRequestURI();
+	}
+
+	private static <T extends Throwable> T findCause(Throwable ex, Class<T> type) {
+		for (Throwable current = ex; current != null; current = current.getCause()) {
+			if (type.isInstance(current)) {
+				return type.cast(current);
+			}
+		}
+		return null;
+	}
+}

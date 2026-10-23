@@ -1,6 +1,5 @@
 package com.stockline.product.exception;
 
-import com.stockline.product.config.TimeConfig;
 import com.stockline.product.controller.ProductController;
 import com.stockline.product.dto.ProductRequest;
 import com.stockline.product.service.ProductService;
@@ -9,7 +8,6 @@ import org.hibernate.exception.ConstraintViolationException.ConstraintKind;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -36,7 +34,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Every response must have the full convention format (type, title, status, detail, instance, code, timestamp).
  */
 @WebMvcTest(ProductController.class)
-@Import(TimeConfig.class)
 class GlobalExceptionHandlerTest {
 
 	private static final String VALID_BODY = """

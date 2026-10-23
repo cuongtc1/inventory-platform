@@ -1,14 +1,15 @@
 package com.stockline.product.service;
 
+import com.stockline.common.constant.CommonMessageKeys;
+import com.stockline.common.dto.PageResponse;
+import com.stockline.common.exception.DuplicateResourceException;
+import com.stockline.common.exception.InvalidRequestException;
+import com.stockline.common.exception.ResourceInUseException;
+import com.stockline.common.exception.ResourceNotFoundException;
 import com.stockline.product.constant.MessageKeys;
 import com.stockline.product.dto.CategoryRequest;
 import com.stockline.product.dto.CategoryResponse;
-import com.stockline.product.dto.PageResponse;
 import com.stockline.product.entity.Category;
-import com.stockline.product.exception.DuplicateResourceException;
-import com.stockline.product.exception.InvalidRequestException;
-import com.stockline.product.exception.ResourceInUseException;
-import com.stockline.product.exception.ResourceNotFoundException;
 import com.stockline.product.mapper.CategoryMapper;
 import com.stockline.product.repository.CategoryRepository;
 import com.stockline.product.repository.ProductRepository;
@@ -107,7 +108,7 @@ class CategoryServiceTest {
 		// when / then
 		assertThatThrownBy(() -> categoryService.get(99L))
 				.isInstanceOf(ResourceNotFoundException.class)
-				.hasMessage(MessageKeys.RESOURCE_NOT_FOUND)
+				.hasMessage(CommonMessageKeys.RESOURCE_NOT_FOUND)
 				.extracting("messageArgs").isEqualTo(new Object[] {"Category", 99L});
 	}
 
@@ -150,7 +151,7 @@ class CategoryServiceTest {
 		// when / then
 		assertThatThrownBy(() -> categoryService.create(new CategoryRequest("Cables", 42L)))
 				.isInstanceOf(ResourceNotFoundException.class)
-				.hasMessage(MessageKeys.RESOURCE_NOT_FOUND)
+				.hasMessage(CommonMessageKeys.RESOURCE_NOT_FOUND)
 				.extracting("messageArgs").isEqualTo(new Object[] {"Category", 42L});
 		verify(categoryRepository, never()).save(any());
 	}

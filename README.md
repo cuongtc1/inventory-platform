@@ -61,6 +61,8 @@ inventory-platform/
 │   ├── inventory-service/
 │   ├── order-service/
 │   └── notification-service/
+├── libs/
+│   └── stockline-common/   shared library: errors, messages, auditing, time/money/validation utils
 ├── frontend/      React + Vite app
 ├── infra/         docker-compose.yml, mysql-init/ (schema init scripts)
 ├── docs/
@@ -77,6 +79,7 @@ inventory-platform/
 - Docker Desktop
 - Node.js 20 or newer
 - Git
+- Editor: IntelliJ reads `.editorconfig` (tabs, UTF-8, LF) by itself; in VS Code install the "EditorConfig for VS Code" extension
 
 ## Getting started
 
@@ -85,6 +88,13 @@ Start MySQL and Kafka (see [infra/README.md](infra/README.md) for connection det
 ```bash
 cd infra
 docker compose up -d
+```
+
+Install the shared library once, and again after every change to it (services can't compile without it):
+
+```bash
+cd libs/stockline-common
+./mvnw install                # Windows: mvnw.cmd install
 ```
 
 Run a service (needs JDK 21; see each service's README):
@@ -96,7 +106,7 @@ cd services/product-service
 
 | Service | Status | Health | Swagger UI |
 |---|---|---|---|
-| product-service | scaffolded | http://localhost:8082/actuator/health | http://localhost:8082/swagger-ui.html |
+| product-service | categories, suppliers, products API | http://localhost:8082/actuator/health | http://localhost:8082/swagger-ui.html |
 
 The other services and the frontend don't exist yet; this section will grow as each task is completed.
 

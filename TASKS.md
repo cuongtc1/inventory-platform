@@ -63,7 +63,7 @@ Goal: learn the standard layered Spring Boot service (controller / service / rep
 | T1.5 | Product CRUD API | CRUD plus list with pagination, sort, search by name/SKU, filter by category, supplier and status | Claude | DONE |
 | T1.6 | Error handling | Global exception handler; consistent JSON errors (400 validation, 404, 409 duplicate SKU) | Claude | DONE |
 | T1.7 | Unit tests | Service tests with Mockito; controller tests; at least one repository test; `mvn test` passes | Claude | REVIEW |
-| T1.7a | Shared foundations | `.editorconfig`/`.gitattributes`; `ErrorCode` enum; `Clock` + JPA auditing (`created_by`, `updated_by`); test fixtures; enums in `constant/`; `DateTimeUtils` (Asia/Ho_Chi_Minh), `MoneyUtils` (VND), `CommonValidationUtils`; hard delete rule; shared library `libs/stockline-common` used by product-service; `mvn test` passes | Claude | IN PROGRESS |
+| T1.7a | Shared foundations | `.editorconfig`/`.gitattributes`; `ErrorCode` enum; `Clock` + JPA auditing (`created_by`, `updated_by`); test fixtures; enums in `constant/`; `DateTimeUtils` (Asia/Ho_Chi_Minh), `MoneyUtils` (VND), `CommonValidationUtils`; hard delete rule; shared library `libs/stockline-common` used by product-service; `mvn test` passes | Claude | REVIEW |
 | T1.8 | Dockerize | Dockerfile (multi-stage); service added to compose and runs in a container | Claude | TODO |
 | T1.9 | Review | Try all endpoints in Swagger UI; read the code and ask questions | You | TODO |
 

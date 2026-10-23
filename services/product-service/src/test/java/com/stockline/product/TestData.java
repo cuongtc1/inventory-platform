@@ -1,7 +1,7 @@
 package com.stockline.product;
 
+import com.stockline.common.entity.BaseEntity;
 import com.stockline.product.constant.ProductStatus;
-import com.stockline.product.entity.BaseEntity;
 import com.stockline.product.entity.Category;
 import com.stockline.product.entity.Product;
 import com.stockline.product.entity.Supplier;

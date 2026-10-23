@@ -1,5 +1,6 @@
 package com.stockline.product.constant;
 
+import com.stockline.common.constant.CommonMessageKeys;
 import com.stockline.product.dto.CategoryRequest;
 import com.stockline.product.dto.ProductRequest;
 import com.stockline.product.dto.SupplierRequest;
@@ -14,6 +15,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
@@ -29,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class MessagesPropertiesTest {
 
-	// DTOs whose Bean Validation annotations may reference our own keys, e.g. "{product.sku.invalid}"
+	// DTOs whose Bean Validation annotations may reference message keys, e.g. "{common.validation.code.invalid}"
 	private static final List<Class<?>> REQUEST_CLASSES = List.of(
 			CategoryRequest.class, SupplierRequest.class, ProductRequest.class);
 
@@ -40,16 +43,17 @@ class MessagesPropertiesTest {
 	private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\d+}");
 	// An apostrophe that is not part of a doubled '' pair
 	private static final Pattern SINGLE_APOSTROPHE = Pattern.compile("(?<!')'(?!')");
+	// "CONSTRAINT uk_products_sku UNIQUE" in a Flyway migration
+	private static final Pattern UNIQUE_KEY = Pattern.compile("CONSTRAINT (\\w+) UNIQUE");
 
+	// This service's messages.properties, and common-messages.properties from the stockline-common library
 	private static Properties messages;
+	private static Properties commonMessages;
 
 	@BeforeAll
 	static void loadMessages() throws IOException {
-		messages = new Properties();
-		try (InputStream in = MessagesPropertiesTest.class.getResourceAsStream("/messages.properties")) {
-			assertThat(in).as("messages.properties on the classpath").isNotNull();
-			messages.load(new InputStreamReader(in, StandardCharsets.UTF_8));
-		}
+		messages = load("/messages.properties");
+		commonMessages = load("/common-messages.properties");
 	}
 
 	@Test
@@ -61,9 +65,11 @@ class MessagesPropertiesTest {
 
 	@Test
 	void everyKeyUsedInAValidationAnnotation_hasAText() {
+		// Our own keys or the library's (CommonValidationUtils.*_MESSAGE)
 		assertThat(annotationKeys())
 				.isNotEmpty()
-				.allSatisfy(key -> assertThat(messages.getProperty(key)).as(key).isNotBlank());
+				.allSatisfy(key -> assertThat(messages.getProperty(key, commonMessages.getProperty(key)))
+						.as(key).isNotBlank());
 	}
 
 	@Test
@@ -72,11 +78,29 @@ class MessagesPropertiesTest {
 		Set<String> used = new HashSet<>(messageKeyConstants());
 		used.addAll(annotationKeys());
 
-		// then
+		// then: "constraint.*" keys are looked up by the unique key's name, checked in the next test
 		assertThat(messages.stringPropertyNames())
 				.filteredOn(key -> FRAMEWORK_KEY_PREFIXES.stream().noneMatch(key::startsWith))
+				.filteredOn(key -> !key.startsWith(CommonMessageKeys.CONSTRAINT_PREFIX))
 				.as("keys in messages.properties that no code uses")
 				.allSatisfy(key -> assertThat(used).contains(key));
+	}
+
+	@Test
+	void everyConstraintKey_namesAUniqueKeyFromTheMigrations() throws IOException {
+		// given
+		Set<String> uniqueKeys = new HashSet<>();
+		for (Path migration : Files.newDirectoryStream(Path.of("src/main/resources/db/migration"), "*.sql")) {
+			UNIQUE_KEY.matcher(Files.readString(migration)).results().forEach(match -> uniqueKeys.add(match.group(1)));
+		}
+
+		// then: a typo like "constraint.uk_product_sku" would never be used
+		assertThat(uniqueKeys).isNotEmpty();
+		assertThat(messages.stringPropertyNames())
+				.filteredOn(key -> key.startsWith(CommonMessageKeys.CONSTRAINT_PREFIX))
+				.isNotEmpty()
+				.allSatisfy(key -> assertThat(uniqueKeys)
+						.contains(key.substring(CommonMessageKeys.CONSTRAINT_PREFIX.length())));
 	}
 
 	@Test
@@ -92,7 +116,16 @@ class MessagesPropertiesTest {
 	@Test
 	void messageKeyConstants_followTheSectionNaming() {
 		assertThat(messageKeyConstants())
-				.allSatisfy(key -> assertThat(key).matches("(common|category|supplier|product|system)\\.[a-z.-]+"));
+				.allSatisfy(key -> assertThat(key).matches("(category|supplier|product)\\.[a-z.-]+"));
+	}
+
+	private static Properties load(String resource) throws IOException {
+		Properties properties = new Properties();
+		try (InputStream in = MessagesPropertiesTest.class.getResourceAsStream(resource)) {
+			assertThat(in).as(resource + " on the classpath").isNotNull();
+			properties.load(new InputStreamReader(in, StandardCharsets.UTF_8));
+		}
+		return properties;
 	}
 
 	private static List<String> messageKeyConstants() {

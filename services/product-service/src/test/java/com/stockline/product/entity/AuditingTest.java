@@ -1,7 +1,7 @@
 package com.stockline.product.entity;
 
+import com.stockline.common.constant.AuditConstants;
 import com.stockline.product.TestcontainersConfiguration;
-import com.stockline.product.config.JpaAuditingConfig;
 import com.stockline.product.repository.CategoryRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * AuditorAware bean. The test replaces the Clock with one it can move forward.
  */
 @DataJpaTest
-@Import({TestcontainersConfiguration.class, JpaAuditingConfig.class, AuditingTest.ClockConfig.class})
+@Import({TestcontainersConfiguration.class, AuditingTest.ClockConfig.class})
 class AuditingTest {
 
 	private static final Instant START = Instant.parse("2026-10-23T08:00:00.123456789Z");
@@ -47,8 +47,8 @@ class AuditingTest {
 		// then: cut to microseconds like DATETIME(6)
 		assertThat(saved.getCreatedAt()).isEqualTo(Instant.parse("2026-10-23T08:00:00.123456Z"));
 		assertThat(saved.getUpdatedAt()).isEqualTo(saved.getCreatedAt());
-		assertThat(saved.getCreatedBy()).isEqualTo(JpaAuditingConfig.SYSTEM_USER);
-		assertThat(saved.getUpdatedBy()).isEqualTo(JpaAuditingConfig.SYSTEM_USER);
+		assertThat(saved.getCreatedBy()).isEqualTo(AuditConstants.SYSTEM_USER);
+		assertThat(saved.getUpdatedBy()).isEqualTo(AuditConstants.SYSTEM_USER);
 	}
 
 	@Test

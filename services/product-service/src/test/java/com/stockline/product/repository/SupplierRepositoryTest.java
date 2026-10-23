@@ -1,7 +1,6 @@
 package com.stockline.product.repository;
 
 import com.stockline.product.TestcontainersConfiguration;
-import com.stockline.product.config.JpaAuditingConfig;
 import com.stockline.product.entity.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Checks the derived queries in {@link SupplierRepository} and the unique name against MySQL.
  */
 @DataJpaTest
-@Import({TestcontainersConfiguration.class, JpaAuditingConfig.class})
+@Import(TestcontainersConfiguration.class)
 class SupplierRepositoryTest {
 
 	@Autowired

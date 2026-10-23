@@ -44,6 +44,7 @@ Order status flow: `PENDING → RESERVED → PAID → SHIPPED → COMPLETED`, pl
 ```
 inventory-platform/
 ├── services/        one folder per Spring Boot service, each with its own pom.xml and mvnw
+├── libs/            stockline-common: shared library (errors, messages, auditing, utils), own pom.xml and mvnw
 ├── frontend/        React + Vite app
 ├── infra/           docker-compose.yml, mysql-init/
 ├── docs/            mockup/ (Stockline HTML mockup), conventions.md
@@ -68,6 +69,9 @@ docker compose --profile tools up -d   # also Kafka UI on :8090
 docker compose down                    # add -v to wipe data
 # MySQL app user: stockline/stockline. Kafka bootstrap: localhost:9092 from host, kafka:29092 from containers.
 
+# Shared library (from libs/stockline-common/) - install before building any service, and after every change
+./mvnw install                         # runs its tests, copies the jar to ~/.m2
+
 # A backend service (from services/<name>/), e.g. product-service on :8082
 ./mvnw spring-boot:run                 # needs infra running
 ./mvnw test                            # needs Docker running (Testcontainers starts its own MySQL)
@@ -82,7 +86,7 @@ npm run build
 
 On Windows, use `mvnw.cmd`. `JAVA_HOME` must point to JDK 21 before running Maven.
 
-New services follow `services/product-service` as the template: Spring Boot 4.1 from Initializr (YAML config), springdoc 3.x, Testcontainers MySQL for tests via `TestcontainersConfiguration` + `@ServiceConnection`, Mockito loaded as a `-javaagent` in Surefire. The developer knows Java 8/11 and Spring Boot 2: point out what is new in Java 21 / Boot 4 (libraries, packages, syntax) when it first appears.
+New services follow `services/product-service` as the template: Spring Boot 4.1 from Initializr (YAML config), springdoc 3.x, the `stockline-common` dependency plus `spring.messages.basename: messages,common-messages`, Testcontainers MySQL for tests via `TestcontainersConfiguration` + `@ServiceConnection`, Mockito loaded as a `-javaagent` in Surefire. The developer knows Java 8/11 and Spring Boot 2: point out what is new in Java 21 / Boot 4 (libraries, packages, syntax) when it first appears.
 
 ## Workflow rules
 
@@ -99,9 +103,11 @@ New services follow `services/product-service` as the template: Spring Boot 4.1 
 
 - Follow [docs/conventions.md](docs/conventions.md) for packages, URLs, JSON, errors, pagination, database naming, Kafka events, config, tests and Git. Update that file when a convention changes.
 - Keep each service independent: its own `pom.xml`, Maven wrapper, `application.yml`, Flyway scripts, Dockerfile and tests.
-- Use the layered structure in every service: `controller` / `service` / `repository` / `entity` / `dto` (plus `mapper`, `exception`, `config`, `event` as needed). Base package `com.stockline.<service>`.
+- Put cross-cutting code (errors, messages, auditing, time/money/validation utils, paging) in `libs/stockline-common` and use it from every service; never put domain code there. After changing the library: its tests, `mvnw install`, then every service's tests.
+- Use the layered structure in every service: `controller` / `service` / `repository` / `entity` / `dto` (plus `mapper`, `constant`, `config`, `event` as needed). Base package `com.stockline.<service>`.
 - Return DTOs from controllers, never JPA entities. Validate input with Bean Validation (`@Valid`).
-- Use one global `@RestControllerAdvice` per service with the JSON error format from `docs/conventions.md` (400 validation, 404 not found, 409 conflict).
+- Use the `GlobalExceptionHandler` from `stockline-common` (registered automatically) for the JSON error format from `docs/conventions.md` (400 validation, 404 not found, 409 conflict). Throw the library's `ApiException` subclasses with a message key.
+- Decide shared rules before the second copy appears (see `docs/conventions.md`: enums in `constant/`, `Instant` + `Clock`, Asia/Ho_Chi_Minh business zone, USD `BigDecimal`, `CommonValidationUtils`, audit columns, hard delete).
 - Change the database only through new Flyway migrations (`V<n>__description.sql`). Set `spring.jpa.hibernate.ddl-auto=validate`.
 - Communicate between services through REST (via the service's API) or Kafka events only.
 - Make Kafka consumers idempotent (`processed_events`), publish events through the outbox table, and use optimistic locking (`@Version`) on stock rows.
@@ -118,7 +124,7 @@ New services follow `services/product-service` as the template: Spring Boot 4.1 
 - Don't edit a Flyway migration that has already been committed; add a new one.
 - Don't commit secrets, passwords, JWT signing keys, `.env` files, build output (`target/`, `dist/`, `node_modules/`) or IDE files.
 - Don't use Java features newer than 21, preview features, or a different build tool than Maven.
-- Don't add libraries or infrastructure beyond the stack above (Lombok and MapStruct are fine if added consistently; ask before anything else).
+- Don't add libraries or infrastructure beyond the stack above (Lombok and MapStruct are fine if added consistently; ask before anything else). Our own `stockline-common` is part of the stack.
 - Don't add a refresh-token flow, a real payment provider, or features not in `TASKS.md`.
 - Don't skip, disable or delete failing tests to make a build pass.
 - Don't mark tasks `DONE`, merge to `main`, push, or rewrite Git history without being asked.

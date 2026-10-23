@@ -1,13 +1,14 @@
 package com.stockline.product.service;
 
+import com.stockline.common.constant.CommonMessageKeys;
+import com.stockline.common.dto.PageResponse;
+import com.stockline.common.exception.DuplicateResourceException;
+import com.stockline.common.exception.ResourceInUseException;
+import com.stockline.common.exception.ResourceNotFoundException;
 import com.stockline.product.constant.MessageKeys;
-import com.stockline.product.dto.PageResponse;
 import com.stockline.product.dto.SupplierRequest;
 import com.stockline.product.dto.SupplierResponse;
 import com.stockline.product.entity.Supplier;
-import com.stockline.product.exception.DuplicateResourceException;
-import com.stockline.product.exception.ResourceInUseException;
-import com.stockline.product.exception.ResourceNotFoundException;
 import com.stockline.product.mapper.SupplierMapper;
 import com.stockline.product.repository.ProductRepository;
 import com.stockline.product.repository.SupplierRepository;
@@ -103,7 +104,7 @@ class SupplierServiceTest {
 		// when / then
 		assertThatThrownBy(() -> supplierService.get(99L))
 				.isInstanceOf(ResourceNotFoundException.class)
-				.hasMessage(MessageKeys.RESOURCE_NOT_FOUND)
+				.hasMessage(CommonMessageKeys.RESOURCE_NOT_FOUND)
 				.extracting("messageArgs").isEqualTo(new Object[] {"Supplier", 99L});
 	}
 

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<!-- Same parent as the services: the same versions of Spring, Hibernate, Jackson, JUnit, ... -->
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>4.1.1</version>
+		<relativePath/> <!-- lookup parent from repository -->
+	</parent>
+	<groupId>com.stockline</groupId>
+	<artifactId>stockline-common</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<!-- A plain jar library: no spring-boot-maven-plugin, so it is not repackaged into a runnable "fat" jar -->
+	<packaging>jar</packaging>
+	<name>stockline-common</name>
+	<description>Shared code for Stockline services: errors, messages, auditing, time, money and validation helpers</description>
+	<properties>
+		<java.version>21</java.version>
+	</properties>
+	<dependencies>
+		<!-- Needed to write auto-configurations (@AutoConfiguration, @ConditionalOn...) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-autoconfigure</artifactId>
+		</dependency>
+		<!--
+			optional: used to compile the library, but NOT passed on to services that depend on it.
+			Each service brings its own web/JPA starters; a service without them (e.g. the gateway) stays free of
+			them, and the auto-configurations that need them simply switch off (@ConditionalOnClass).
+		-->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webmvc</artifactId>
+			<optional>true</optional>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+			<optional>true</optional>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+</project>

@@ -1,5 +1,6 @@
 package com.stockline.product.entity;
 
+import com.stockline.common.entity.BaseEntity;
 import com.stockline.product.constant.ProductStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

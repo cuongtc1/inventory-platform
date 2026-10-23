@@ -1,0 +1,2 @@
+com.stockline.common.autoconfigure.CommonTimeAutoConfiguration
+com.stockline.common.autoconfigure.CommonWebAutoConfiguration

@@ -17,8 +17,15 @@
 		<java.version>21</java.version>
 		<!-- Not managed by Spring Boot, so the version is set here. 3.x is the line for Spring Boot 4 -->
 		<springdoc.version>3.1.1</springdoc.version>
+		<!-- Our shared library in libs/stockline-common; install it first: libs/stockline-common/mvnw install -->
+		<stockline-common.version>0.0.1-SNAPSHOT</stockline-common.version>
 	</properties>
 	<dependencies>
+		<dependency>
+			<groupId>com.stockline</groupId>
+			<artifactId>stockline-common</artifactId>
+			<version>${stockline-common.version}</version>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>

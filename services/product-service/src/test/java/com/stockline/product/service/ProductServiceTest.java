@@ -1,16 +1,17 @@
 package com.stockline.product.service;
 
+import com.stockline.common.constant.CommonMessageKeys;
+import com.stockline.common.dto.PageResponse;
+import com.stockline.common.exception.DuplicateResourceException;
+import com.stockline.common.exception.ResourceNotFoundException;
 import com.stockline.product.constant.MessageKeys;
 import com.stockline.product.constant.ProductStatus;
-import com.stockline.product.dto.PageResponse;
 import com.stockline.product.dto.ProductFilter;
 import com.stockline.product.dto.ProductRequest;
 import com.stockline.product.dto.ProductResponse;
 import com.stockline.product.entity.Category;
 import com.stockline.product.entity.Product;
 import com.stockline.product.entity.Supplier;
-import com.stockline.product.exception.DuplicateResourceException;
-import com.stockline.product.exception.ResourceNotFoundException;
 import com.stockline.product.mapper.ProductMapper;
 import com.stockline.product.repository.CategoryRepository;
 import com.stockline.product.repository.ProductRepository;
@@ -108,7 +109,7 @@ class ProductServiceTest {
 		// when / then
 		assertThatThrownBy(() -> productService.get(99L))
 				.isInstanceOf(ResourceNotFoundException.class)
-				.hasMessage(MessageKeys.RESOURCE_NOT_FOUND)
+				.hasMessage(CommonMessageKeys.RESOURCE_NOT_FOUND)
 				.extracting("messageArgs").isEqualTo(new Object[] {"Product", 99L});
 	}
 
@@ -170,7 +171,7 @@ class ProductServiceTest {
 		// when / then
 		assertThatThrownBy(() -> productService.create(request("A01", "Wireless Mouse", 42L, null)))
 				.isInstanceOf(ResourceNotFoundException.class)
-				.hasMessage(MessageKeys.RESOURCE_NOT_FOUND)
+				.hasMessage(CommonMessageKeys.RESOURCE_NOT_FOUND)
 				.extracting("messageArgs").isEqualTo(new Object[] {"Category", 42L});
 		verify(productRepository, never()).save(any());
 	}
@@ -185,7 +186,7 @@ class ProductServiceTest {
 		// when / then
 		assertThatThrownBy(() -> productService.create(request("A01", "Wireless Mouse", 3L, 42L)))
 				.isInstanceOf(ResourceNotFoundException.class)
-				.hasMessage(MessageKeys.RESOURCE_NOT_FOUND)
+				.hasMessage(CommonMessageKeys.RESOURCE_NOT_FOUND)
 				.extracting("messageArgs").isEqualTo(new Object[] {"Supplier", 42L});
 		verify(productRepository, never()).save(any());
 	}

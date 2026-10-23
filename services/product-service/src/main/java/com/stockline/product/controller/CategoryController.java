@@ -1,8 +1,8 @@
 package com.stockline.product.controller;
 
+import com.stockline.common.dto.PageResponse;
 import com.stockline.product.dto.CategoryRequest;
 import com.stockline.product.dto.CategoryResponse;
-import com.stockline.product.dto.PageResponse;
 import com.stockline.product.service.CategoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

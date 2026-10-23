@@ -35,8 +35,9 @@ spring:
         max-page-size: 100
 
   messages:
-    # src/main/resources/messages.properties: every API and log text (also used for Bean Validation messages)
-    basename: messages
+    # Every API, validation and log text. messages.properties (this service) first, then common-messages.properties
+    # from the stockline-common library; the first file that has a key wins.
+    basename: messages,common-messages
     encoding: UTF-8
     # Without a messages_<language>.properties, use messages.properties, not a file for the server's locale
     fallback-to-system-locale: false

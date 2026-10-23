@@ -28,13 +28,27 @@ com.stockline.product
 ├── entity/        JPA entities (map to tables)
 ├── dto/           request and response objects (Java records)
 ├── mapper/        entity <-> DTO conversion
-├── exception/     custom exceptions and the global exception handler
-├── constant/      enums (ProductStatus, ErrorCode) and constant classes (MessageKeys)
-├── util/          static helpers: DateTimeUtils, MoneyUtils, CommonValidationUtils, TextUtils
-├── config/        @Configuration classes (Clock, JPA auditing, ...)
+├── constant/      this service's enums (ProductStatus) and MessageKeys
+├── config/        @Configuration classes (only if needed)
+├── exception/     exceptions only this service needs (only if needed)
+├── util/          helpers only this service needs (only if needed)
 ├── client/        REST clients to other services (only if needed)
 └── event/         Kafka event classes, producers, consumers (only if needed)
 ```
+
+Code every service needs lives once, in the shared library `libs/stockline-common` (`com.stockline.common`, see its README):
+
+```
+com.stockline.common
+├── constant/      ErrorCode, CommonMessageKeys, AuditConstants
+├── exception/     ApiException + subclasses, GlobalExceptionHandler
+├── entity/        BaseEntity (id + audit columns)
+├── dto/           PageResponse
+├── util/          DateTimeUtils, MoneyUtils, CommonValidationUtils, TextUtils
+└── autoconfigure/ Clock, JPA auditing and the exception handler, registered in every service automatically
+```
+
+Only cross-cutting code goes into the library, never domain code (entities, services or DTOs of a resource). A service gets it with one dependency in `pom.xml` and `spring.messages.basename: messages,common-messages` in `application.yml`. After changing the library: its tests, `mvnw install` in `libs/stockline-common`, then the tests of every service.
 
 The flow is always `controller → service → repository`. A controller never calls a repository directly, and an entity never leaves the service layer.
 
@@ -56,36 +70,37 @@ Code style:
 - Use constructor injection with `final` fields. Don't put `@Autowired` on fields.
 - Mappers are small hand-written classes (`@Component`), not MapStruct. They're easy to read and debug.
 - No Lombok. Entities have normal getters and setters (generate them in the IDE) and a protected no-args constructor for JPA.
-- Before writing a helper a second time, put it in `util/` (or extend a class there). Utility classes are `final`, with a private constructor and only `static` methods.
+- Before writing a helper a second time, put it in a `util/` class: the library's if another service could need it, otherwise the service's own. Utility classes are `final`, with a private constructor and only `static` methods.
 - Editor settings come from `.editorconfig` in the repo root (tabs, UTF-8, LF). IntelliJ reads it by itself; VS Code needs the "EditorConfig for VS Code" extension.
 
 Enums:
-- Enums live in `constant/`, never in `entity/` or `dto/`: `constant/ProductStatus`, `constant/ErrorCode`.
+- Enums live in `constant/`, never in `entity/` or `dto/`: `com.stockline.product.constant.ProductStatus`; shared ones in the library, `com.stockline.common.constant.ErrorCode`.
 - Stored as strings (`@Enumerated(EnumType.STRING)`, column `VARCHAR(20)`), sent in JSON as the upper-case name (`"ACTIVE"`). The API returns only the name; the frontend turns it into a label ("Active").
 - Behaviour that belongs to the values goes into the enum, e.g. allowed order status changes (T5.4): `OrderStatus.PAID.canChangeTo(SHIPPED)`.
 - Never share a Java enum between services. Events and REST calls between services carry the name as a string.
 - Error codes are the `ErrorCode` enum (each with its HTTP status), never string literals.
 
-Dates and times (`util/DateTimeUtils`):
+Dates and times (library: `com.stockline.common.util.DateTimeUtils`):
 - Every moment is a `java.time.Instant` (UTC), stored as `DATETIME(6)` and sent as ISO-8601 with `Z`. No `Date`, `LocalDateTime` or time-zone strings in entities or DTOs.
 - "Now" comes from the `Clock` bean (`clock.instant()`), never `Instant.now()`, so tests can fix the time.
 - The business time zone is `Asia/Ho_Chi_Minh` (`DateTimeUtils.BUSINESS_ZONE`). Dates the user picks ("today", `?from=2026-10-01&to=2026-10-31`, "October") are Vietnam dates and become Instant ranges with `startOfDay` / `endOfDayExclusive` / `startOfMonth`. Ranges are half-open: `>= start AND < end`.
 - Texts people read (exports, e-mails) use `DateTimeUtils.formatDate` / `formatDateTime` (`dd/MM/yyyy HH:mm:ss`, Vietnam time). The API never sends formatted dates.
 
-Money (`util/MoneyUtils`):
+Money (library: `com.stockline.common.util.MoneyUtils`):
 - One currency: **USD**. Amounts are `BigDecimal` with 2 decimals, `DECIMAL(12,2)` in the database, plain JSON numbers (`12.50`). Never `double`.
 - Calculate at full precision and round once at the end with `MoneyUtils.toMoney` (`HALF_UP`). Use `MoneyUtils.multiply` / `sum` for line totals and order totals.
 - Request fields: `@Digits(integer = 10, fraction = 2)`; prices `@Positive`, costs `@PositiveOrZero`.
 
-Validation (`util/CommonValidationUtils`):
+Validation (library: `com.stockline.common.util.CommonValidationUtils`):
 - A rule used by more than one field (phone, code/SKU, maximum lengths) is a constant there, and annotations point to it: `@Pattern(regexp = CommonValidationUtils.PHONE_REGEX, message = CommonValidationUtils.PHONE_MESSAGE)`.
 - Text cleanup before saving: `TextUtils.blankToNull` for optional fields, `strip()` for required ones.
 
 Messages:
-- Every text the API returns, and log texts, live in `src/main/resources/messages.properties`, one key per message, never as string literals in Java.
-- Sections: `common` (validation, request, resource and server errors used everywhere), one section per resource (`category`, `supplier`, `product`, ...), and `system` (log texts, never sent to the client).
+- Every text the API returns, and log texts, live in properties files, one key per message, never as string literals in Java. Two files per service: `common-messages.properties` in the library (sections `common` and `system`) and the service's own `src/main/resources/messages.properties` (one section per resource: `category`, `supplier`, `product`, ...). The service's file is read first, so it can override a common text.
+- `system` texts are for logs only, never sent to the client.
 - Key format: `<section>.<subject>.<problem>`, lower case, words joined with `-`: `common.resource.not-found`, `category.delete.has-products`, `system.error.unexpected`.
-- Java code uses the constants in `constant/MessageKeys`. Exceptions carry a key and arguments (`new DuplicateResourceException(MessageKeys.CATEGORY_NAME_DUPLICATE, name)`); the `GlobalExceptionHandler` looks up the text.
+- Unique keys: a service adds `constraint.<key name>=...` (e.g. `constraint.uk_products_sku`) so a unique-key error from MySQL gets a precise text; without it the common "A record with this value already exists" is used.
+- Java code uses constants: `CommonMessageKeys` (library) and the service's `constant/MessageKeys`. Exceptions carry a key and arguments (`new DuplicateResourceException(MessageKeys.CATEGORY_NAME_DUPLICATE, name)`); the `GlobalExceptionHandler` looks up the text.
 - Bean Validation annotations reference a key in braces: `@Pattern(message = "{common.validation.code.invalid}")`, usually through a `CommonValidationUtils.*_MESSAGE` constant. The file also overrides the default texts (`jakarta.validation.constraints.NotBlank.message`, ...), and Spring MVC's own texts (`problemDetail.<exception class>`).
 - Placeholders are `{0}`, `{1}` (`java.text.MessageFormat`). In a message with placeholders, write an apostrophe as `''`: `Category ''{0}'' already exists`. Pass numbers as text, or MessageFormat prints `1234` as `1,234` (the handler does this).
 
@@ -152,7 +167,7 @@ Example `GET /api/products/12`:
 
 ## 3. JSON error format
 
-Every error from every service uses the **Problem Details** format (RFC 9457) with content type `application/problem+json`. Spring Boot supports it out of the box with the `ProblemDetail` class. Each service has one `@RestControllerAdvice` (`GlobalExceptionHandler` in the `exception` package) that builds it.
+Every error from every service uses the **Problem Details** format (RFC 9457) with content type `application/problem+json`. Spring Boot supports it out of the box with the `ProblemDetail` class. One `@RestControllerAdvice`, `GlobalExceptionHandler` from the `stockline-common` library, builds it in every service; the library registers it automatically.
 
 | Field | Meaning |
 |---|---|
@@ -218,10 +233,10 @@ Error codes:
 
 Add new codes to this table when a task needs one. Other errors raised by Spring MVC itself use the HTTP status name as the code (e.g. `PAYLOAD_TOO_LARGE`); every 5xx is `INTERNAL_ERROR`.
 
-How each service's `GlobalExceptionHandler` gets there (product-service is the reference):
-- The service throws an `ApiException` subclass (`ResourceNotFoundException`, `DuplicateResourceException`, ...) that carries status and code.
+How the library's `GlobalExceptionHandler` gets there:
+- The service throws an `ApiException` subclass (`ResourceNotFoundException`, `DuplicateResourceException`, ...) that carries an `ErrorCode` (which has the HTTP status) and a message key.
 - It extends `ResponseEntityExceptionHandler`, so Spring MVC's own errors already have a Problem Details body; `handleExceptionInternal` adds `type`, `instance`, `code` and `timestamp` to them.
-- `DataIntegrityViolationException` is mapped by the constraint that failed: unique key → `DUPLICATE`, row still referenced → `IN_USE`, referenced row missing → `NOT_FOUND`. Services still check first, so the usual case gets a precise message.
+- `DataIntegrityViolationException` is mapped by the constraint that failed: unique key → `DUPLICATE` (text from `constraint.<key name>`), row still referenced → `IN_USE`, referenced row missing → `NOT_FOUND`. Services still check first, so the usual case gets a precise message.
 - `@ExceptionHandler(Exception.class)` logs the stack trace at ERROR and returns a generic 500. Error responses never contain exception messages, SQL or stack traces.
 
 ## 4. Pagination, sorting and filtering
@@ -328,13 +343,15 @@ spring:
 | Controller | `@WebMvcTest` + `MockMvc` | URL, status code, JSON shape, validation errors |
 | Repository | `@DataJpaTest` | Custom queries and constraints |
 | Integration | `@SpringBootTest` + `@AutoConfigureMockMvc` + Testcontainers | The layers together over HTTP, nothing mocked; at least one per service |
-| Messages | Plain JUnit | Every `MessageKeys` constant and annotation key has a text, no unused keys, `''` in messages with placeholders |
+| Messages | Plain JUnit | Every `MessageKeys` constant and annotation key has a text, no unused keys, `''` in messages with placeholders, every `constraint.*` key names a real unique key |
+| Library | Plain JUnit, `ApplicationContextRunner` | Utils, `common-messages.properties`, which beans each auto-configuration creates (in `libs/stockline-common`) |
 
 - Assert exceptions by type, message key and arguments (`.hasMessage(MessageKeys.X).extracting("messageArgs")`), not by English text; the final text is checked in controller and integration tests.
 - Tests that need a database use Testcontainers (`@Import(TestcontainersConfiguration.class)`); Docker must be running.
 - Integration tests don't roll back, so each test uses its own names and SKUs.
 - Build test entities with `TestData` (`src/test/java/.../TestData.java`, static import), not with a private helper per test class.
 - Tests that need a fixed or moving time replace the `Clock` bean (see `AuditingTest`).
+- `@WebMvcTest` and `@DataJpaTest` get the library's Clock, auditing and exception handler automatically; no `@Import` of config classes needed.
 
 ## 9. Git: branches and commits
 

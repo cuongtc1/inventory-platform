@@ -1,12 +1,10 @@
 package com.stockline.product.exception;
 
-import com.stockline.product.config.TimeConfig;
 import com.stockline.product.controller.CategoryController;
 import com.stockline.product.service.CategoryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -21,9 +19,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * test-messages.properties first, with a different 405 text, and checks that the response uses it.
  */
 @WebMvcTest(CategoryController.class)
-@Import(TimeConfig.class)
 // The first file that has a key wins
-@TestPropertySource(properties = "spring.messages.basename=test-messages,messages")
+@TestPropertySource(properties = "spring.messages.basename=test-messages,messages,common-messages")
 class ProblemDetailMessagesTest {
 
 	@Autowired

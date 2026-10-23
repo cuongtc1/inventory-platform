@@ -1,19 +1,17 @@
 package com.stockline.product.controller;
 
-import com.stockline.product.config.TimeConfig;
+import com.stockline.common.dto.PageResponse;
+import com.stockline.common.exception.DuplicateResourceException;
+import com.stockline.common.exception.ResourceNotFoundException;
 import com.stockline.product.constant.MessageKeys;
 import com.stockline.product.constant.ProductStatus;
-import com.stockline.product.dto.PageResponse;
 import com.stockline.product.dto.ProductFilter;
 import com.stockline.product.dto.ProductRequest;
 import com.stockline.product.dto.ProductResponse;
-import com.stockline.product.exception.DuplicateResourceException;
-import com.stockline.product.exception.ResourceNotFoundException;
 import com.stockline.product.service.ProductService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
@@ -43,7 +41,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Web layer only; the service is a Mockito mock. Checks URLs, filter binding, status codes, JSON and validation.
  */
 @WebMvcTest(ProductController.class)
-@Import(TimeConfig.class)
 class ProductControllerTest {
 
 	private static final Instant NOW = Instant.parse("2026-10-23T08:00:00Z");

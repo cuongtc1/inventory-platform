@@ -1,7 +1,7 @@
 package com.stockline.product.dto;
 
+import com.stockline.common.util.CommonValidationUtils;
 import com.stockline.product.constant.ProductStatus;
-import com.stockline.product.util.CommonValidationUtils;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

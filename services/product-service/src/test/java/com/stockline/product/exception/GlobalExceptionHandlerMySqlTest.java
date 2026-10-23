@@ -1,8 +1,8 @@
 package com.stockline.product.exception;
 
+import com.stockline.common.exception.GlobalExceptionHandler;
 import com.stockline.product.TestData;
 import com.stockline.product.TestcontainersConfiguration;
-import com.stockline.product.config.JpaAuditingConfig;
 import com.stockline.product.constant.ProductStatus;
 import com.stockline.product.entity.Category;
 import com.stockline.product.entity.Product;
@@ -35,7 +35,7 @@ import static org.assertj.core.api.Assertions.catchThrowableOfType;
  * <p>Each test breaks a constraint on purpose, the way two requests at the same moment would.
  */
 @DataJpaTest
-@Import({TestcontainersConfiguration.class, JpaAuditingConfig.class})
+@Import(TestcontainersConfiguration.class)
 class GlobalExceptionHandlerMySqlTest {
 
 	private final GlobalExceptionHandler handler = new GlobalExceptionHandler(messageSource(), Clock.systemUTC());
@@ -144,7 +144,7 @@ class GlobalExceptionHandlerMySqlTest {
 	// @DataJpaTest doesn't create Spring Boot's MessageSource, so read messages.properties directly
 	private static MessageSource messageSource() {
 		ResourceBundleMessageSource messageSource = new ResourceBundleMessageSource();
-		messageSource.setBasename("messages");
+		messageSource.setBasenames("messages", "common-messages");
 		messageSource.setDefaultEncoding("UTF-8");
 		messageSource.setFallbackToSystemLocale(false);
 		return messageSource;
