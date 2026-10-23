@@ -85,6 +85,39 @@ class CategoryControllerTest {
 	}
 
 	@Test
+	void get_existingId_returns200WithCategory() throws Exception {
+		// given
+		when(categoryService.get(2L)).thenReturn(new CategoryResponse(2L, "Cables", 1L, "Electronics", NOW, NOW));
+
+		// when / then
+		mockMvc.perform(get("/api/categories/2"))
+				.andExpect(status().isOk())
+				.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+				.andExpect(jsonPath("$.id").value(2))
+				.andExpect(jsonPath("$.name").value("Cables"))
+				.andExpect(jsonPath("$.parentId").value(1))
+				.andExpect(jsonPath("$.parentName").value("Electronics"))
+				.andExpect(jsonPath("$.updatedAt").value("2026-10-23T08:00:00Z"));
+	}
+
+	@Test
+	void update_validRequest_returns200WithUpdatedCategory() throws Exception {
+		// given
+		when(categoryService.update(2L, new CategoryRequest("USB Cables", null)))
+				.thenReturn(new CategoryResponse(2L, "USB Cables", null, null, NOW, NOW));
+
+		// when / then
+		mockMvc.perform(put("/api/categories/2")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{ "name": "USB Cables" }
+								"""))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.name").value("USB Cables"))
+				.andExpect(jsonPath("$.parentId").isEmpty());
+	}
+
+	@Test
 	void get_unknownId_returns404ProblemJson() throws Exception {
 		// given
 		when(categoryService.get(99L)).thenThrow(new ResourceNotFoundException("Category", 99L));

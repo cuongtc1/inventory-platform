@@ -303,6 +303,12 @@ spring:
 | Service | JUnit 5 + Mockito (no Spring) | Business rules, with repositories mocked |
 | Controller | `@WebMvcTest` + `MockMvc` | URL, status code, JSON shape, validation errors |
 | Repository | `@DataJpaTest` | Custom queries and constraints |
+| Integration | `@SpringBootTest` + `@AutoConfigureMockMvc` + Testcontainers | The layers together over HTTP, nothing mocked; at least one per service |
+| Messages | Plain JUnit | Every `MessageKeys` constant and annotation key has a text, no unused keys, `''` in messages with placeholders |
+
+- Assert exceptions by type, message key and arguments (`.hasMessage(MessageKeys.X).extracting("messageArgs")`), not by English text; the final text is checked in controller and integration tests.
+- Tests that need a database use Testcontainers (`@Import(TestcontainersConfiguration.class)`); Docker must be running.
+- Integration tests don't roll back, so each test uses its own names and SKUs.
 
 ## 9. Git: branches and commits
 

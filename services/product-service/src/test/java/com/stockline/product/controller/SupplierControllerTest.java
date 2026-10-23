@@ -73,6 +73,38 @@ class SupplierControllerTest {
 	}
 
 	@Test
+	void get_existingId_returns200WithSupplier() throws Exception {
+		// given
+		when(supplierService.get(1L)).thenReturn(new SupplierResponse(1L, "LogiCo", "Anna Pham", "anna@logico.com",
+				"+84 90 111 2233", NOW, NOW));
+
+		// when / then
+		mockMvc.perform(get("/api/suppliers/1"))
+				.andExpect(status().isOk())
+				.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+				.andExpect(jsonPath("$.id").value(1))
+				.andExpect(jsonPath("$.name").value("LogiCo"))
+				.andExpect(jsonPath("$.email").value("anna@logico.com"));
+	}
+
+	@Test
+	void update_validRequest_returns200WithUpdatedSupplier() throws Exception {
+		// given
+		when(supplierService.update(1L, new SupplierRequest("LogiCo", "Tom Lee", null, null)))
+				.thenReturn(new SupplierResponse(1L, "LogiCo", "Tom Lee", null, null, NOW, NOW));
+
+		// when / then
+		mockMvc.perform(put("/api/suppliers/1")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{ "name": "LogiCo", "contactName": "Tom Lee" }
+								"""))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contactName").value("Tom Lee"))
+				.andExpect(jsonPath("$.phone").isEmpty());
+	}
+
+	@Test
 	void get_unknownId_returns404ProblemJson() throws Exception {
 		// given
 		when(supplierService.get(99L)).thenThrow(new ResourceNotFoundException("Supplier", 99L));

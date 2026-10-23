@@ -1,5 +1,6 @@
 package com.stockline.product.service;
 
+import com.stockline.product.dto.PageResponse;
 import com.stockline.product.dto.SupplierRequest;
 import com.stockline.product.dto.SupplierResponse;
 import com.stockline.product.entity.Supplier;
@@ -15,8 +16,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -46,6 +51,51 @@ class SupplierServiceTest {
 	}
 
 	@Test
+	void list_searchWithSpaces_trimsItAndMapsPage() {
+		// given
+		Pageable pageable = PageRequest.of(0, 20);
+		Supplier logiCo = supplier(1L, "LogiCo", "Anna Pham", "anna@logico.com", null);
+		when(supplierRepository.findByNameContainingIgnoreCase("logi", pageable))
+				.thenReturn(new PageImpl<>(List.of(logiCo), pageable, 1));
+
+		// when
+		PageResponse<SupplierResponse> page = supplierService.list(" logi  ", pageable);
+
+		// then
+		assertThat(page.totalElements()).isEqualTo(1);
+		assertThat(page.content().getFirst().name()).isEqualTo("LogiCo");
+		assertThat(page.content().getFirst().contactName()).isEqualTo("Anna Pham");
+	}
+
+	@Test
+	void list_noSearch_searchesWithEmptyText() {
+		// given
+		Pageable pageable = PageRequest.of(0, 20);
+		when(supplierRepository.findByNameContainingIgnoreCase("", pageable))
+				.thenReturn(new PageImpl<>(List.of(), pageable, 0));
+
+		// when
+		PageResponse<SupplierResponse> page = supplierService.list(null, pageable);
+
+		// then
+		assertThat(page.content()).isEmpty();
+		verify(supplierRepository).findByNameContainingIgnoreCase("", pageable);
+	}
+
+	@Test
+	void get_existingId_returnsSupplier() {
+		// given
+		when(supplierRepository.findById(1L)).thenReturn(Optional.of(supplier(1L, "LogiCo", null, null, null)));
+
+		// when
+		SupplierResponse response = supplierService.get(1L);
+
+		// then
+		assertThat(response.id()).isEqualTo(1L);
+		assertThat(response.name()).isEqualTo("LogiCo");
+	}
+
+	@Test
 	void get_unknownId_throwsResourceNotFoundException() {
 		// given
 		when(supplierRepository.findById(99L)).thenReturn(Optional.empty());
@@ -53,7 +103,8 @@ class SupplierServiceTest {
 		// when / then
 		assertThatThrownBy(() -> supplierService.get(99L))
 				.isInstanceOf(ResourceNotFoundException.class)
-				.hasMessage(MessageKeys.RESOURCE_NOT_FOUND);
+				.hasMessage(MessageKeys.RESOURCE_NOT_FOUND)
+				.extracting("messageArgs").isEqualTo(new Object[] {"Supplier", 99L});
 	}
 
 	@Test
@@ -81,7 +132,8 @@ class SupplierServiceTest {
 		// when / then
 		assertThatThrownBy(() -> supplierService.create(new SupplierRequest("LogiCo", null, null, null)))
 				.isInstanceOf(DuplicateResourceException.class)
-				.hasMessage(MessageKeys.SUPPLIER_NAME_DUPLICATE);
+				.hasMessage(MessageKeys.SUPPLIER_NAME_DUPLICATE)
+				.extracting("messageArgs").isEqualTo(new Object[] {"LogiCo"});
 		verify(supplierRepository, never()).save(any());
 	}
 
@@ -148,7 +200,8 @@ class SupplierServiceTest {
 		// when / then
 		assertThatThrownBy(() -> supplierService.delete(1L))
 				.isInstanceOf(ResourceInUseException.class)
-				.hasMessageContaining("products");
+				.hasMessage(MessageKeys.SUPPLIER_DELETE_HAS_PRODUCTS)
+				.extracting("messageArgs").isEqualTo(new Object[] {"LogiCo"});
 		verify(supplierRepository, never()).delete(any());
 	}
 

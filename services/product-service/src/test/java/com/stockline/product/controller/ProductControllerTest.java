@@ -117,6 +117,35 @@ class ProductControllerTest {
 	}
 
 	@Test
+	void get_existingId_returns200WithProduct() throws Exception {
+		// given
+		when(productService.get(12L)).thenReturn(MOUSE);
+
+		// when / then
+		mockMvc.perform(get("/api/products/12"))
+				.andExpect(status().isOk())
+				.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+				.andExpect(jsonPath("$.id").value(12))
+				.andExpect(jsonPath("$.sku").value("A01"))
+				.andExpect(jsonPath("$.categoryName").value("Peripherals"))
+				.andExpect(jsonPath("$.costPrice").value(8.00))
+				.andExpect(jsonPath("$.reorderLevel").value(20));
+	}
+
+	@Test
+	void update_validRequest_returns200WithUpdatedProduct() throws Exception {
+		// given
+		when(productService.update(eq(12L), any(ProductRequest.class))).thenReturn(MOUSE);
+
+		// when / then
+		mockMvc.perform(put("/api/products/12").contentType(MediaType.APPLICATION_JSON).content(VALID_BODY))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.id").value(12));
+		verify(productService).update(12L, new ProductRequest("A01", "Wireless Mouse", 3L, 5L,
+				new BigDecimal("8.00"), new BigDecimal("12.00"), 20, ProductStatus.ACTIVE));
+	}
+
+	@Test
 	void get_unknownId_returns404ProblemJson() throws Exception {
 		// given
 		when(productService.get(99L)).thenThrow(new ResourceNotFoundException("Product", 99L));

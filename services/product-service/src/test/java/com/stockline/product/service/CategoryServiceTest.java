@@ -2,6 +2,7 @@ package com.stockline.product.service;
 
 import com.stockline.product.dto.CategoryRequest;
 import com.stockline.product.dto.CategoryResponse;
+import com.stockline.product.dto.PageResponse;
 import com.stockline.product.entity.Category;
 import com.stockline.product.exception.DuplicateResourceException;
 import com.stockline.product.exception.InvalidRequestException;
@@ -16,8 +17,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -47,6 +52,54 @@ class CategoryServiceTest {
 	}
 
 	@Test
+	void list_searchWithSpaces_trimsItAndMapsPage() {
+		// given
+		Pageable pageable = PageRequest.of(0, 20);
+		Category electronics = category(1L, "Electronics", null);
+		Category cables = category(2L, "Cables", electronics);
+		when(categoryRepository.findByNameContainingIgnoreCase("cab", pageable))
+				.thenReturn(new PageImpl<>(List.of(cables), pageable, 1));
+
+		// when
+		PageResponse<CategoryResponse> page = categoryService.list("  cab ", pageable);
+
+		// then
+		assertThat(page.totalElements()).isEqualTo(1);
+		assertThat(page.content().getFirst().name()).isEqualTo("Cables");
+		assertThat(page.content().getFirst().parentName()).isEqualTo("Electronics");
+	}
+
+	@Test
+	void list_noSearch_searchesWithEmptyText() {
+		// given: "contains ''" matches every row, so one repository method serves both cases
+		Pageable pageable = PageRequest.of(0, 20);
+		when(categoryRepository.findByNameContainingIgnoreCase("", pageable))
+				.thenReturn(new PageImpl<>(List.of(), pageable, 0));
+
+		// when
+		PageResponse<CategoryResponse> page = categoryService.list(null, pageable);
+
+		// then
+		assertThat(page.content()).isEmpty();
+		verify(categoryRepository).findByNameContainingIgnoreCase("", pageable);
+	}
+
+	@Test
+	void get_existingId_returnsCategoryWithParent() {
+		// given
+		Category electronics = category(1L, "Electronics", null);
+		when(categoryRepository.findById(2L)).thenReturn(Optional.of(category(2L, "Cables", electronics)));
+
+		// when
+		CategoryResponse response = categoryService.get(2L);
+
+		// then
+		assertThat(response.id()).isEqualTo(2L);
+		assertThat(response.parentId()).isEqualTo(1L);
+		assertThat(response.parentName()).isEqualTo("Electronics");
+	}
+
+	@Test
 	void get_unknownId_throwsResourceNotFoundException() {
 		// given
 		when(categoryRepository.findById(99L)).thenReturn(Optional.empty());
@@ -54,7 +107,8 @@ class CategoryServiceTest {
 		// when / then
 		assertThatThrownBy(() -> categoryService.get(99L))
 				.isInstanceOf(ResourceNotFoundException.class)
-				.hasMessage(MessageKeys.RESOURCE_NOT_FOUND);
+				.hasMessage(MessageKeys.RESOURCE_NOT_FOUND)
+				.extracting("messageArgs").isEqualTo(new Object[] {"Category", 99L});
 	}
 
 	@Test
@@ -82,7 +136,8 @@ class CategoryServiceTest {
 		// when / then
 		assertThatThrownBy(() -> categoryService.create(new CategoryRequest("Cables", null)))
 				.isInstanceOf(DuplicateResourceException.class)
-				.hasMessage(MessageKeys.CATEGORY_NAME_DUPLICATE);
+				.hasMessage(MessageKeys.CATEGORY_NAME_DUPLICATE)
+				.extracting("messageArgs").isEqualTo(new Object[] {"Cables"});
 		verify(categoryRepository, never()).save(any());
 	}
 
@@ -95,7 +150,8 @@ class CategoryServiceTest {
 		// when / then
 		assertThatThrownBy(() -> categoryService.create(new CategoryRequest("Cables", 42L)))
 				.isInstanceOf(ResourceNotFoundException.class)
-				.hasMessage(MessageKeys.RESOURCE_NOT_FOUND);
+				.hasMessage(MessageKeys.RESOURCE_NOT_FOUND)
+				.extracting("messageArgs").isEqualTo(new Object[] {"Category", 42L});
 		verify(categoryRepository, never()).save(any());
 	}
 
@@ -181,7 +237,8 @@ class CategoryServiceTest {
 		// when / then
 		assertThatThrownBy(() -> categoryService.delete(1L))
 				.isInstanceOf(ResourceInUseException.class)
-				.hasMessageContaining("subcategories");
+				.hasMessage(MessageKeys.CATEGORY_DELETE_HAS_SUBCATEGORIES)
+				.extracting("messageArgs").isEqualTo(new Object[] {"Electronics"});
 		verify(categoryRepository, never()).delete(any());
 	}
 
@@ -195,7 +252,8 @@ class CategoryServiceTest {
 		// when / then
 		assertThatThrownBy(() -> categoryService.delete(2L))
 				.isInstanceOf(ResourceInUseException.class)
-				.hasMessageContaining("products");
+				.hasMessage(MessageKeys.CATEGORY_DELETE_HAS_PRODUCTS)
+				.extracting("messageArgs").isEqualTo(new Object[] {"Cables"});
 		verify(categoryRepository, never()).delete(any());
 	}
 

@@ -87,6 +87,20 @@ class ProductServiceTest {
 	}
 
 	@Test
+	void get_existingId_returnsProductWithNames() {
+		// given
+		when(productRepository.findById(12L)).thenReturn(Optional.of(withId(mouse(peripherals, logiCo), 12L)));
+
+		// when
+		ProductResponse response = productService.get(12L);
+
+		// then
+		assertThat(response.id()).isEqualTo(12L);
+		assertThat(response.categoryName()).isEqualTo("Peripherals");
+		assertThat(response.supplierName()).isEqualTo("LogiCo");
+	}
+
+	@Test
 	void get_unknownId_throwsResourceNotFoundException() {
 		// given
 		when(productRepository.findById(99L)).thenReturn(Optional.empty());
@@ -94,7 +108,8 @@ class ProductServiceTest {
 		// when / then
 		assertThatThrownBy(() -> productService.get(99L))
 				.isInstanceOf(ResourceNotFoundException.class)
-				.hasMessage(MessageKeys.RESOURCE_NOT_FOUND);
+				.hasMessage(MessageKeys.RESOURCE_NOT_FOUND)
+				.extracting("messageArgs").isEqualTo(new Object[] {"Product", 99L});
 	}
 
 	@Test
@@ -141,7 +156,8 @@ class ProductServiceTest {
 		// when / then
 		assertThatThrownBy(() -> productService.create(request("A01", "Wireless Mouse", 3L, null)))
 				.isInstanceOf(DuplicateResourceException.class)
-				.hasMessage(MessageKeys.PRODUCT_SKU_DUPLICATE);
+				.hasMessage(MessageKeys.PRODUCT_SKU_DUPLICATE)
+				.extracting("messageArgs").isEqualTo(new Object[] {"A01"});
 		verify(productRepository, never()).save(any());
 	}
 
@@ -154,7 +170,8 @@ class ProductServiceTest {
 		// when / then
 		assertThatThrownBy(() -> productService.create(request("A01", "Wireless Mouse", 42L, null)))
 				.isInstanceOf(ResourceNotFoundException.class)
-				.hasMessage(MessageKeys.RESOURCE_NOT_FOUND);
+				.hasMessage(MessageKeys.RESOURCE_NOT_FOUND)
+				.extracting("messageArgs").isEqualTo(new Object[] {"Category", 42L});
 		verify(productRepository, never()).save(any());
 	}
 
@@ -168,7 +185,8 @@ class ProductServiceTest {
 		// when / then
 		assertThatThrownBy(() -> productService.create(request("A01", "Wireless Mouse", 3L, 42L)))
 				.isInstanceOf(ResourceNotFoundException.class)
-				.hasMessage(MessageKeys.RESOURCE_NOT_FOUND);
+				.hasMessage(MessageKeys.RESOURCE_NOT_FOUND)
+				.extracting("messageArgs").isEqualTo(new Object[] {"Supplier", 42L});
 		verify(productRepository, never()).save(any());
 	}
 
