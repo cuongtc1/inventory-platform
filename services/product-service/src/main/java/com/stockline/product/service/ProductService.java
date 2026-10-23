@@ -10,6 +10,7 @@ import com.stockline.product.entity.Supplier;
 import com.stockline.product.exception.DuplicateResourceException;
 import com.stockline.product.exception.ResourceNotFoundException;
 import com.stockline.product.mapper.ProductMapper;
+import com.stockline.product.message.MessageKeys;
 import com.stockline.product.repository.CategoryRepository;
 import com.stockline.product.repository.ProductRepository;
 import com.stockline.product.repository.ProductSpecifications;
@@ -102,12 +103,12 @@ public class ProductService {
 
 	private Product findProduct(Long id) {
 		return productRepository.findById(id)
-				.orElseThrow(() -> new ResourceNotFoundException("Product", id));
+				.orElseThrow(() -> new ResourceNotFoundException(Product.class.getSimpleName(), id));
 	}
 
 	private Category findCategory(Long id) {
 		return categoryRepository.findById(id)
-				.orElseThrow(() -> new ResourceNotFoundException("Category", id));
+				.orElseThrow(() -> new ResourceNotFoundException(Category.class.getSimpleName(), id));
 	}
 
 	private Supplier findSupplier(Long id) {
@@ -115,7 +116,7 @@ public class ProductService {
 			return null;
 		}
 		return supplierRepository.findById(id)
-				.orElseThrow(() -> new ResourceNotFoundException("Supplier", id));
+				.orElseThrow(() -> new ResourceNotFoundException(Supplier.class.getSimpleName(), id));
 	}
 
 	/**
@@ -127,6 +128,6 @@ public class ProductService {
 	}
 
 	private static DuplicateResourceException duplicateSku(String sku) {
-		return new DuplicateResourceException("Product with SKU '" + sku + "' already exists");
+		return new DuplicateResourceException(MessageKeys.PRODUCT_SKU_DUPLICATE, sku);
 	}
 }

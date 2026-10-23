@@ -7,7 +7,7 @@ import org.springframework.http.HttpStatus;
  */
 public class ResourceInUseException extends ApiException {
 
-	public ResourceInUseException(String message) {
-		super(HttpStatus.CONFLICT, "IN_USE", message);
+	public ResourceInUseException(String messageKey, Object... messageArgs) {
+		super(HttpStatus.CONFLICT, "IN_USE", messageKey, messageArgs);
 	}
 }

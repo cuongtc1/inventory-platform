@@ -11,6 +11,7 @@ import com.stockline.product.entity.Supplier;
 import com.stockline.product.exception.DuplicateResourceException;
 import com.stockline.product.exception.ResourceNotFoundException;
 import com.stockline.product.mapper.ProductMapper;
+import com.stockline.product.message.MessageKeys;
 import com.stockline.product.repository.CategoryRepository;
 import com.stockline.product.repository.ProductRepository;
 import com.stockline.product.repository.SupplierRepository;
@@ -93,7 +94,7 @@ class ProductServiceTest {
 		// when / then
 		assertThatThrownBy(() -> productService.get(99L))
 				.isInstanceOf(ResourceNotFoundException.class)
-				.hasMessage("Product with id 99 not found");
+				.hasMessage(MessageKeys.RESOURCE_NOT_FOUND);
 	}
 
 	@Test
@@ -140,7 +141,7 @@ class ProductServiceTest {
 		// when / then
 		assertThatThrownBy(() -> productService.create(request("A01", "Wireless Mouse", 3L, null)))
 				.isInstanceOf(DuplicateResourceException.class)
-				.hasMessage("Product with SKU 'A01' already exists");
+				.hasMessage(MessageKeys.PRODUCT_SKU_DUPLICATE);
 		verify(productRepository, never()).save(any());
 	}
 
@@ -153,7 +154,7 @@ class ProductServiceTest {
 		// when / then
 		assertThatThrownBy(() -> productService.create(request("A01", "Wireless Mouse", 42L, null)))
 				.isInstanceOf(ResourceNotFoundException.class)
-				.hasMessage("Category with id 42 not found");
+				.hasMessage(MessageKeys.RESOURCE_NOT_FOUND);
 		verify(productRepository, never()).save(any());
 	}
 
@@ -167,7 +168,7 @@ class ProductServiceTest {
 		// when / then
 		assertThatThrownBy(() -> productService.create(request("A01", "Wireless Mouse", 3L, 42L)))
 				.isInstanceOf(ResourceNotFoundException.class)
-				.hasMessage("Supplier with id 42 not found");
+				.hasMessage(MessageKeys.RESOURCE_NOT_FOUND);
 		verify(productRepository, never()).save(any());
 	}
 

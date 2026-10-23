@@ -7,6 +7,7 @@ import com.stockline.product.exception.DuplicateResourceException;
 import com.stockline.product.exception.ResourceInUseException;
 import com.stockline.product.exception.ResourceNotFoundException;
 import com.stockline.product.mapper.SupplierMapper;
+import com.stockline.product.message.MessageKeys;
 import com.stockline.product.repository.ProductRepository;
 import com.stockline.product.repository.SupplierRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,7 +53,7 @@ class SupplierServiceTest {
 		// when / then
 		assertThatThrownBy(() -> supplierService.get(99L))
 				.isInstanceOf(ResourceNotFoundException.class)
-				.hasMessage("Supplier with id 99 not found");
+				.hasMessage(MessageKeys.RESOURCE_NOT_FOUND);
 	}
 
 	@Test
@@ -80,7 +81,7 @@ class SupplierServiceTest {
 		// when / then
 		assertThatThrownBy(() -> supplierService.create(new SupplierRequest("LogiCo", null, null, null)))
 				.isInstanceOf(DuplicateResourceException.class)
-				.hasMessage("Supplier 'LogiCo' already exists");
+				.hasMessage(MessageKeys.SUPPLIER_NAME_DUPLICATE);
 		verify(supplierRepository, never()).save(any());
 	}
 

@@ -16,7 +16,7 @@ import java.math.BigDecimal;
  */
 public record ProductRequest(
 		@NotBlank @Size(max = 50)
-		@Pattern(regexp = "[A-Za-z0-9._-]*", message = "may contain only letters, digits, '.', '_' and '-'")
+		@Pattern(regexp = "[A-Za-z0-9._-]*", message = "{product.sku.invalid}")
 		String sku,
 		@NotBlank @Size(max = 200) String name,
 		@NotNull @Positive Long categoryId,

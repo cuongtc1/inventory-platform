@@ -6,6 +6,7 @@ import com.stockline.product.dto.PageResponse;
 import com.stockline.product.exception.DuplicateResourceException;
 import com.stockline.product.exception.ResourceInUseException;
 import com.stockline.product.exception.ResourceNotFoundException;
+import com.stockline.product.message.MessageKeys;
 import com.stockline.product.service.CategoryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -139,7 +140,7 @@ class CategoryControllerTest {
 	void update_duplicateName_returns409Duplicate() throws Exception {
 		// given
 		when(categoryService.update(2L, new CategoryRequest("Displays", null)))
-				.thenThrow(new DuplicateResourceException("Category 'Displays' already exists"));
+				.thenThrow(new DuplicateResourceException(MessageKeys.CATEGORY_NAME_DUPLICATE, "Displays"));
 
 		// when / then
 		mockMvc.perform(put("/api/categories/2")
@@ -163,7 +164,7 @@ class CategoryControllerTest {
 	@Test
 	void delete_categoryInUse_returns409InUse() throws Exception {
 		// given
-		doThrow(new ResourceInUseException("Category 'Cables' still has products; move or delete them first"))
+		doThrow(new ResourceInUseException(MessageKeys.CATEGORY_DELETE_HAS_PRODUCTS, "Cables"))
 				.when(categoryService).delete(2L);
 
 		// when / then

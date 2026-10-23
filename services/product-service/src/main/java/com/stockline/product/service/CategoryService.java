@@ -9,6 +9,7 @@ import com.stockline.product.exception.InvalidRequestException;
 import com.stockline.product.exception.ResourceInUseException;
 import com.stockline.product.exception.ResourceNotFoundException;
 import com.stockline.product.mapper.CategoryMapper;
+import com.stockline.product.message.MessageKeys;
 import com.stockline.product.repository.CategoryRepository;
 import com.stockline.product.repository.ProductRepository;
 import org.springframework.data.domain.Pageable;
@@ -85,19 +86,17 @@ public class CategoryService {
 	public void delete(Long id) {
 		Category category = findCategory(id);
 		if (categoryRepository.existsByParentId(id)) {
-			throw new ResourceInUseException(
-					"Category '" + category.getName() + "' has subcategories; move or delete them first");
+			throw new ResourceInUseException(MessageKeys.CATEGORY_DELETE_HAS_SUBCATEGORIES, category.getName());
 		}
 		if (productRepository.existsByCategoryId(id)) {
-			throw new ResourceInUseException(
-					"Category '" + category.getName() + "' still has products; move or delete them first");
+			throw new ResourceInUseException(MessageKeys.CATEGORY_DELETE_HAS_PRODUCTS, category.getName());
 		}
 		categoryRepository.delete(category);
 	}
 
 	private Category findCategory(Long id) {
 		return categoryRepository.findById(id)
-				.orElseThrow(() -> new ResourceNotFoundException("Category", id));
+				.orElseThrow(() -> new ResourceNotFoundException(Category.class.getSimpleName(), id));
 	}
 
 	private Category findParent(Long parentId) {
@@ -111,13 +110,12 @@ public class CategoryService {
 	private static void checkNotOwnAncestor(Category category, Category newParent) {
 		for (Category current = newParent; current != null; current = current.getParent()) {
 			if (Objects.equals(current.getId(), category.getId())) {
-				throw new InvalidRequestException(
-						"A category can't be its own parent or be moved under one of its subcategories");
+				throw new InvalidRequestException(MessageKeys.CATEGORY_PARENT_LOOP);
 			}
 		}
 	}
 
 	private static DuplicateResourceException duplicateName(String name) {
-		return new DuplicateResourceException("Category '" + name + "' already exists");
+		return new DuplicateResourceException(MessageKeys.CATEGORY_NAME_DUPLICATE, name);
 	}
 }

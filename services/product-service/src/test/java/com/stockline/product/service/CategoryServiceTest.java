@@ -8,6 +8,7 @@ import com.stockline.product.exception.InvalidRequestException;
 import com.stockline.product.exception.ResourceInUseException;
 import com.stockline.product.exception.ResourceNotFoundException;
 import com.stockline.product.mapper.CategoryMapper;
+import com.stockline.product.message.MessageKeys;
 import com.stockline.product.repository.CategoryRepository;
 import com.stockline.product.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,7 +54,7 @@ class CategoryServiceTest {
 		// when / then
 		assertThatThrownBy(() -> categoryService.get(99L))
 				.isInstanceOf(ResourceNotFoundException.class)
-				.hasMessage("Category with id 99 not found");
+				.hasMessage(MessageKeys.RESOURCE_NOT_FOUND);
 	}
 
 	@Test
@@ -81,7 +82,7 @@ class CategoryServiceTest {
 		// when / then
 		assertThatThrownBy(() -> categoryService.create(new CategoryRequest("Cables", null)))
 				.isInstanceOf(DuplicateResourceException.class)
-				.hasMessage("Category 'Cables' already exists");
+				.hasMessage(MessageKeys.CATEGORY_NAME_DUPLICATE);
 		verify(categoryRepository, never()).save(any());
 	}
 
@@ -94,7 +95,7 @@ class CategoryServiceTest {
 		// when / then
 		assertThatThrownBy(() -> categoryService.create(new CategoryRequest("Cables", 42L)))
 				.isInstanceOf(ResourceNotFoundException.class)
-				.hasMessage("Category with id 42 not found");
+				.hasMessage(MessageKeys.RESOURCE_NOT_FOUND);
 		verify(categoryRepository, never()).save(any());
 	}
 
@@ -152,7 +153,7 @@ class CategoryServiceTest {
 		// when / then
 		assertThatThrownBy(() -> categoryService.update(1L, new CategoryRequest("Electronics", 3L)))
 				.isInstanceOf(InvalidRequestException.class)
-				.hasMessageContaining("subcategories");
+				.hasMessage(MessageKeys.CATEGORY_PARENT_LOOP);
 		assertThat(electronics.getParent()).isNull();
 	}
 

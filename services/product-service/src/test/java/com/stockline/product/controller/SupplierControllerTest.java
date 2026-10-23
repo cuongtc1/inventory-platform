@@ -6,6 +6,7 @@ import com.stockline.product.dto.SupplierResponse;
 import com.stockline.product.exception.DuplicateResourceException;
 import com.stockline.product.exception.ResourceInUseException;
 import com.stockline.product.exception.ResourceNotFoundException;
+import com.stockline.product.message.MessageKeys;
 import com.stockline.product.service.SupplierService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -141,7 +142,7 @@ class SupplierControllerTest {
 	void update_duplicateName_returns409Duplicate() throws Exception {
 		// given
 		when(supplierService.update(1L, new SupplierRequest("WireCo", null, null, null)))
-				.thenThrow(new DuplicateResourceException("Supplier 'WireCo' already exists"));
+				.thenThrow(new DuplicateResourceException(MessageKeys.SUPPLIER_NAME_DUPLICATE, "WireCo"));
 
 		// when / then
 		mockMvc.perform(put("/api/suppliers/1")
@@ -164,7 +165,7 @@ class SupplierControllerTest {
 	@Test
 	void delete_supplierInUse_returns409InUse() throws Exception {
 		// given
-		doThrow(new ResourceInUseException("Supplier 'LogiCo' still has products; move or delete them first"))
+		doThrow(new ResourceInUseException(MessageKeys.SUPPLIER_DELETE_HAS_PRODUCTS, "LogiCo"))
 				.when(supplierService).delete(1L);
 
 		// when / then

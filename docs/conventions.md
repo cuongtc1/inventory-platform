@@ -29,6 +29,7 @@ com.stockline.product
 ├── dto/           request and response objects (Java records)
 ├── mapper/        entity <-> DTO conversion
 ├── exception/     custom exceptions and the global exception handler
+├── message/       MessageKeys: constants for the keys in messages.properties
 ├── config/        @Configuration classes
 ├── client/        REST clients to other services (only if needed)
 └── event/         Kafka event classes, producers, consumers (only if needed)
@@ -56,6 +57,14 @@ Code style:
 - No Lombok. Entities have normal getters and setters (generate them in the IDE) and a protected no-args constructor for JPA.
 - Money is `BigDecimal`, never `double`. Time is `Instant`, always UTC.
 - Enums are stored as strings (`@Enumerated(EnumType.STRING)`).
+
+Messages:
+- Every text the API returns, and log texts, live in `src/main/resources/messages.properties`, one key per message, never as string literals in Java.
+- Sections: `common` (validation, request, resource and server errors used everywhere), one section per resource (`category`, `supplier`, `product`, ...), and `system` (log texts, never sent to the client).
+- Key format: `<section>.<subject>.<problem>`, lower case, words joined with `-`: `common.resource.not-found`, `category.delete.has-products`, `system.error.unexpected`.
+- Java code uses the constants in `message/MessageKeys`. Exceptions carry a key and arguments (`new DuplicateResourceException(MessageKeys.CATEGORY_NAME_DUPLICATE, name)`); the `GlobalExceptionHandler` looks up the text.
+- Bean Validation annotations reference a key in braces: `@Pattern(message = "{product.sku.invalid}")`. The file also overrides the default texts (`jakarta.validation.constraints.NotBlank.message`, ...), and Spring MVC's own texts (`problemDetail.<exception class>`).
+- Placeholders are `{0}`, `{1}` (`java.text.MessageFormat`). In a message with placeholders, write an apostrophe as `''`: `Category ''{0}'' already exists`. Pass numbers as text, or MessageFormat prints `1234` as `1,234` (the handler does this).
 
 ## 2. REST API style
 

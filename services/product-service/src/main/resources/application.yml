@@ -34,6 +34,13 @@ spring:
         # ?size=1000 is lowered to 100 (docs/conventions.md section 4); the default size is 20
         max-page-size: 100
 
+  messages:
+    # src/main/resources/messages.properties: every API and log text (also used for Bean Validation messages)
+    basename: messages
+    encoding: UTF-8
+    # Without a messages_<language>.properties, use messages.properties, not a file for the server's locale
+    fallback-to-system-locale: false
+
 management:
   endpoints:
     web:

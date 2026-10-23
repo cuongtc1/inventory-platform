@@ -8,6 +8,7 @@ import com.stockline.product.exception.DuplicateResourceException;
 import com.stockline.product.exception.ResourceInUseException;
 import com.stockline.product.exception.ResourceNotFoundException;
 import com.stockline.product.mapper.SupplierMapper;
+import com.stockline.product.message.MessageKeys;
 import com.stockline.product.repository.ProductRepository;
 import com.stockline.product.repository.SupplierRepository;
 import org.springframework.data.domain.Pageable;
@@ -80,15 +81,14 @@ public class SupplierService {
 	public void delete(Long id) {
 		Supplier supplier = findSupplier(id);
 		if (productRepository.existsBySupplierId(id)) {
-			throw new ResourceInUseException(
-					"Supplier '" + supplier.getName() + "' still has products; move or delete them first");
+			throw new ResourceInUseException(MessageKeys.SUPPLIER_DELETE_HAS_PRODUCTS, supplier.getName());
 		}
 		supplierRepository.delete(supplier);
 	}
 
 	private Supplier findSupplier(Long id) {
 		return supplierRepository.findById(id)
-				.orElseThrow(() -> new ResourceNotFoundException("Supplier", id));
+				.orElseThrow(() -> new ResourceNotFoundException(Supplier.class.getSimpleName(), id));
 	}
 
 	/**
@@ -99,6 +99,6 @@ public class SupplierService {
 	}
 
 	private static DuplicateResourceException duplicateName(String name) {
-		return new DuplicateResourceException("Supplier '" + name + "' already exists");
+		return new DuplicateResourceException(MessageKeys.SUPPLIER_NAME_DUPLICATE, name);
 	}
 }

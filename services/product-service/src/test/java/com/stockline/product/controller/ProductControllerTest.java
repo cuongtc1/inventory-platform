@@ -7,6 +7,7 @@ import com.stockline.product.dto.ProductResponse;
 import com.stockline.product.entity.ProductStatus;
 import com.stockline.product.exception.DuplicateResourceException;
 import com.stockline.product.exception.ResourceNotFoundException;
+import com.stockline.product.message.MessageKeys;
 import com.stockline.product.service.ProductService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -172,7 +173,7 @@ class ProductControllerTest {
 	void update_duplicateSku_returns409Duplicate() throws Exception {
 		// given
 		when(productService.update(eq(12L), any(ProductRequest.class)))
-				.thenThrow(new DuplicateResourceException("Product with SKU 'A01' already exists"));
+				.thenThrow(new DuplicateResourceException(MessageKeys.PRODUCT_SKU_DUPLICATE, "A01"));
 
 		// when / then
 		mockMvc.perform(put("/api/products/12").contentType(MediaType.APPLICATION_JSON).content(VALID_BODY))

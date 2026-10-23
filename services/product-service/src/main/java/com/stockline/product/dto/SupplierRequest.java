@@ -13,7 +13,7 @@ public record SupplierRequest(
 		@Size(max = 100) String contactName,
 		// @Email accepts null and "", so an empty field passes; the service stores it as null
 		@Email @Size(max = 150) String email,
-		@Pattern(regexp = "[0-9+()\\- ]*", message = "may contain only digits, spaces, +, -, ( and )")
+		@Pattern(regexp = "[0-9+()\\- ]*", message = "{supplier.phone.invalid}")
 		@Size(max = 30) String phone
 ) {
 }

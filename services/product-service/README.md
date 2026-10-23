@@ -148,6 +148,8 @@ All settings are in `src/main/resources/application.yml`. Values that differ per
 | `src/main/java/.../dto/` | Request and response records, and `PageResponse` for lists |
 | `src/main/java/.../mapper/` | Entity → response conversion |
 | `src/main/java/.../exception/` | `ApiException` and its subclasses, and `GlobalExceptionHandler` (JSON errors) |
+| `src/main/java/.../message/MessageKeys.java` | Constants for the keys in `messages.properties` |
+| `src/main/resources/messages.properties` | Every API error text, validation message and log text, one key per message (rules in `docs/conventions.md` section 1) |
 | `src/test/java/.../TestcontainersConfiguration.java` | Starts a throwaway MySQL 8.4 container for tests |
 | `src/test/java/.../ProductServiceApplicationTests.java` | Starts the whole app against that container |
 | `src/test/java/.../repository/*RepositoryTest.java` | `@DataJpaTest` on MySQL: mapping, unique keys, custom queries |
@@ -199,4 +201,5 @@ Tests never use the MySQL from `infra/`. `TestcontainersConfiguration` starts a 
 | `com.fasterxml.jackson.databind.exc.InvalidFormatException` (checked `IOException` subclass) | `tools.jackson.databind.exc.InvalidFormatException` (unchecked, `RuntimeException`) | Jackson 3 exceptions moved package and no longer need `throws` |
 | `if (x instanceof Foo) { Foo f = (Foo) x; ... }` | `if (x instanceof Foo f) { ... }` (Java 16) | Pattern matching for `instanceof`, used in the error handler |
 | `switch` statement with `break` | `switch` expression with `->` returning a value (Java 14) | Used to map the constraint kind to a response |
+| Bean Validation texts only in `ValidationMessages.properties` | Spring Boot passes its `MessageSource` to the validator, so `messages.properties` serves both API and validation texts | Since Boot 2.6; `{key}` in an annotation's `message` is looked up there |
 | Query parameters bound to a JavaBean with setters | Bound to a `record` through its constructor | `ProductFilter` needs no annotation; `@ParameterObject` shows its fields in Swagger |

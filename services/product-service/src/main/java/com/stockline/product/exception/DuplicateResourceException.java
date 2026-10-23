@@ -7,7 +7,7 @@ import org.springframework.http.HttpStatus;
  */
 public class DuplicateResourceException extends ApiException {
 
-	public DuplicateResourceException(String message) {
-		super(HttpStatus.CONFLICT, "DUPLICATE", message);
+	public DuplicateResourceException(String messageKey, Object... messageArgs) {
+		super(HttpStatus.CONFLICT, "DUPLICATE", messageKey, messageArgs);
 	}
 }

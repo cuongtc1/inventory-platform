@@ -12,7 +12,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
+import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -34,7 +36,7 @@ import static org.assertj.core.api.Assertions.catchThrowableOfType;
 @Import(TestcontainersConfiguration.class)
 class GlobalExceptionHandlerMySqlTest {
 
-	private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
+	private final GlobalExceptionHandler handler = new GlobalExceptionHandler(messageSource());
 
 	@Autowired
 	private ProductRepository productRepository;
@@ -135,6 +137,15 @@ class GlobalExceptionHandlerMySqlTest {
 	private ResponseEntity<ProblemDetail> handle(DataIntegrityViolationException ex, String path) {
 		assertThat(ex).as("the database should have rejected the change").isNotNull();
 		return handler.handleDataIntegrityViolation(ex, new MockHttpServletRequest("POST", path));
+	}
+
+	// @DataJpaTest doesn't create Spring Boot's MessageSource, so read messages.properties directly
+	private static MessageSource messageSource() {
+		ResourceBundleMessageSource messageSource = new ResourceBundleMessageSource();
+		messageSource.setBasename("messages");
+		messageSource.setDefaultEncoding("UTF-8");
+		messageSource.setFallbackToSystemLocale(false);
+		return messageSource;
 	}
 
 	private static Product product(String sku, Category category) {
