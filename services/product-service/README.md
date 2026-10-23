@@ -63,6 +63,49 @@ Text is trimmed. An empty or blank optional field is stored as `null`.
 
 Response: `{ "id", "name", "contactName", "email", "phone", "createdAt", "updatedAt" }`.
 
+### Products: `/api/products`
+
+| Method and path | Result | Errors |
+|---|---|---|
+| `GET /api/products?search=&categoryId=&supplierId=&status=&page=0&size=20&sort=name,asc` | `200`, a page of products. All filters are optional and combined with AND (see below). Default sort `name,asc`, max size 100 | `400` unknown sort field, `400 VALIDATION_FAILED` for a wrong filter value such as `status=WRONG` |
+| `GET /api/products/{id}` | `200`, one product | `404` |
+| `POST /api/products` | `201`, `Location: /api/products/{id}` | `400` validation, `404` category or supplier not found, `409 DUPLICATE` SKU |
+| `PUT /api/products/{id}` | `200`, the updated product (every field is replaced) | same as POST, plus `404` product |
+| `DELETE /api/products/{id}` | `204` | `404` |
+
+List filters:
+
+| Parameter | Matches |
+|---|---|
+| `search` | Part of the name **or** the SKU, ignoring case. `%` and `_` are plain text |
+| `categoryId` | Products in exactly this category (not its subcategories) |
+| `supplierId` | Products from this supplier |
+| `status` | `ACTIVE` or `INACTIVE` |
+
+Sort by any product field (`sku`, `name`, `salePrice`, `reorderLevel`, `createdAt`, ...) or by a related name: `sort=category.name,asc`, `sort=supplier.name,asc`.
+
+Request body:
+
+```json
+{ "sku": "A01", "name": "Wireless Mouse", "categoryId": 3, "supplierId": 5,
+  "costPrice": 8.00, "salePrice": 12.00, "reorderLevel": 20, "status": "ACTIVE" }
+```
+
+| Field | Rules |
+|---|---|
+| `sku` | Required, max 50, letters, digits, `.`, `_`, `-` only; unique ignoring case |
+| `name` | Required, max 200, trimmed |
+| `categoryId` | Required; the category must exist |
+| `supplierId` | Optional; the supplier must exist when given |
+| `costPrice` | Required, ≥ 0, at most 2 decimals |
+| `salePrice` | Required, > 0, at most 2 decimals |
+| `reorderLevel` | Required, ≥ 0 |
+| `status` | Required, `ACTIVE` or `INACTIVE` |
+
+Response: `{ "id", "sku", "name", "categoryId", "categoryName", "supplierId", "supplierName", "costPrice", "salePrice", "reorderLevel", "status", "createdAt", "updatedAt" }`. Prices always have 2 decimals.
+
+Deleting a product is a hard delete. Deleting a category or supplier that products still use returns `409 IN_USE`.
+
 ## Configuration
 
 All settings are in `src/main/resources/application.yml`. Values that differ per environment come from environment variables, with defaults for the local Docker setup:
@@ -84,14 +127,16 @@ All settings are in `src/main/resources/application.yml`. Values that differ per
 | `src/main/resources/db/migration/` | Flyway SQL migrations, run in order at startup (see [Database](#database)) |
 | `src/main/java/.../entity/` | JPA entities `Category`, `Supplier`, `Product`, the `ProductStatus` enum, and `BaseEntity` (id and timestamps) |
 | `src/main/java/.../repository/` | Spring Data JPA repositories, one per entity |
-| `src/main/java/.../controller/` | REST controllers (`CategoryController`, `SupplierController`) |
-| `src/main/java/.../service/` | Business rules and transactions (`CategoryService`, `SupplierService`) |
+| `src/main/java/.../controller/` | REST controllers (`CategoryController`, `SupplierController`, `ProductController`) |
+| `src/main/java/.../service/` | Business rules and transactions (`CategoryService`, `SupplierService`, `ProductService`) |
+| `src/main/java/.../repository/ProductSpecifications.java` | Builds the product list's WHERE clause from the filters that were sent |
 | `src/main/java/.../dto/` | Request and response records, and `PageResponse` for lists |
 | `src/main/java/.../mapper/` | Entity → response conversion |
 | `src/main/java/.../exception/` | `ApiException` and its subclasses, and `GlobalExceptionHandler` (JSON errors) |
 | `src/test/java/.../TestcontainersConfiguration.java` | Starts a throwaway MySQL 8.4 container for tests |
 | `src/test/java/.../ProductServiceApplicationTests.java` | Starts the whole app against that container |
 | `src/test/java/.../repository/*RepositoryTest.java` | `@DataJpaTest` on MySQL: mapping, unique keys, custom queries |
+| `src/test/java/.../repository/ProductSpecificationsTest.java` | `@DataJpaTest`: every product filter, combinations, sort by category name |
 | `src/test/java/.../service/*ServiceTest.java` | Mockito unit tests of the business rules |
 | `src/test/java/.../controller/*ControllerTest.java` | `@WebMvcTest`: URLs, status codes, JSON and error format |
 
@@ -133,3 +178,5 @@ Tests never use the MySQL from `infra/`. `TestcontainersConfiguration` starts a 
 | Custom error JSON classes | `ProblemDetail` (Spring 6, RFC 9457) | Spring 7 leaves out `"type"` while it is `about:blank`, so the handler sets it explicitly |
 | String concatenation for JSON in tests | Text blocks `"""..."""` (Java 15) | Multi-line strings without escaping quotes |
 | `list.get(0)` | `list.getFirst()` (Java 21) | Sequenced collections |
+| `Specification.where(null).and(...)` | `Specification.allOf(list)`, `Specification.unrestricted()` | Spring Data JPA 4; `JpaSpecificationExecutor` also gained `delete(PredicateSpecification)`, so `delete(any())` in Mockito is now ambiguous: use `any(Product.class)` |
+| Query parameters bound to a JavaBean with setters | Bound to a `record` through its constructor | `ProductFilter` needs no annotation; `@ParameterObject` shows its fields in Swagger |

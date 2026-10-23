@@ -44,13 +44,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	}
 
 	/**
-	 * {@code @Valid} failed on a request body. Lists every invalid field.
+	 * {@code @Valid} failed on a request body, or query parameters couldn't be bound to an object.
+	 * Lists every invalid field.
 	 */
 	@Override
 	protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
 			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+		// Also thrown when a query parameter can't be converted, e.g. ?status=WRONG for the product filter.
+		// That error's default message is a long Java exception text, so it gets a short one instead
 		List<FieldValidationError> errors = ex.getBindingResult().getFieldErrors().stream()
-				.map(error -> new FieldValidationError(error.getField(), error.getDefaultMessage()))
+				.map(error -> new FieldValidationError(error.getField(), error.isBindingFailure()
+						? "has an invalid value '" + error.getRejectedValue() + "'"
+						: error.getDefaultMessage()))
 				.toList();
 
 		String path = ((ServletWebRequest) request).getRequest().getRequestURI();

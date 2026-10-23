@@ -102,6 +102,20 @@ class ProductRepositoryTest {
 	}
 
 	@Test
+	void existsBySku_andIdNot_ignoreCaseAndOwnRow() {
+		// given
+		Category cables = entityManager.persist(new Category("Cables", null));
+		Product cable = productRepository.saveAndFlush(new Product("A02", "USB-C Cable", cables, null,
+				new BigDecimal("1.20"), new BigDecimal("3.50"), 20, ProductStatus.ACTIVE));
+
+		// when / then
+		assertThat(productRepository.existsBySku("a02")).isTrue();
+		assertThat(productRepository.existsBySku("A99")).isFalse();
+		assertThat(productRepository.existsBySkuAndIdNot("A02", cable.getId())).isFalse();
+		assertThat(productRepository.existsBySkuAndIdNot("A02", cable.getId() + 100)).isTrue();
+	}
+
+	@Test
 	void save_duplicateSku_throwsDataIntegrityViolationException() {
 		// given
 		Category cables = entityManager.persist(new Category("Cables", null));
