@@ -1,16 +1,17 @@
-# Normalize text files to LF in the repository
-* text=auto
+# Line endings for the whole repo. Git stores text files with LF and writes them to disk with LF on every OS,
+# so Windows and Linux (Docker builds) see the same files and Git stops warning "LF will be replaced by CRLF".
+* text=auto eol=lf
 
-# Scripts that run on Linux (Docker images) must keep LF
-mvnw text eol=lf
-*.sh text eol=lf
-
-# Windows scripts keep CRLF
+# Windows scripts need CRLF on disk
 *.cmd text eol=crlf
 *.bat text eol=crlf
 
-# Binary files
-*.jar binary
+# Unix scripts must keep LF, or "bad interpreter" in Linux containers
+mvnw text eol=lf
+*.sh text eol=lf
+
+# Never touch binary files
 *.png binary
 *.jpg binary
 *.ico binary
+*.jar binary

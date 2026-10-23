@@ -1,6 +1,7 @@
 package com.stockline.product.exception;
 
-import com.stockline.product.message.MessageKeys;
+import com.stockline.product.constant.ErrorCode;
+import com.stockline.product.constant.MessageKeys;
 import jakarta.servlet.http.HttpServletRequest;
 import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
@@ -29,7 +30,7 @@ import tools.jackson.databind.exc.InvalidFormatException;
 import tools.jackson.databind.exc.MismatchedInputException;
 
 import java.net.URI;
-import java.time.Instant;
+import java.time.Clock;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -38,7 +39,7 @@ import java.util.Map;
  * Turns every exception into the JSON error format from docs/conventions.md section 3 (Problem Details, RFC 9457).
  *
  * <ul>
- *   <li>Our own {@link ApiException}s carry their status, code and message key.</li>
+ *   <li>Our own {@link ApiException}s carry their {@link ErrorCode} and message key.</li>
  *   <li>Spring MVC's errors (405, 415, unknown URL, ...) are handled by {@link ResponseEntityExceptionHandler};
  *       {@link #handleExceptionInternal} adds our fields to them. A few get a clearer message below.</li>
  *   <li>Database constraint errors that slip past the service checks (two requests at the same moment)
@@ -46,7 +47,8 @@ import java.util.Map;
  *   <li>Anything else is a 500 with a generic message; the details go only to the log.</li>
  * </ul>
  *
- * <p>Every text comes from messages.properties through {@link MessageSource}.
+ * <p>Every text comes from messages.properties through {@link MessageSource}; the timestamp comes from the
+ * {@link Clock} bean, so tests can fix the time.
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
@@ -63,24 +65,26 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	private static final int MYSQL_ROW_IS_REFERENCED = 1451;
 
 	private final MessageSource messageSource;
+	private final Clock clock;
 
-	public GlobalExceptionHandler(MessageSource messageSource) {
+	public GlobalExceptionHandler(MessageSource messageSource, Clock clock) {
 		this.messageSource = messageSource;
+		this.clock = clock;
 	}
 
 	@ExceptionHandler(ApiException.class)
-	ResponseEntity<ProblemDetail> handleApiException(ApiException ex, HttpServletRequest request) {
-		return response(ex.getStatus(), message(ex.getMessageKey(), ex.getMessageArgs()), ex.getCode(),
-				request.getRequestURI());
+	public ResponseEntity<ProblemDetail> handleApiException(ApiException ex, HttpServletRequest request) {
+		return response(ex.getErrorCode(), message(ex.getMessageKey(), ex.getMessageArgs()), request.getRequestURI());
 	}
 
 	/**
 	 * Unknown sort field, e.g. {@code ?sort=color,asc}. Spring Data throws this when it builds the query.
 	 */
 	@ExceptionHandler(PropertyReferenceException.class)
-	ResponseEntity<ProblemDetail> handleUnknownSortField(PropertyReferenceException ex, HttpServletRequest request) {
-		return response(HttpStatus.BAD_REQUEST, message(MessageKeys.REQUEST_UNKNOWN_SORT_FIELD, ex.getPropertyName()),
-				"BAD_REQUEST", request.getRequestURI());
+	public ResponseEntity<ProblemDetail> handleUnknownSortField(PropertyReferenceException ex,
+			HttpServletRequest request) {
+		return response(ErrorCode.BAD_REQUEST, message(MessageKeys.REQUEST_UNKNOWN_SORT_FIELD, ex.getPropertyName()),
+				request.getRequestURI());
 	}
 
 	/**
@@ -88,7 +92,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	 * message; this only happens when two requests pass the check at the same moment, e.g. both create SKU "A01".
 	 */
 	@ExceptionHandler(DataIntegrityViolationException.class)
-	ResponseEntity<ProblemDetail> handleDataIntegrityViolation(DataIntegrityViolationException ex,
+	public ResponseEntity<ProblemDetail> handleDataIntegrityViolation(DataIntegrityViolationException ex,
 			HttpServletRequest request) {
 		String path = request.getRequestURI();
 		ConstraintViolationException violation = findCause(ex, ConstraintViolationException.class);
@@ -98,12 +102,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
 		String constraint = violation.getConstraintName() == null ? "" : violation.getConstraintName();
 		return switch (violation.getKind()) {
-			case UNIQUE -> response(HttpStatus.CONFLICT, message(uniqueKeyMessageKey(constraint)), "DUPLICATE", path);
+			case UNIQUE -> response(ErrorCode.DUPLICATE, message(uniqueKeyMessageKey(constraint)), path);
 			case FOREIGN_KEY -> violation.getErrorCode() == MYSQL_ROW_IS_REFERENCED
-					? response(HttpStatus.CONFLICT, message(MessageKeys.RESOURCE_IN_USE), "IN_USE", path)
+					? response(ErrorCode.IN_USE, message(MessageKeys.RESOURCE_IN_USE), path)
 					// The other direction: the row we point to (category, supplier) was deleted meanwhile
-					: response(HttpStatus.NOT_FOUND, message(MessageKeys.RESOURCE_REFERENCE_MISSING), "NOT_FOUND",
-							path);
+					: response(ErrorCode.NOT_FOUND, message(MessageKeys.RESOURCE_REFERENCE_MISSING), path);
 			default -> handleUnexpected(ex, request);
 		};
 	}
@@ -112,10 +115,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	 * Last resort for bugs and outages (database down, ...). The client gets no internal details.
 	 */
 	@ExceptionHandler(Exception.class)
-	ResponseEntity<ProblemDetail> handleUnexpected(Exception ex, HttpServletRequest request) {
+	public ResponseEntity<ProblemDetail> handleUnexpected(Exception ex, HttpServletRequest request) {
 		log.error(message(MessageKeys.SYSTEM_ERROR_UNEXPECTED, request.getMethod(), request.getRequestURI()), ex);
-		return response(HttpStatus.INTERNAL_SERVER_ERROR, message(MessageKeys.ERROR_UNEXPECTED), "INTERNAL_ERROR",
-				request.getRequestURI());
+		return response(ErrorCode.INTERNAL_ERROR, message(MessageKeys.ERROR_UNEXPECTED), request.getRequestURI());
 	}
 
 	/**
@@ -150,8 +152,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 					: message(MessageKeys.VALIDATION_WRONG_TYPE);
 			return validationFailed(List.of(new FieldValidationError(fieldPath(mismatch), text)), path(request));
 		}
-		return ResponseEntity.badRequest().body(problem(HttpStatus.BAD_REQUEST,
-				message(MessageKeys.REQUEST_UNREADABLE), "BAD_REQUEST", path(request)));
+		return objectResponse(ErrorCode.BAD_REQUEST, message(MessageKeys.REQUEST_UNREADABLE), path(request));
 	}
 
 	/**
@@ -163,7 +164,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		String name = ex instanceof MethodArgumentTypeMismatchException argument ? argument.getName()
 				: ex.getPropertyName();
 		String detail = message(MessageKeys.REQUEST_INVALID_PARAMETER, name, ex.getValue());
-		return ResponseEntity.badRequest().body(problem(HttpStatus.BAD_REQUEST, detail, "BAD_REQUEST", path(request)));
+		return objectResponse(ErrorCode.BAD_REQUEST, detail, path(request));
 	}
 
 	/**
@@ -173,8 +174,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	protected ResponseEntity<Object> handleNoResourceFoundException(NoResourceFoundException ex,
 			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
 		String detail = message(MessageKeys.REQUEST_NO_ENDPOINT, ex.getHttpMethod(), path(request));
-		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(problem(HttpStatus.NOT_FOUND, detail, "NOT_FOUND", path(request)));
+		return objectResponse(ErrorCode.NOT_FOUND, detail, path(request));
 	}
 
 	/**
@@ -209,39 +209,43 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	}
 
 	private ResponseEntity<Object> validationFailed(List<FieldValidationError> errors, String path) {
-		ProblemDetail problem = problem(HttpStatus.BAD_REQUEST, message(MessageKeys.VALIDATION_FAILED),
-				"VALIDATION_FAILED", path);
+		ProblemDetail problem = problem(ErrorCode.VALIDATION_FAILED, message(MessageKeys.VALIDATION_FAILED), path);
 		problem.setProperty("errors", errors);
 		return ResponseEntity.badRequest().body(problem);
 	}
 
-	private static ResponseEntity<ProblemDetail> response(HttpStatus status, String detail, String code, String path) {
-		return ResponseEntity.status(status).body(problem(status, detail, code, path));
+	private ResponseEntity<ProblemDetail> response(ErrorCode code, String detail, String path) {
+		return ResponseEntity.status(code.getStatus()).body(problem(code, detail, path));
 	}
 
-	private static ProblemDetail problem(HttpStatus status, String detail, String code, String path) {
-		return addStandardFields(ProblemDetail.forStatusAndDetail(status, detail), code, path);
+	// Same as response(), typed for the ResponseEntityExceptionHandler methods, which return ResponseEntity<Object>
+	private ResponseEntity<Object> objectResponse(ErrorCode code, String detail, String path) {
+		return ResponseEntity.status(code.getStatus()).body(problem(code, detail, path));
 	}
 
-	private static ProblemDetail addStandardFields(ProblemDetail problem, String code, String path) {
+	private ProblemDetail problem(ErrorCode code, String detail, String path) {
+		return addStandardFields(ProblemDetail.forStatusAndDetail(code.getStatus(), detail), code.name(), path);
+	}
+
+	private ProblemDetail addStandardFields(ProblemDetail problem, String code, String path) {
 		// Spring leaves "type" out of the JSON while it has the default value; our convention always includes it
 		problem.setType(URI.create("about:blank"));
 		problem.setInstance(URI.create(path));
 		problem.setProperty("code", code);
-		problem.setProperty("timestamp", Instant.now());
+		problem.setProperty("timestamp", clock.instant());
 		return problem;
 	}
 
 	/**
-	 * Spring MVC errors use the HTTP status name as code (METHOD_NOT_ALLOWED, UNSUPPORTED_MEDIA_TYPE, ...),
-	 * except server errors, which are all INTERNAL_ERROR.
+	 * Spring MVC errors use our {@link ErrorCode} when one has the status name (METHOD_NOT_ALLOWED, ...),
+	 * otherwise the HTTP status name; server errors are all INTERNAL_ERROR.
 	 */
 	private static String codeFor(HttpStatusCode statusCode) {
 		if (statusCode.is5xxServerError()) {
-			return "INTERNAL_ERROR";
+			return ErrorCode.INTERNAL_ERROR.name();
 		}
 		HttpStatus status = HttpStatus.resolve(statusCode.value());
-		return status == null ? "ERROR" : status.name();
+		return status == null ? ErrorCode.BAD_REQUEST.name() : status.name();
 	}
 
 	private static String uniqueKeyMessageKey(String constraint) {

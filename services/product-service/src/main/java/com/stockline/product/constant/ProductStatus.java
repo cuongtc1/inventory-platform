@@ -1,4 +1,4 @@
-package com.stockline.product.entity;
+package com.stockline.product.constant;
 
 /**
  * Whether a product can be sold and ordered. Stored as a string in {@code products.status}.

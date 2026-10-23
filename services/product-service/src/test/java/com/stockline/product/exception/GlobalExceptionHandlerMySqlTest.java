@@ -1,13 +1,15 @@
 package com.stockline.product.exception;
 
+import com.stockline.product.TestData;
 import com.stockline.product.TestcontainersConfiguration;
+import com.stockline.product.config.JpaAuditingConfig;
+import com.stockline.product.constant.ProductStatus;
 import com.stockline.product.entity.Category;
 import com.stockline.product.entity.Product;
-import com.stockline.product.entity.ProductStatus;
+import com.stockline.product.entity.Supplier;
 import com.stockline.product.repository.CategoryRepository;
 import com.stockline.product.repository.ProductRepository;
 import com.stockline.product.repository.SupplierRepository;
-import com.stockline.product.entity.Supplier;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -21,7 +23,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 
-import java.math.BigDecimal;
+import java.time.Clock;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
@@ -33,10 +35,10 @@ import static org.assertj.core.api.Assertions.catchThrowableOfType;
  * <p>Each test breaks a constraint on purpose, the way two requests at the same moment would.
  */
 @DataJpaTest
-@Import(TestcontainersConfiguration.class)
+@Import({TestcontainersConfiguration.class, JpaAuditingConfig.class})
 class GlobalExceptionHandlerMySqlTest {
 
-	private final GlobalExceptionHandler handler = new GlobalExceptionHandler(messageSource());
+	private final GlobalExceptionHandler handler = new GlobalExceptionHandler(messageSource(), Clock.systemUTC());
 
 	@Autowired
 	private ProductRepository productRepository;
@@ -54,11 +56,11 @@ class GlobalExceptionHandlerMySqlTest {
 	void duplicateSku_returns409DuplicateWithSkuMessage() {
 		// given
 		Category cables = entityManager.persist(new Category("Cables", null));
-		productRepository.saveAndFlush(product("A02", cables));
+		productRepository.saveAndFlush(TestData.product("A02", cables));
 
 		// when
 		DataIntegrityViolationException ex = catchThrowableOfType(DataIntegrityViolationException.class,
-				() -> productRepository.saveAndFlush(product("a02", cables)));
+				() -> productRepository.saveAndFlush(TestData.product("a02", cables)));
 		ResponseEntity<ProblemDetail> response = handle(ex, "/api/products");
 
 		// then
@@ -100,7 +102,7 @@ class GlobalExceptionHandlerMySqlTest {
 	void deleteCategoryStillUsedByProduct_returns409InUse() {
 		// given: the service's "has products" check was passed, then another request added a product
 		Category cables = entityManager.persist(new Category("Cables", null));
-		productRepository.saveAndFlush(product("A02", cables));
+		productRepository.saveAndFlush(TestData.product("A02", cables));
 		// Forget the product, as if it was saved by another transaction. Otherwise Hibernate itself
 		// refuses the delete (it knows the product points to the category) and MySQL never sees it
 		entityManager.clear();
@@ -125,7 +127,7 @@ class GlobalExceptionHandlerMySqlTest {
 
 		// when
 		DataIntegrityViolationException ex = catchThrowableOfType(DataIntegrityViolationException.class,
-				() -> productRepository.saveAndFlush(product("A02", deleted)));
+				() -> productRepository.saveAndFlush(TestData.product("A02", deleted)));
 		ResponseEntity<ProblemDetail> response = handle(ex, "/api/products");
 
 		// then
@@ -148,8 +150,4 @@ class GlobalExceptionHandlerMySqlTest {
 		return messageSource;
 	}
 
-	private static Product product(String sku, Category category) {
-		return new Product(sku, "Test product", category, null,
-				new BigDecimal("1.00"), new BigDecimal("2.00"), 10, ProductStatus.ACTIVE);
-	}
 }

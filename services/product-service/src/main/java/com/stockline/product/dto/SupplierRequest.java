@@ -1,5 +1,6 @@
 package com.stockline.product.dto;
 
+import com.stockline.product.util.CommonValidationUtils;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -10,10 +11,10 @@ import jakarta.validation.constraints.Size;
  */
 public record SupplierRequest(
 		@NotBlank @Size(max = 150) String name,
-		@Size(max = 100) String contactName,
+		@Size(max = CommonValidationUtils.NAME_MAX_LENGTH) String contactName,
 		// @Email accepts null and "", so an empty field passes; the service stores it as null
-		@Email @Size(max = 150) String email,
-		@Pattern(regexp = "[0-9+()\\- ]*", message = "{supplier.phone.invalid}")
-		@Size(max = 30) String phone
+		@Email @Size(max = CommonValidationUtils.EMAIL_MAX_LENGTH) String email,
+		@Pattern(regexp = CommonValidationUtils.PHONE_REGEX, message = CommonValidationUtils.PHONE_MESSAGE)
+		@Size(max = CommonValidationUtils.PHONE_MAX_LENGTH) String phone
 ) {
 }

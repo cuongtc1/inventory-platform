@@ -1,6 +1,6 @@
 package com.stockline.product.dto;
 
-import com.stockline.product.entity.ProductStatus;
+import com.stockline.product.constant.ProductStatus;
 
 import java.math.BigDecimal;
 import java.time.Instant;

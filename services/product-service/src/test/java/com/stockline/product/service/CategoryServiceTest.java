@@ -1,5 +1,6 @@
 package com.stockline.product.service;
 
+import com.stockline.product.constant.MessageKeys;
 import com.stockline.product.dto.CategoryRequest;
 import com.stockline.product.dto.CategoryResponse;
 import com.stockline.product.dto.PageResponse;
@@ -9,7 +10,6 @@ import com.stockline.product.exception.InvalidRequestException;
 import com.stockline.product.exception.ResourceInUseException;
 import com.stockline.product.exception.ResourceNotFoundException;
 import com.stockline.product.mapper.CategoryMapper;
-import com.stockline.product.message.MessageKeys;
 import com.stockline.product.repository.CategoryRepository;
 import com.stockline.product.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,11 +20,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
 
+import static com.stockline.product.TestData.category;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -257,12 +257,4 @@ class CategoryServiceTest {
 		verify(categoryRepository, never()).delete(any());
 	}
 
-	/**
-	 * The database normally sets the id; in a unit test we set the private field directly.
-	 */
-	private static Category category(Long id, String name, Category parent) {
-		Category category = new Category(name, parent);
-		ReflectionTestUtils.setField(category, "id", id);
-		return category;
-	}
 }

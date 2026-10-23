@@ -1,9 +1,10 @@
 package com.stockline.product.repository;
 
 import com.stockline.product.TestcontainersConfiguration;
+import com.stockline.product.config.JpaAuditingConfig;
+import com.stockline.product.constant.ProductStatus;
 import com.stockline.product.entity.Category;
 import com.stockline.product.entity.Product;
-import com.stockline.product.entity.ProductStatus;
 import com.stockline.product.entity.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Runs the product list filters against MySQL with the mockup's sample products.
  */
 @DataJpaTest
-@Import(TestcontainersConfiguration.class)
+@Import({TestcontainersConfiguration.class, JpaAuditingConfig.class})
 class ProductSpecificationsTest {
 
 	private static final PageRequest BY_SKU = PageRequest.of(0, 20, Sort.by("sku"));

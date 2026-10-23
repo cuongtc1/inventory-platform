@@ -1,4 +1,4 @@
-package com.stockline.product.message;
+package com.stockline.product.constant;
 
 /**
  * Keys of {@code src/main/resources/messages.properties}. Use these constants instead of typing a key,

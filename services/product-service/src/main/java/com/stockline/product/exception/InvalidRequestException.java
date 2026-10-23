@@ -1,6 +1,6 @@
 package com.stockline.product.exception;
 
-import org.springframework.http.HttpStatus;
+import com.stockline.product.constant.ErrorCode;
 
 /**
  * 400 BAD_REQUEST: input that passes Bean Validation but breaks a business rule,
@@ -9,6 +9,6 @@ import org.springframework.http.HttpStatus;
 public class InvalidRequestException extends ApiException {
 
 	public InvalidRequestException(String messageKey, Object... messageArgs) {
-		super(HttpStatus.BAD_REQUEST, "BAD_REQUEST", messageKey, messageArgs);
+		super(ErrorCode.BAD_REQUEST, messageKey, messageArgs);
 	}
 }

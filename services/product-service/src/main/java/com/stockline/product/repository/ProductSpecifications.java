@@ -1,7 +1,7 @@
 package com.stockline.product.repository;
 
+import com.stockline.product.constant.ProductStatus;
 import com.stockline.product.entity.Product;
-import com.stockline.product.entity.ProductStatus;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.ArrayList;

@@ -1,17 +1,17 @@
 package com.stockline.product.service;
 
+import com.stockline.product.constant.MessageKeys;
+import com.stockline.product.constant.ProductStatus;
 import com.stockline.product.dto.PageResponse;
 import com.stockline.product.dto.ProductFilter;
 import com.stockline.product.dto.ProductRequest;
 import com.stockline.product.dto.ProductResponse;
 import com.stockline.product.entity.Category;
 import com.stockline.product.entity.Product;
-import com.stockline.product.entity.ProductStatus;
 import com.stockline.product.entity.Supplier;
 import com.stockline.product.exception.DuplicateResourceException;
 import com.stockline.product.exception.ResourceNotFoundException;
 import com.stockline.product.mapper.ProductMapper;
-import com.stockline.product.message.MessageKeys;
 import com.stockline.product.repository.CategoryRepository;
 import com.stockline.product.repository.ProductRepository;
 import com.stockline.product.repository.SupplierRepository;
@@ -25,12 +25,12 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
+import static com.stockline.product.TestData.withId;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -263,11 +263,4 @@ class ProductServiceTest {
 				new BigDecimal("8.00"), new BigDecimal("12.00"), 20, ProductStatus.ACTIVE);
 	}
 
-	/**
-	 * The database normally sets the id; in a unit test we set the private field directly.
-	 */
-	private static <T> T withId(T entity, Long id) {
-		ReflectionTestUtils.setField(entity, "id", id);
-		return entity;
-	}
 }

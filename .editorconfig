@@ -1,0 +1,36 @@
+# Editor settings for every file in the repo (https://editorconfig.org).
+# IntelliJ reads this file by itself; VS Code needs the "EditorConfig for VS Code" extension.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Java and Maven files: tabs (docs/conventions.md section 1)
+[*.{java,xml}]
+indent_style = tab
+indent_size = 4
+tab_width = 4
+
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+[*.sql]
+indent_style = space
+indent_size = 4
+
+# Frontend (React + Vite)
+[*.{js,jsx,ts,tsx,json,css,html}]
+indent_style = space
+indent_size = 2
+
+# Two trailing spaces are a line break in Markdown
+[*.md]
+trim_trailing_whitespace = false
+
+# Windows scripts must keep Windows line endings
+[*.{cmd,bat}]
+end_of_line = crlf

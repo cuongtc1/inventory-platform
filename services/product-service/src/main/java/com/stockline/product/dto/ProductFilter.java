@@ -1,6 +1,6 @@
 package com.stockline.product.dto;
 
-import com.stockline.product.entity.ProductStatus;
+import com.stockline.product.constant.ProductStatus;
 
 /**
  * Optional filters of GET /api/products, filled from query parameters with the same names:

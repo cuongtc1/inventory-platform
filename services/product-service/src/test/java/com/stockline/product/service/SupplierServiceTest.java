@@ -1,5 +1,6 @@
 package com.stockline.product.service;
 
+import com.stockline.product.constant.MessageKeys;
 import com.stockline.product.dto.PageResponse;
 import com.stockline.product.dto.SupplierRequest;
 import com.stockline.product.dto.SupplierResponse;
@@ -8,7 +9,6 @@ import com.stockline.product.exception.DuplicateResourceException;
 import com.stockline.product.exception.ResourceInUseException;
 import com.stockline.product.exception.ResourceNotFoundException;
 import com.stockline.product.mapper.SupplierMapper;
-import com.stockline.product.message.MessageKeys;
 import com.stockline.product.repository.ProductRepository;
 import com.stockline.product.repository.SupplierRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,11 +19,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
 
+import static com.stockline.product.TestData.supplier;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -205,9 +205,4 @@ class SupplierServiceTest {
 		verify(supplierRepository, never()).delete(any());
 	}
 
-	private static Supplier supplier(Long id, String name, String contactName, String email, String phone) {
-		Supplier supplier = new Supplier(name, contactName, email, phone);
-		ReflectionTestUtils.setField(supplier, "id", id);
-		return supplier;
-	}
 }

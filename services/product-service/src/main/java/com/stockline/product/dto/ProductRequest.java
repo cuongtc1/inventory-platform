@@ -1,6 +1,7 @@
 package com.stockline.product.dto;
 
-import com.stockline.product.entity.ProductStatus;
+import com.stockline.product.constant.ProductStatus;
+import com.stockline.product.util.CommonValidationUtils;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -15,8 +16,8 @@ import java.math.BigDecimal;
  * Body of POST and PUT /api/products. Only {@code supplierId} is optional.
  */
 public record ProductRequest(
-		@NotBlank @Size(max = 50)
-		@Pattern(regexp = "[A-Za-z0-9._-]*", message = "{product.sku.invalid}")
+		@NotBlank @Size(max = CommonValidationUtils.CODE_MAX_LENGTH)
+		@Pattern(regexp = CommonValidationUtils.CODE_REGEX, message = CommonValidationUtils.CODE_MESSAGE)
 		String sku,
 		@NotBlank @Size(max = 200) String name,
 		@NotNull @Positive Long categoryId,

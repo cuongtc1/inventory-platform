@@ -1,5 +1,6 @@
 package com.stockline.product.service;
 
+import com.stockline.product.constant.MessageKeys;
 import com.stockline.product.dto.CategoryRequest;
 import com.stockline.product.dto.CategoryResponse;
 import com.stockline.product.dto.PageResponse;
@@ -9,7 +10,6 @@ import com.stockline.product.exception.InvalidRequestException;
 import com.stockline.product.exception.ResourceInUseException;
 import com.stockline.product.exception.ResourceNotFoundException;
 import com.stockline.product.mapper.CategoryMapper;
-import com.stockline.product.message.MessageKeys;
 import com.stockline.product.repository.CategoryRepository;
 import com.stockline.product.repository.ProductRepository;
 import org.springframework.data.domain.Pageable;
@@ -77,7 +77,7 @@ public class CategoryService {
 		// No save() needed: the entity is managed, so JPA writes the changes when the transaction commits
 		category.setName(name);
 		category.setParent(parent);
-		// Run the UPDATE now so @PreUpdate sets updatedAt before we build the response
+		// Run the UPDATE now so JPA auditing sets updatedAt / updatedBy before we build the response
 		categoryRepository.flush();
 		return categoryMapper.toResponse(category);
 	}

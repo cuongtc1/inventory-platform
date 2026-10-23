@@ -1,5 +1,6 @@
 package com.stockline.product.service;
 
+import com.stockline.product.constant.MessageKeys;
 import com.stockline.product.dto.PageResponse;
 import com.stockline.product.dto.ProductFilter;
 import com.stockline.product.dto.ProductRequest;
@@ -10,18 +11,15 @@ import com.stockline.product.entity.Supplier;
 import com.stockline.product.exception.DuplicateResourceException;
 import com.stockline.product.exception.ResourceNotFoundException;
 import com.stockline.product.mapper.ProductMapper;
-import com.stockline.product.message.MessageKeys;
 import com.stockline.product.repository.CategoryRepository;
 import com.stockline.product.repository.ProductRepository;
 import com.stockline.product.repository.ProductSpecifications;
 import com.stockline.product.repository.SupplierRepository;
+import com.stockline.product.util.MoneyUtils;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 
 /**
  * Business rules for products:
@@ -66,7 +64,8 @@ public class ProductService {
 		Supplier supplier = findSupplier(request.supplierId());
 
 		Product saved = productRepository.save(new Product(request.sku(), request.name().strip(), category, supplier,
-				money(request.costPrice()), money(request.salePrice()), request.reorderLevel(), request.status()));
+				MoneyUtils.toMoney(request.costPrice()), MoneyUtils.toMoney(request.salePrice()), request.reorderLevel(),
+				request.status()));
 		return productMapper.toResponse(saved);
 	}
 
@@ -83,18 +82,19 @@ public class ProductService {
 		product.setName(request.name().strip());
 		product.setCategory(category);
 		product.setSupplier(supplier);
-		product.setCostPrice(money(request.costPrice()));
-		product.setSalePrice(money(request.salePrice()));
+		product.setCostPrice(MoneyUtils.toMoney(request.costPrice()));
+		product.setSalePrice(MoneyUtils.toMoney(request.salePrice()));
 		product.setReorderLevel(request.reorderLevel());
 		product.setStatus(request.status());
-		// Run the UPDATE now so @PreUpdate sets updatedAt before we build the response
+		// Run the UPDATE now so JPA auditing sets updatedAt / updatedBy before we build the response
 		productRepository.flush();
 		return productMapper.toResponse(product);
 	}
 
 	/**
-	 * Hard delete. Other services refer to products only by id (no foreign keys across schemas), so nothing
-	 * stops this here; once stock and orders exist, setting the status to INACTIVE is the safer choice.
+	 * Hard delete, the project rule for every resource (docs/conventions.md section 5). Other services refer to
+	 * products only by id and keep their own copies of what they need (e.g. the product name on an order line),
+	 * so their history stays readable after the product is gone.
 	 */
 	@Transactional
 	public void delete(Long id) {
@@ -117,14 +117,6 @@ public class ProductService {
 		}
 		return supplierRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException(Supplier.class.getSimpleName(), id));
-	}
-
-	/**
-	 * 40 becomes 40.00, like the DECIMAL(12,2) column, so the response to a save matches a later read.
-	 * Never rounds: @Digits(fraction = 2) on the request already rejects a third decimal.
-	 */
-	private static BigDecimal money(BigDecimal amount) {
-		return amount.setScale(2, RoundingMode.UNNECESSARY);
 	}
 
 	private static DuplicateResourceException duplicateSku(String sku) {

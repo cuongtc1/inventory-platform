@@ -1,9 +1,10 @@
 package com.stockline.product.repository;
 
 import com.stockline.product.TestcontainersConfiguration;
+import com.stockline.product.config.JpaAuditingConfig;
+import com.stockline.product.constant.ProductStatus;
 import com.stockline.product.entity.Category;
 import com.stockline.product.entity.Product;
-import com.stockline.product.entity.ProductStatus;
 import com.stockline.product.entity.Supplier;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Each test runs in a transaction that is rolled back at the end, so tests don't see each other's rows.
  */
 @DataJpaTest
-@Import(TestcontainersConfiguration.class)
+@Import({TestcontainersConfiguration.class, JpaAuditingConfig.class})
 class ProductRepositoryTest {
 
 	@Autowired

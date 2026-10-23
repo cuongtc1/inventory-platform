@@ -1,4 +1,4 @@
-package com.stockline.product.message;
+package com.stockline.product.constant;
 
 import com.stockline.product.dto.CategoryRequest;
 import com.stockline.product.dto.ProductRequest;

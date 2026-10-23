@@ -29,8 +29,9 @@ com.stockline.product
 ├── dto/           request and response objects (Java records)
 ├── mapper/        entity <-> DTO conversion
 ├── exception/     custom exceptions and the global exception handler
-├── message/       MessageKeys: constants for the keys in messages.properties
-├── config/        @Configuration classes
+├── constant/      enums (ProductStatus, ErrorCode) and constant classes (MessageKeys)
+├── util/          static helpers: DateTimeUtils, MoneyUtils, CommonValidationUtils, TextUtils
+├── config/        @Configuration classes (Clock, JPA auditing, ...)
 ├── client/        REST clients to other services (only if needed)
 └── event/         Kafka event classes, producers, consumers (only if needed)
 ```
@@ -55,15 +56,37 @@ Code style:
 - Use constructor injection with `final` fields. Don't put `@Autowired` on fields.
 - Mappers are small hand-written classes (`@Component`), not MapStruct. They're easy to read and debug.
 - No Lombok. Entities have normal getters and setters (generate them in the IDE) and a protected no-args constructor for JPA.
-- Money is `BigDecimal`, never `double`. Time is `Instant`, always UTC.
-- Enums are stored as strings (`@Enumerated(EnumType.STRING)`).
+- Before writing a helper a second time, put it in `util/` (or extend a class there). Utility classes are `final`, with a private constructor and only `static` methods.
+- Editor settings come from `.editorconfig` in the repo root (tabs, UTF-8, LF). IntelliJ reads it by itself; VS Code needs the "EditorConfig for VS Code" extension.
+
+Enums:
+- Enums live in `constant/`, never in `entity/` or `dto/`: `constant/ProductStatus`, `constant/ErrorCode`.
+- Stored as strings (`@Enumerated(EnumType.STRING)`, column `VARCHAR(20)`), sent in JSON as the upper-case name (`"ACTIVE"`). The API returns only the name; the frontend turns it into a label ("Active").
+- Behaviour that belongs to the values goes into the enum, e.g. allowed order status changes (T5.4): `OrderStatus.PAID.canChangeTo(SHIPPED)`.
+- Never share a Java enum between services. Events and REST calls between services carry the name as a string.
+- Error codes are the `ErrorCode` enum (each with its HTTP status), never string literals.
+
+Dates and times (`util/DateTimeUtils`):
+- Every moment is a `java.time.Instant` (UTC), stored as `DATETIME(6)` and sent as ISO-8601 with `Z`. No `Date`, `LocalDateTime` or time-zone strings in entities or DTOs.
+- "Now" comes from the `Clock` bean (`clock.instant()`), never `Instant.now()`, so tests can fix the time.
+- The business time zone is `Asia/Ho_Chi_Minh` (`DateTimeUtils.BUSINESS_ZONE`). Dates the user picks ("today", `?from=2026-10-01&to=2026-10-31`, "October") are Vietnam dates and become Instant ranges with `startOfDay` / `endOfDayExclusive` / `startOfMonth`. Ranges are half-open: `>= start AND < end`.
+- Texts people read (exports, e-mails) use `DateTimeUtils.formatDate` / `formatDateTime` (`dd/MM/yyyy HH:mm:ss`, Vietnam time). The API never sends formatted dates.
+
+Money (`util/MoneyUtils`):
+- One currency: **USD**. Amounts are `BigDecimal` with 2 decimals, `DECIMAL(12,2)` in the database, plain JSON numbers (`12.50`). Never `double`.
+- Calculate at full precision and round once at the end with `MoneyUtils.toMoney` (`HALF_UP`). Use `MoneyUtils.multiply` / `sum` for line totals and order totals.
+- Request fields: `@Digits(integer = 10, fraction = 2)`; prices `@Positive`, costs `@PositiveOrZero`.
+
+Validation (`util/CommonValidationUtils`):
+- A rule used by more than one field (phone, code/SKU, maximum lengths) is a constant there, and annotations point to it: `@Pattern(regexp = CommonValidationUtils.PHONE_REGEX, message = CommonValidationUtils.PHONE_MESSAGE)`.
+- Text cleanup before saving: `TextUtils.blankToNull` for optional fields, `strip()` for required ones.
 
 Messages:
 - Every text the API returns, and log texts, live in `src/main/resources/messages.properties`, one key per message, never as string literals in Java.
 - Sections: `common` (validation, request, resource and server errors used everywhere), one section per resource (`category`, `supplier`, `product`, ...), and `system` (log texts, never sent to the client).
 - Key format: `<section>.<subject>.<problem>`, lower case, words joined with `-`: `common.resource.not-found`, `category.delete.has-products`, `system.error.unexpected`.
-- Java code uses the constants in `message/MessageKeys`. Exceptions carry a key and arguments (`new DuplicateResourceException(MessageKeys.CATEGORY_NAME_DUPLICATE, name)`); the `GlobalExceptionHandler` looks up the text.
-- Bean Validation annotations reference a key in braces: `@Pattern(message = "{product.sku.invalid}")`. The file also overrides the default texts (`jakarta.validation.constraints.NotBlank.message`, ...), and Spring MVC's own texts (`problemDetail.<exception class>`).
+- Java code uses the constants in `constant/MessageKeys`. Exceptions carry a key and arguments (`new DuplicateResourceException(MessageKeys.CATEGORY_NAME_DUPLICATE, name)`); the `GlobalExceptionHandler` looks up the text.
+- Bean Validation annotations reference a key in braces: `@Pattern(message = "{common.validation.code.invalid}")`, usually through a `CommonValidationUtils.*_MESSAGE` constant. The file also overrides the default texts (`jakarta.validation.constraints.NotBlank.message`, ...), and Spring MVC's own texts (`problemDetail.<exception class>`).
 - Placeholders are `{0}`, `{1}` (`java.text.MessageFormat`). In a message with placeholders, write an apostrophe as `''`: `Category ''{0}'' already exists`. Pass numbers as text, or MessageFormat prints `1234` as `1,234` (the handler does this).
 
 ## 2. REST API style
@@ -241,7 +264,8 @@ Ant Design's table counts pages from 1, so the frontend sends `page = current - 
 
 - Tables are **plural, snake_case**: `products`, `stock_levels`, `sales_order_items`. Columns are snake_case: `reorder_level`, `created_at`.
 - Primary key is `id BIGINT AUTO_INCREMENT`.
-- Most tables have `created_at` and `updated_at` as `DATETIME(6)`, stored in UTC.
+- Every table has the audit columns `created_at`, `updated_at` (`DATETIME(6)`, UTC) and `created_by`, `updated_by` (`VARCHAR(100)`, the user's login from the JWT, `system` before Phase 3 or for jobs). Entities extend `BaseEntity`; Spring Data JPA auditing fills all four, services never set them.
+- Deletes are **hard deletes** (`DELETE FROM ...`), the rule for every resource. A row other rows still use can't be deleted (409 `IN_USE`). Services that keep a reference to another service's data also keep a copy of what they show (e.g. `product_name` on an order line), so history stays readable after the original is deleted.
 - Rows that can be changed by two users at once have `version BIGINT NOT NULL DEFAULT 0` (`@Version` in JPA).
 - Money is `DECIMAL(12,2)`. Quantities are `INT`, or `DECIMAL` if a product can be sold in fractions.
 - Enums are `VARCHAR(20)`.
@@ -309,6 +333,8 @@ spring:
 - Assert exceptions by type, message key and arguments (`.hasMessage(MessageKeys.X).extracting("messageArgs")`), not by English text; the final text is checked in controller and integration tests.
 - Tests that need a database use Testcontainers (`@Import(TestcontainersConfiguration.class)`); Docker must be running.
 - Integration tests don't roll back, so each test uses its own names and SKUs.
+- Build test entities with `TestData` (`src/test/java/.../TestData.java`, static import), not with a private helper per test class.
+- Tests that need a fixed or moving time replace the `Clock` bean (see `AuditingTest`).
 
 ## 9. Git: branches and commits
 
