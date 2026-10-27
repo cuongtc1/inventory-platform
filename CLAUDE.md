@@ -98,6 +98,7 @@ New services follow `services/product-service` as the template: Spring Boot 4.1 
 - **Definition of Done:** it builds, tests pass, acceptance criteria are met, README/docs updated if behavior changed, committed with a clear message.
 - **Ask when a requirement is unclear** instead of guessing. If a task is too big, propose splitting it before starting.
 - This is a learning project: explain new concepts briefly (Spring, JPA, Kafka, React) when they first appear, and keep code readable over clever.
+- **Team of subagents** (`.claude/agents/`): the main session is the tech lead. It plans the task, gives the **coder** one clear piece of production code at a time, gives the **tester** what to test, and asks the **code-reviewer** to review every finished task before committing and handing it to the developer. The tech lead checks each agent's report, fixes or re-delegates findings, keeps `TASKS.md` status, commits, and writes the summary. Agents never commit, switch branches or change task status.
 
 ## Do
 
