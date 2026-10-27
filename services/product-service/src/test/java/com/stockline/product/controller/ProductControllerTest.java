@@ -47,7 +47,7 @@ class ProductControllerTest {
 
 	private static final ProductResponse MOUSE = new ProductResponse(12L, "A01", "Wireless Mouse",
 			3L, "Peripherals", 5L, "LogiCo", new BigDecimal("8.00"), new BigDecimal("12.00"), 20,
-			ProductStatus.ACTIVE, NOW, NOW);
+			ProductStatus.ACTIVE, NOW, "system", NOW, "system");
 
 	private static final String VALID_BODY = """
 			{ "sku": "A01", "name": "Wireless Mouse", "categoryId": 3, "supplierId": 5,
@@ -74,6 +74,8 @@ class ProductControllerTest {
 				.andExpect(jsonPath("$.content[0].supplierName").value("LogiCo"))
 				.andExpect(jsonPath("$.content[0].salePrice").value(12.00))
 				.andExpect(jsonPath("$.content[0].status").value("ACTIVE"))
+				.andExpect(jsonPath("$.content[0].createdBy").value("system"))
+				.andExpect(jsonPath("$.content[0].updatedBy").value("system"))
 				.andExpect(jsonPath("$.totalElements").value(1));
 		verify(productService).list(
 				eq(new ProductFilter(null, null, null, null)),

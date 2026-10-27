@@ -96,7 +96,7 @@ Every error, including Spring's own, has `type`, `title`, `status`, `detail`, `i
 
 Request body: `{ "name": "Cables", "parentId": 1 }`. `name` is required (max 100 characters, trimmed), and names are unique ignoring case. `parentId` is optional; leave it out for a top-level category.
 
-Response: `{ "id", "name", "parentId", "parentName", "createdAt", "updatedAt" }`.
+Response: `{ "id", "name", "parentId", "parentName", "productCount", "createdAt", "createdBy", "updatedAt", "updatedBy" }`. `productCount` counts the products directly in the category (not in its subcategories); the list gets all counts of a page with one grouped query.
 
 ### Suppliers: `/api/suppliers`
 
@@ -119,7 +119,7 @@ Request body: `{ "name": "LogiCo", "contactName": "Anna Pham", "email": "anna@lo
 
 Text is trimmed. An empty or blank optional field is stored as `null`.
 
-Response: `{ "id", "name", "contactName", "email", "phone", "createdAt", "updatedAt" }`.
+Response: `{ "id", "name", "contactName", "email", "phone", "createdAt", "createdBy", "updatedAt", "updatedBy" }`.
 
 ### Products: `/api/products`
 
@@ -160,7 +160,7 @@ Request body:
 | `reorderLevel` | Required, ≥ 0 |
 | `status` | Required, `ACTIVE` or `INACTIVE` |
 
-Response: `{ "id", "sku", "name", "categoryId", "categoryName", "supplierId", "supplierName", "costPrice", "salePrice", "reorderLevel", "status", "createdAt", "updatedAt" }`. Prices always have 2 decimals.
+Response: `{ "id", "sku", "name", "categoryId", "categoryName", "supplierId", "supplierName", "costPrice", "salePrice", "reorderLevel", "status", "createdAt", "createdBy", "updatedAt", "updatedBy" }`. Prices always have 2 decimals.
 
 Deleting a product is a hard delete. Deleting a category or supplier that products still use returns `409 IN_USE`.
 
@@ -222,7 +222,7 @@ Schema `product_db`, created by Flyway:
 | `V3__create_products.sql` | `products` | `sku` (unique), `name`, `category_id` (required), `supplier_id` (optional), `cost_price`, `sale_price` (USD, `DECIMAL(12,2)`), `reorder_level`, `status` (`ACTIVE` / `INACTIVE`) |
 | `V4__add_audit_columns.sql` | all three | `created_by`, `updated_by` (`VARCHAR(100)`); existing rows got `system` |
 
-Audit columns on every table: `created_at`, `updated_at` (UTC), `created_by`, `updated_by` (`system` until login exists in Phase 3). They are filled automatically and not part of the API responses yet. Deletes are hard deletes.
+Audit columns on every table: `created_at`, `updated_at` (UTC), `created_by`, `updated_by` (`system` until login exists in Phase 3). They are filled automatically and every response returns them as `createdAt`, `createdBy`, `updatedAt`, `updatedBy`. Deletes are hard deletes.
 
 Foreign keys: `categories.parent_id → categories`, `products.category_id → categories`, `products.supplier_id → suppliers`. Deleting a category or supplier that is still used fails. Stock quantities are not here; they belong to inventory-service.
 

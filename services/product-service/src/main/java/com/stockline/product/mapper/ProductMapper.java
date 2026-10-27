@@ -28,6 +28,8 @@ public class ProductMapper {
 				product.getReorderLevel(),
 				product.getStatus(),
 				product.getCreatedAt(),
-				product.getUpdatedAt());
+				product.getCreatedBy(),
+				product.getUpdatedAt(),
+				product.getUpdatedBy());
 	}
 }

@@ -1,10 +1,12 @@
 package com.stockline.product.repository;
 
+import com.stockline.product.TestData;
 import com.stockline.product.TestcontainersConfiguration;
 import com.stockline.product.constant.ProductStatus;
 import com.stockline.product.entity.Category;
 import com.stockline.product.entity.Product;
 import com.stockline.product.entity.Supplier;
+import com.stockline.product.repository.ProductRepository.CategoryProductCount;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -13,8 +15,12 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
@@ -85,6 +91,28 @@ class ProductRepositoryTest {
 		// when / then
 		assertThat(productRepository.existsByCategoryId(cables.getId())).isTrue();
 		assertThat(productRepository.existsByCategoryId(displays.getId())).isFalse();
+	}
+
+	@Test
+	void countByCategoryIds_groupsProductsPerCategory_andLeavesOutEmptyCategories() {
+		// given: Cables 2 products, Displays 1, Accessories none
+		Category cables = entityManager.persist(TestData.category("Cables"));
+		Category displays = entityManager.persist(TestData.category("Displays"));
+		Category accessories = entityManager.persist(TestData.category("Accessories"));
+		productRepository.save(TestData.product("A02", cables));
+		productRepository.save(TestData.product("A05", cables));
+		productRepository.save(TestData.product("A04", displays));
+		productRepository.flush();
+
+		// when
+		Map<Long, Long> counts = productRepository
+				.countByCategoryIds(List.of(cables.getId(), displays.getId(), accessories.getId())).stream()
+				.collect(Collectors.toMap(CategoryProductCount::getCategoryId, CategoryProductCount::getProductCount));
+
+		// then
+		assertThat(counts).containsOnly(entry(cables.getId(), 2L), entry(displays.getId(), 1L));
+		assertThat(productRepository.countByCategoryId(cables.getId())).isEqualTo(2);
+		assertThat(productRepository.countByCategoryId(accessories.getId())).isZero();
 	}
 
 	@Test

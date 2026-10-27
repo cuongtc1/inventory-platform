@@ -7,6 +7,11 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.Collection;
+import java.util.List;
 
 /**
  * {@link JpaSpecificationExecutor} adds {@code findAll(Specification, Pageable)}: a query whose WHERE clause is
@@ -30,4 +35,29 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 	boolean existsByCategoryId(Long categoryId);
 
 	boolean existsBySupplierId(Long supplierId);
+
+	// Derived count query: SELECT COUNT(*) FROM products WHERE category_id = ?
+	long countByCategoryId(Long categoryId);
+
+	/**
+	 * Product counts for a page of categories in one query, instead of one count query per category.
+	 * Categories without products are not in the result (count 0).
+	 *
+	 * <p>The result rows are an interface projection: Spring Data creates objects of {@link CategoryProductCount}
+	 * and maps the {@code AS} aliases to its getters, no entity or DTO class needed.
+	 */
+	@Query("""
+			SELECT p.category.id AS categoryId, COUNT(p) AS productCount
+			FROM Product p
+			WHERE p.category.id IN :categoryIds
+			GROUP BY p.category.id
+			""")
+	List<CategoryProductCount> countByCategoryIds(@Param("categoryIds") Collection<Long> categoryIds);
+
+	interface CategoryProductCount {
+
+		Long getCategoryId();
+
+		long getProductCount();
+	}
 }

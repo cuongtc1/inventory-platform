@@ -55,7 +55,7 @@ class CategoryControllerTest {
 	@Test
 	void list_noParameters_usesDefaultPageAndReturnsPageJson() throws Exception {
 		// given
-		CategoryResponse cables = new CategoryResponse(2L, "Cables", 1L, "Electronics", NOW, NOW);
+		CategoryResponse cables = new CategoryResponse(2L, "Cables", 1L, "Electronics", 2, NOW, "system", NOW, "system");
 		when(categoryService.list(isNull(), any(Pageable.class)))
 				.thenReturn(new PageResponse<>(List.of(cables), 0, 20, 1, 1));
 
@@ -64,7 +64,10 @@ class CategoryControllerTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.content[0].name").value("Cables"))
 				.andExpect(jsonPath("$.content[0].parentName").value("Electronics"))
+				.andExpect(jsonPath("$.content[0].productCount").value(2))
 				.andExpect(jsonPath("$.content[0].createdAt").value("2026-10-23T08:00:00Z"))
+				.andExpect(jsonPath("$.content[0].createdBy").value("system"))
+				.andExpect(jsonPath("$.content[0].updatedBy").value("system"))
 				.andExpect(jsonPath("$.totalElements").value(1));
 		verify(categoryService).list(isNull(), argThat(pageable ->
 				pageable.getPageNumber() == 0
@@ -87,7 +90,7 @@ class CategoryControllerTest {
 	@Test
 	void get_existingId_returns200WithCategory() throws Exception {
 		// given
-		when(categoryService.get(2L)).thenReturn(new CategoryResponse(2L, "Cables", 1L, "Electronics", NOW, NOW));
+		when(categoryService.get(2L)).thenReturn(new CategoryResponse(2L, "Cables", 1L, "Electronics", 2, NOW, "system", NOW, "system"));
 
 		// when / then
 		mockMvc.perform(get("/api/categories/2"))
@@ -104,7 +107,7 @@ class CategoryControllerTest {
 	void update_validRequest_returns200WithUpdatedCategory() throws Exception {
 		// given
 		when(categoryService.update(2L, new CategoryRequest("USB Cables", null)))
-				.thenReturn(new CategoryResponse(2L, "USB Cables", null, null, NOW, NOW));
+				.thenReturn(new CategoryResponse(2L, "USB Cables", null, null, 0, NOW, "system", NOW, "system"));
 
 		// when / then
 		mockMvc.perform(put("/api/categories/2")
@@ -138,7 +141,7 @@ class CategoryControllerTest {
 	void create_validRequest_returns201WithLocation() throws Exception {
 		// given
 		when(categoryService.create(new CategoryRequest("Cables", 1L)))
-				.thenReturn(new CategoryResponse(5L, "Cables", 1L, "Electronics", NOW, NOW));
+				.thenReturn(new CategoryResponse(5L, "Cables", 1L, "Electronics", 0, NOW, "system", NOW, "system"));
 
 		// when / then
 		mockMvc.perform(post("/api/categories")

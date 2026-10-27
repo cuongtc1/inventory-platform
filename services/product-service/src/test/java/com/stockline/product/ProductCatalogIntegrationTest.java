@@ -70,6 +70,19 @@ class ProductCatalogIntegrationTest {
 		mockMvc.perform(get("/api/products").param("supplierId", String.valueOf(wireCo)))
 				.andExpect(jsonPath("$.content", hasSize(1)));
 
+		// Product counts per category (direct products only, not those of subcategories) and audit fields
+		// (other tests in this class also create "IT ..." categories and don't roll back, so pick rows by name)
+		mockMvc.perform(get("/api/categories").param("search", "IT "))
+				.andExpect(jsonPath("$.content[?(@.name == 'IT Cables')].productCount").value(2))
+				.andExpect(jsonPath("$.content[?(@.name == 'IT Electronics')].productCount").value(0))
+				.andExpect(jsonPath("$.content[?(@.name == 'IT Cables')].createdBy").value("system"))
+				.andExpect(jsonPath("$.content[?(@.name == 'IT Cables')].updatedBy").value("system"));
+		mockMvc.perform(get("/api/categories/{id}", cables))
+				.andExpect(jsonPath("$.productCount").value(2));
+		mockMvc.perform(get("/api/products/{id}", usbCable))
+				.andExpect(jsonPath("$.createdBy").value("system"))
+				.andExpect(jsonPath("$.updatedBy").value("system"));
+
 		// Update: price is stored and returned with 2 decimals
 		mockMvc.perform(put("/api/products/{id}", usbCable)
 						.contentType(MediaType.APPLICATION_JSON)

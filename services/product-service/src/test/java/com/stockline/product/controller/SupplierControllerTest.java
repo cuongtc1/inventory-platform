@@ -54,7 +54,7 @@ class SupplierControllerTest {
 	void list_withSearch_usesDefaultPageAndReturnsPageJson() throws Exception {
 		// given
 		SupplierResponse logiCo = new SupplierResponse(1L, "LogiCo", "Anna Pham", "anna@logico.com",
-				"+84 90 111 2233", NOW, NOW);
+				"+84 90 111 2233", NOW, "system", NOW, "system");
 		when(supplierService.list(eq("logi"), any(Pageable.class)))
 				.thenReturn(new PageResponse<>(List.of(logiCo), 0, 20, 1, 1));
 
@@ -65,6 +65,8 @@ class SupplierControllerTest {
 				.andExpect(jsonPath("$.content[0].contactName").value("Anna Pham"))
 				.andExpect(jsonPath("$.content[0].email").value("anna@logico.com"))
 				.andExpect(jsonPath("$.content[0].phone").value("+84 90 111 2233"))
+				.andExpect(jsonPath("$.content[0].createdBy").value("system"))
+				.andExpect(jsonPath("$.content[0].updatedBy").value("system"))
 				.andExpect(jsonPath("$.totalElements").value(1));
 		verify(supplierService).list(eq("logi"), argThat(pageable ->
 				pageable.getPageNumber() == 0
@@ -76,7 +78,7 @@ class SupplierControllerTest {
 	void get_existingId_returns200WithSupplier() throws Exception {
 		// given
 		when(supplierService.get(1L)).thenReturn(new SupplierResponse(1L, "LogiCo", "Anna Pham", "anna@logico.com",
-				"+84 90 111 2233", NOW, NOW));
+				"+84 90 111 2233", NOW, "system", NOW, "system"));
 
 		// when / then
 		mockMvc.perform(get("/api/suppliers/1"))
@@ -91,7 +93,7 @@ class SupplierControllerTest {
 	void update_validRequest_returns200WithUpdatedSupplier() throws Exception {
 		// given
 		when(supplierService.update(1L, new SupplierRequest("LogiCo", "Tom Lee", null, null)))
-				.thenReturn(new SupplierResponse(1L, "LogiCo", "Tom Lee", null, null, NOW, NOW));
+				.thenReturn(new SupplierResponse(1L, "LogiCo", "Tom Lee", null, null, NOW, "system", NOW, "system"));
 
 		// when / then
 		mockMvc.perform(put("/api/suppliers/1")
@@ -121,7 +123,7 @@ class SupplierControllerTest {
 	void create_validRequest_returns201WithLocation() throws Exception {
 		// given
 		when(supplierService.create(new SupplierRequest("WireCo", "Tom Lee", "tom@wireco.com", "+84 91 222 3344")))
-				.thenReturn(new SupplierResponse(7L, "WireCo", "Tom Lee", "tom@wireco.com", "+84 91 222 3344", NOW, NOW));
+				.thenReturn(new SupplierResponse(7L, "WireCo", "Tom Lee", "tom@wireco.com", "+84 91 222 3344", NOW, "system", NOW, "system"));
 
 		// when / then
 		mockMvc.perform(post("/api/suppliers")
@@ -139,7 +141,7 @@ class SupplierControllerTest {
 	void create_onlyName_returns201() throws Exception {
 		// given
 		when(supplierService.create(new SupplierRequest("DeskPro", null, null, null)))
-				.thenReturn(new SupplierResponse(8L, "DeskPro", null, null, null, NOW, NOW));
+				.thenReturn(new SupplierResponse(8L, "DeskPro", null, null, null, NOW, "system", NOW, "system"));
 
 		// when / then
 		mockMvc.perform(post("/api/suppliers")

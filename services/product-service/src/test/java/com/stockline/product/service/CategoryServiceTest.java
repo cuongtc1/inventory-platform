@@ -13,6 +13,7 @@ import com.stockline.product.entity.Category;
 import com.stockline.product.mapper.CategoryMapper;
 import com.stockline.product.repository.CategoryRepository;
 import com.stockline.product.repository.ProductRepository;
+import com.stockline.product.repository.ProductRepository.CategoryProductCount;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -53,25 +54,28 @@ class CategoryServiceTest {
 	}
 
 	@Test
-	void list_searchWithSpaces_trimsItAndMapsPage() {
-		// given
+	void list_searchWithSpaces_trimsItAndMapsPageWithProductCounts() {
+		// given: Cables has 3 products, USB Cables has none (so it's missing from the count query's result)
 		Pageable pageable = PageRequest.of(0, 20);
 		Category electronics = category(1L, "Electronics", null);
 		Category cables = category(2L, "Cables", electronics);
+		Category usbCables = category(3L, "USB Cables", cables);
 		when(categoryRepository.findByNameContainingIgnoreCase("cab", pageable))
-				.thenReturn(new PageImpl<>(List.of(cables), pageable, 1));
+				.thenReturn(new PageImpl<>(List.of(cables, usbCables), pageable, 2));
+		when(productRepository.countByCategoryIds(List.of(2L, 3L))).thenReturn(List.of(productCount(2L, 3)));
 
 		// when
 		PageResponse<CategoryResponse> page = categoryService.list("  cab ", pageable);
 
 		// then
-		assertThat(page.totalElements()).isEqualTo(1);
+		assertThat(page.totalElements()).isEqualTo(2);
 		assertThat(page.content().getFirst().name()).isEqualTo("Cables");
 		assertThat(page.content().getFirst().parentName()).isEqualTo("Electronics");
+		assertThat(page.content()).extracting(CategoryResponse::productCount).containsExactly(3L, 0L);
 	}
 
 	@Test
-	void list_noSearch_searchesWithEmptyText() {
+	void list_noSearch_searchesWithEmptyTextAndSkipsCountsForEmptyPage() {
 		// given: "contains ''" matches every row, so one repository method serves both cases
 		Pageable pageable = PageRequest.of(0, 20);
 		when(categoryRepository.findByNameContainingIgnoreCase("", pageable))
@@ -80,16 +84,18 @@ class CategoryServiceTest {
 		// when
 		PageResponse<CategoryResponse> page = categoryService.list(null, pageable);
 
-		// then
+		// then: no count query for an empty page ("IN ()" is not valid SQL)
 		assertThat(page.content()).isEmpty();
 		verify(categoryRepository).findByNameContainingIgnoreCase("", pageable);
+		verify(productRepository, never()).countByCategoryIds(any());
 	}
 
 	@Test
-	void get_existingId_returnsCategoryWithParent() {
+	void get_existingId_returnsCategoryWithParentAndProductCount() {
 		// given
 		Category electronics = category(1L, "Electronics", null);
 		when(categoryRepository.findById(2L)).thenReturn(Optional.of(category(2L, "Cables", electronics)));
+		when(productRepository.countByCategoryId(2L)).thenReturn(5L);
 
 		// when
 		CategoryResponse response = categoryService.get(2L);
@@ -98,6 +104,7 @@ class CategoryServiceTest {
 		assertThat(response.id()).isEqualTo(2L);
 		assertThat(response.parentId()).isEqualTo(1L);
 		assertThat(response.parentName()).isEqualTo("Electronics");
+		assertThat(response.productCount()).isEqualTo(5L);
 	}
 
 	@Test
@@ -123,10 +130,12 @@ class CategoryServiceTest {
 		// when
 		CategoryResponse response = categoryService.create(new CategoryRequest("  Cables ", 1L));
 
-		// then: name is trimmed and the parent is set
+		// then: name is trimmed, the parent is set, and a new category has no products
 		assertThat(response.name()).isEqualTo("Cables");
 		assertThat(response.parentId()).isEqualTo(1L);
 		assertThat(response.parentName()).isEqualTo("Electronics");
+		assertThat(response.productCount()).isZero();
+		verify(productRepository, never()).countByCategoryId(any());
 	}
 
 	@Test
@@ -164,6 +173,7 @@ class CategoryServiceTest {
 		when(categoryRepository.findById(2L)).thenReturn(Optional.of(cables));
 		when(categoryRepository.existsByNameAndIdNot("Cables", 2L)).thenReturn(false);
 		when(categoryRepository.findById(1L)).thenReturn(Optional.of(electronics));
+		when(productRepository.countByCategoryId(2L)).thenReturn(4L);
 
 		// when
 		CategoryResponse response = categoryService.update(2L, new CategoryRequest("Cables", 1L));
@@ -171,6 +181,7 @@ class CategoryServiceTest {
 		// then
 		assertThat(response.name()).isEqualTo("Cables");
 		assertThat(response.parentName()).isEqualTo("Electronics");
+		assertThat(response.productCount()).isEqualTo(4L);
 		verify(categoryRepository).flush();
 	}
 
@@ -258,4 +269,21 @@ class CategoryServiceTest {
 		verify(categoryRepository, never()).delete(any());
 	}
 
+	/**
+	 * One row of ProductRepository.countByCategoryIds. Spring Data creates these from the query; in a unit test
+	 * we implement the projection interface ourselves.
+	 */
+	private static CategoryProductCount productCount(Long categoryId, long count) {
+		return new CategoryProductCount() {
+			@Override
+			public Long getCategoryId() {
+				return categoryId;
+			}
+
+			@Override
+			public long getProductCount() {
+				return count;
+			}
+		};
+	}
 }

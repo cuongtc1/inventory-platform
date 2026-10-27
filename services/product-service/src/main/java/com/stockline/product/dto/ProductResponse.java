@@ -8,6 +8,7 @@ import java.time.Instant;
 /**
  * A product as returned by the API, with the category and supplier names so a list needs no extra calls.
  * {@code supplierId} and {@code supplierName} are null when no supplier is set.
+ * {@code createdBy} / {@code updatedBy} are the user's login, or "system" (before login exists, or for jobs).
  */
 public record ProductResponse(
 		Long id,
@@ -22,6 +23,8 @@ public record ProductResponse(
 		int reorderLevel,
 		ProductStatus status,
 		Instant createdAt,
-		Instant updatedAt
+		String createdBy,
+		Instant updatedAt,
+		String updatedBy
 ) {
 }

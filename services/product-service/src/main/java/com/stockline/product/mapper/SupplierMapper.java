@@ -15,6 +15,8 @@ public class SupplierMapper {
 				supplier.getEmail(),
 				supplier.getPhone(),
 				supplier.getCreatedAt(),
-				supplier.getUpdatedAt());
+				supplier.getCreatedBy(),
+				supplier.getUpdatedAt(),
+				supplier.getUpdatedBy());
 	}
 }

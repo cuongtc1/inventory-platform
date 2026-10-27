@@ -147,6 +147,7 @@ Error status codes: `400` invalid input, `401` missing or invalid token, `403` r
 - Timestamps are ISO-8601 in UTC: `"2026-10-22T08:15:30Z"`. Dates without a time use `"2026-10-22"`.
 - Money and quantities with decimals are JSON numbers: `"price": 12.50`.
 - A response includes only what the client needs, never password hashes or internal fields.
+- Every resource response ends with the audit fields `createdAt`, `createdBy`, `updatedAt`, `updatedBy` (the user's login, or `system`).
 
 Example `GET /api/products/12`:
 
@@ -159,10 +160,14 @@ Example `GET /api/products/12`:
   "categoryName": "Accessories",
   "supplierId": 5,
   "supplierName": "Acme Supplies",
-  "price": 59.90,
+  "costPrice": 40.00,
+  "salePrice": 59.90,
+  "reorderLevel": 20,
   "status": "ACTIVE",
   "createdAt": "2026-10-22T08:15:30Z",
-  "updatedAt": "2026-10-22T08:15:30Z"
+  "createdBy": "system",
+  "updatedAt": "2026-10-22T08:15:30Z",
+  "updatedBy": "system"
 }
 ```
 

@@ -66,7 +66,7 @@ Goal: learn the standard layered Spring Boot service (controller / service / rep
 | T1.7a | Shared foundations | `.editorconfig`/`.gitattributes`; `ErrorCode` enum; `Clock` + JPA auditing (`created_by`, `updated_by`); test fixtures; enums in `constant/`; `DateTimeUtils` (Asia/Ho_Chi_Minh), `MoneyUtils` (VND), `CommonValidationUtils`; hard delete rule; shared library `libs/stockline-common` used by product-service; `mvn test` passes | Claude | DONE |
 | T1.8 | Dockerize | Dockerfile (multi-stage); service added to compose and runs in a container | Claude | DONE |
 | T1.9 | Review | Try all endpoints in Swagger UI; read the code and ask questions | You | DONE |
-| T1.10 | Prepare for Phase 2 | Frontend conventions in `docs/conventions.md` (TypeScript, folder structure, API client and error handling, dev proxy instead of CORS, date/money/enum formatting, UI texts in one place, lint); `CLAUDE.md` and README updated; leftover folders and stale build output removed | Claude | REVIEW |
+| T1.10 | Prepare for Phase 2 | Frontend conventions in `docs/conventions.md` (TypeScript, folder structure, API client and error handling, dev proxy instead of CORS, date/money/enum formatting, UI texts in one place, lint); `CLAUDE.md` and README updated; leftover folders and stale build output removed; line endings normalised on disk; API: `productCount` on categories, `createdBy`/`updatedBy` on every response | Claude | DONE |
 
 ## 5. Phase 2: React foundation (about 3 days)
 

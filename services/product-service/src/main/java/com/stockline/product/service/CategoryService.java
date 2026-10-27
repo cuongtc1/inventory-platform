@@ -12,11 +12,16 @@ import com.stockline.product.entity.Category;
 import com.stockline.product.mapper.CategoryMapper;
 import com.stockline.product.repository.CategoryRepository;
 import com.stockline.product.repository.ProductRepository;
+import com.stockline.product.repository.ProductRepository.CategoryProductCount;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Business rules for categories:
@@ -44,12 +49,15 @@ public class CategoryService {
 
 	public PageResponse<CategoryResponse> list(String search, Pageable pageable) {
 		String text = search == null ? "" : search.strip();
-		return PageResponse.from(
-				categoryRepository.findByNameContainingIgnoreCase(text, pageable).map(categoryMapper::toResponse));
+		Page<Category> page = categoryRepository.findByNameContainingIgnoreCase(text, pageable);
+		Map<Long, Long> productCounts = productCounts(page.getContent());
+		return PageResponse.from(page.map(category ->
+				categoryMapper.toResponse(category, productCounts.getOrDefault(category.getId(), 0L))));
 	}
 
 	public CategoryResponse get(Long id) {
-		return categoryMapper.toResponse(findCategory(id));
+		Category category = findCategory(id);
+		return categoryMapper.toResponse(category, productRepository.countByCategoryId(id));
 	}
 
 	@Transactional
@@ -61,7 +69,8 @@ public class CategoryService {
 		Category parent = findParent(request.parentId());
 
 		Category saved = categoryRepository.save(new Category(name, parent));
-		return categoryMapper.toResponse(saved);
+		// A new category has no products yet
+		return categoryMapper.toResponse(saved, 0);
 	}
 
 	@Transactional
@@ -79,7 +88,7 @@ public class CategoryService {
 		category.setParent(parent);
 		// Run the UPDATE now so JPA auditing sets updatedAt / updatedBy before we build the response
 		categoryRepository.flush();
-		return categoryMapper.toResponse(category);
+		return categoryMapper.toResponse(category, productRepository.countByCategoryId(id));
 	}
 
 	@Transactional
@@ -92,6 +101,19 @@ public class CategoryService {
 			throw new ResourceInUseException(MessageKeys.CATEGORY_DELETE_HAS_PRODUCTS, category.getName());
 		}
 		categoryRepository.delete(category);
+	}
+
+	/**
+	 * Product count per category id for one page, from one grouped query. An empty page skips the query
+	 * ("IN ()" is not valid SQL).
+	 */
+	private Map<Long, Long> productCounts(List<Category> categories) {
+		if (categories.isEmpty()) {
+			return Map.of();
+		}
+		List<Long> ids = categories.stream().map(Category::getId).toList();
+		return productRepository.countByCategoryIds(ids).stream()
+				.collect(Collectors.toMap(CategoryProductCount::getCategoryId, CategoryProductCount::getProductCount));
 	}
 
 	private Category findCategory(Long id) {
