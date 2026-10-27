@@ -66,7 +66,8 @@ Fill these in as the pieces are created.
 # Infra (from infra/) - details in infra/README.md
 docker compose up -d                   # MySQL + Kafka
 docker compose --profile tools up -d   # also Kafka UI on :8090
-docker compose down                    # add -v to wipe data
+docker compose --profile services up -d --build   # also build and run the services as containers (product-service :8082)
+docker compose down                    # add -v to wipe data; add --profile services to stop the service containers too
 # MySQL app user: stockline/stockline. Kafka bootstrap: localhost:9092 from host, kafka:29092 from containers.
 
 # Shared library (from libs/stockline-common/) - install before building any service, and after every change

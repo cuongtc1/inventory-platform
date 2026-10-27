@@ -1,6 +1,6 @@
 # infra
 
-Local infrastructure for Stockline, run with Docker Compose: MySQL 8.4 and Kafka 4.1 (KRaft mode), plus an optional Kafka UI.
+Local infrastructure for Stockline, run with Docker Compose: MySQL 8.4 and Kafka 4.1 (KRaft mode), plus an optional Kafka UI and the services as containers.
 
 ## Start and stop
 
@@ -11,7 +11,7 @@ docker compose up -d                   # MySQL + Kafka
 docker compose --profile tools up -d   # also Kafka UI
 docker compose ps                      # both should show "(healthy)"
 docker compose logs -f kafka           # follow a container's logs
-docker compose down                    # stop, keep data
+docker compose down                    # stop MySQL + Kafka, keep data (service containers: see "Services")
 docker compose down -v                 # stop and delete all data (schemas are recreated on next start)
 ```
 
@@ -49,3 +49,26 @@ docker exec stockline-kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap
 ```
 
 In Git Bash, put `MSYS_NO_PATHCONV=1` in front of these commands, or Git Bash rewrites `/opt/...` into a Windows path. PowerShell and cmd don't have this problem.
+
+## Services
+
+The services can also run as containers. They are in the compose profile `services`, so a plain `docker compose up -d` doesn't start them: you can keep running a service from the IDE on its usual port without a clash. Stop the IDE run before starting the container (same port).
+
+```bash
+docker compose --profile services up -d --build   # build the images and start MySQL, Kafka and the services
+docker compose ps                                 # wait for "(healthy)"
+docker compose logs -f product-service            # follow a service's logs
+docker compose --profile services stop product-service   # stop only the service container...
+docker compose --profile services rm -f product-service  # ...and remove it; MySQL and Kafka keep running
+docker compose --profile services down            # stop everything: services + MySQL + Kafka (data stays in volumes)
+```
+
+A plain `docker compose down` doesn't stop containers of a profile that isn't named, so the service containers would keep running. Don't use `docker compose rm -sf product-service` to stop one service: it also selects `stockline-mysql`.
+
+`--build` rebuilds the images from the current code; leave it out to start the last built image. The build context is the repo root (each image also builds `libs/stockline-common`); see the service's README, section "Docker".
+
+| Service | Container | Port (host, `.env`) | Database |
+|---|---|---|---|
+| product-service | `stockline-product-service` | `8082` (`PRODUCT_SERVICE_PORT`) | `product_db` |
+
+Inside the compose network a service reaches MySQL as `mysql:3306` and Kafka as `kafka:29092`; the compose file sets `DB_URL` etc. accordingly. A containerized service uses the same schema as a run from the IDE, so data is shared between the two.

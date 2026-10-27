@@ -1,0 +1,28 @@
+# Files Docker must NOT send to the build. The build context of every service image is the repo root
+# (services/<name>/Dockerfile needs libs/stockline-common too), so without this file "docker build" would upload the
+# whole repository first: .git, every target/ folder, node_modules, ... That is slow, and it could put local files
+# (.env, IDE settings) into an image layer.
+#
+# Rule: everything is excluded except libs/ and services/; then build output and IDE files inside them are
+# excluded again. A Dockerfile can only COPY what is left.
+
+# 1. Exclude everything (.git, frontend/, docs/, infra/, .history/, .claude/, root files, ...)
+*
+
+# 2. Keep the Maven projects
+!libs/
+!services/
+
+# 3. ...but not their build output, IDE files or secrets
+**/target/
+**/node_modules/
+**/.idea/
+**/*.iml
+**/.vscode/
+**/.settings/
+**/.classpath
+**/.project
+**/.factorypath
+**/HELP.md
+**/.env
+**/.env.*

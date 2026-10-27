@@ -104,6 +104,15 @@ cd services/product-service
 ./mvnw spring-boot:run        # Windows: mvnw.cmd spring-boot:run
 ```
 
+Or run it as a container, without JDK or Maven on your machine (the image builds the library itself; see [infra/README.md](infra/README.md#services)):
+
+```bash
+cd infra
+docker compose --profile services up -d --build
+```
+
+Both ways use port 8082 and the same database, so run only one of them at a time.
+
 | Service | Status | Health | Swagger UI |
 |---|---|---|---|
 | product-service | categories, suppliers, products API | http://localhost:8082/actuator/health | http://localhost:8082/swagger-ui.html |

@@ -331,6 +331,14 @@ spring:
 - Standard variable names: `SERVER_PORT`, `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `KAFKA_BOOTSTRAP_SERVERS`, `JWT_SECRET`, and `<SERVICE>_URL` for REST clients, e.g. `PRODUCT_SERVICE_URL`.
 - Real secrets are never committed. The local defaults above are only for the Docker setup on your machine.
 
+### Docker
+
+- Every service has a multi-stage `services/<name>/Dockerfile` (see product-service's): a build stage on `eclipse-temurin:21-jdk` that installs `libs/stockline-common` and packages the service with `-DskipTests` (Testcontainers can't run inside `docker build`; tests run before every commit), and a runtime stage on `eclipse-temurin:21-jre` with the layers from `-Djarmode=tools extract --layers --launcher`.
+- The build context is the **repo root**, so the image can build the library. The root `.dockerignore` sends only `libs/` and `services/` (without `target/`, IDE files, `.env`).
+- The container runs as a non-root user, sets `TZ=UTC` and `-XX:MaxRAMPercentage=75`, and uses an exec-form `ENTRYPOINT`.
+- Each service is added to `infra/docker-compose.yml` under `profiles: ["services"]`, with `container_name: stockline-<name>`, `depends_on` on the healthy infrastructure it needs, a healthcheck on `/actuator/health`, and a host port `${<NAME>_PORT:-<port>}` (also in `.env.example`).
+- A container is configured only through environment variables (the standard names above). Inside the compose network the hosts are `mysql:3306` and `kafka:29092`, never `localhost`. No environment-specific configuration (hosts, passwords, `.env`) is baked into the image; it comes only from environment variables. Maven cache mounts use `sharing=locked`, because several service images may build at the same time.
+
 ## 8. Tests
 
 - Test classes mirror the main class: `ProductService` → `ProductServiceTest` in the same package under `src/test/java`.
