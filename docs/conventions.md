@@ -473,3 +473,6 @@ The shared files above exist since T2.0; use and extend them instead of writing 
 
 - Paths are constants in `constants/routes.ts` and follow the mockup: `/products`, `/products/new`, `/products/:id/edit`, `/categories`, `/suppliers`, ...
 - Every page is inside `AppLayout`, except login (Phase 3).
+- The route table lives in `App.tsx` (React Router's `createBrowserRouter`). Every real page is **lazy**: `lazy: { Component: () => import('./pages/...').then(module => module.XxxPage) }`. A screen of a later phase is already a route showing `ComingSoonPage`, so the menu can link to it; its task replaces the element.
+- Every page starts with `PageHeader` (title, actions on the right, and the browser tab title). Unknown URLs show `NotFoundPage`; a page that crashes shows `RouteErrorPage`.
+- Data loading in a page: `useEffect` with an `AbortController`, cancelled in the effect's cleanup.

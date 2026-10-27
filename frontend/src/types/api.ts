@@ -34,7 +34,7 @@ export type ErrorCode =
   | 'CONCURRENT_UPDATE'
   | 'INSUFFICIENT_STOCK'
   | 'INTERNAL_ERROR'
-  // Frontend only: no response at all (backend down, network error, timeout)
+  // Frontend only: the backend can't be reached (no response at all, or 502/503/504 from the proxy or gateway)
   | 'NETWORK_ERROR'
 
 /** One entry of `errors` in a 400 VALIDATION_FAILED response. */

@@ -17,6 +17,21 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    build: {
+      rolldownOptions: {
+        output: {
+          // Libraries in their own files, by name: they change less often than our code, so browsers keep them
+          // cached across our releases. Pages are split already, by the lazy routes in App.tsx.
+          codeSplitting: {
+            groups: [
+              { name: 'vendor-react', test: /node_modules[\\/](react|react-dom|react-router|scheduler)[\\/]/, priority: 3 },
+              { name: 'vendor-antd', test: /node_modules[\\/](antd|@ant-design|@rc-component|rc-[^\\/]+|dayjs)[\\/]/, priority: 2 },
+              { name: 'vendor', test: /node_modules[\\/]/, priority: 1 },
+            ],
+          },
+        },
+      },
+    },
     server: {
       port: 5173,
       // Fail instead of silently moving to 5174: the port is part of the documented setup

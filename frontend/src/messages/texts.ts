@@ -11,8 +11,42 @@ export const texts = {
   app: {
     name: 'Stockline',
     logOut: 'Log out',
-    // Placeholder start page until routing and pages exist (T2.1)
-    foundationsReady: 'Frontend foundations are ready. Routing and pages follow in T2.1–T2.4.',
+    // Browser tab title: "Products · Stockline"
+    documentTitle: (page: string) => `${page} · Stockline`,
+  },
+
+  // Pages that don't exist yet, 404 and unexpected errors
+  pages: {
+    placeholder: (task: string) => `This page is built in ${task}.`,
+    phase: (phase: number) => `Phase ${phase}`,
+    comingSoon: {
+      title: 'Coming soon',
+      description: (phase: string) => `This part of Stockline arrives in ${phase}.`,
+    },
+    notFound: {
+      title: 'Page not found',
+      description: 'The page you are looking for does not exist.',
+      backHome: 'Back to the dashboard',
+    },
+    error: {
+      title: 'Something went wrong',
+      description: 'This page could not be shown. Reload to try again.',
+      // A lazy-loaded page file was not found, usually because a new version was deployed meanwhile
+      newVersion: 'A new version of Stockline is available. Reload the page to continue.',
+      reload: 'Reload',
+    },
+  },
+
+  dashboard: {
+    title: 'Dashboard',
+    connection: {
+      title: 'Backend connection',
+      checking: 'Checking product-service…',
+      connected: (categories: number) =>
+        `Connected to product-service: ${categories} ${categories === 1 ? 'category' : 'categories'}.`,
+      failed: 'product-service is not reachable',
+    },
+    quickLinks: 'Catalog',
   },
 
   common: {
@@ -113,6 +147,8 @@ export const texts = {
     title: 'Products',
     singular: 'Product',
     newButton: 'New Product',
+    newTitle: 'New Product',
+    editTitle: (id: string) => `Edit Product #${id}`,
     searchPlaceholder: 'Search products…',
     fields: {
       sku: 'SKU',

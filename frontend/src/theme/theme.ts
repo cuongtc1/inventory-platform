@@ -43,6 +43,8 @@ export const theme: ThemeConfig = {
     colorError: colors.red,
     colorWarning: colors.amber,
     colorInfo: colors.blue,
+    // Links are green in the mockup; without this Ant Design takes the link colour from colorInfo (blue)
+    colorLink: colors.primary,
     colorText: colors.text,
     colorTextSecondary: colors.textMuted,
     colorBorder: colors.border,

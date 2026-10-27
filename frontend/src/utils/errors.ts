@@ -30,6 +30,9 @@ export class ApiError extends Error {
   }
 }
 
+/** Bad Gateway, Service Unavailable, Gateway Timeout: a proxy or gateway couldn't reach the service behind it. */
+const GATEWAY_STATUSES = [502, 503, 504]
+
 /** Turns anything thrown by an API call into an ApiError. Used by the Axios client's response interceptor. */
 export function toApiError(error: unknown): ApiError {
   if (error instanceof ApiError) {
@@ -44,7 +47,11 @@ export function toApiError(error: unknown): ApiError {
       const problem = response.data
       return new ApiError(problem.status, problem.code, problem.detail, problem.errors ?? [])
     }
-    // An error without our JSON format, e.g. from a proxy in front of the backend
+    // Our services always answer with Problem Details. 502/503/504 without it come from something in between
+    // (the Vite dev proxy now, the api-gateway from Phase 3) that couldn't reach the service: same as no response.
+    if (GATEWAY_STATUSES.includes(response.status)) {
+      return new ApiError(response.status, 'NETWORK_ERROR', texts.common.errors.network)
+    }
     return new ApiError(response.status, response.status >= 500 ? 'INTERNAL_ERROR' : 'BAD_REQUEST',
       texts.common.errors.unexpected)
   }

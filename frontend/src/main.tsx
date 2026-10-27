@@ -11,7 +11,7 @@ import { theme } from './theme/theme'
  * - StrictMode: React's development checks (renders components twice in dev to reveal side effects).
  * - ConfigProvider: the Ant Design theme from theme.ts, for every component below it.
  * - AntApp: Ant Design's <App> wrapper, needed so message / notification / modal use the theme.
- * - From T2.1: the router goes here too.
+ * - App: the router (App.tsx), which picks the layout and page for the current URL.
  */
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
