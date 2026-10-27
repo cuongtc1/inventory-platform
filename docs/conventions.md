@@ -399,7 +399,9 @@ The React app in `frontend/`. The same ideas as the backend apply: one place for
 ### Language and tooling
 
 - **TypeScript** with `"strict": true` (Vite's `react-ts` template). Components are `.tsx`, everything else `.ts`. No `any`: describe the data with a type, or use `unknown` and narrow it.
-- Vite, React, Ant Design, React Router and Axios at their latest stable versions when T2.1 starts, pinned through `package-lock.json` (committed). Node 20 or newer, npm.
+- Vite, React, Ant Design, React Router and Axios at their latest stable versions when the project was created (T2.0), pinned through `package-lock.json` (committed, lockfile version 3). Node 20 or newer, **npm 10 or newer**.
+- No TypeScript `enum`, `namespace` or constructor parameter properties: `tsconfig` uses `erasableSyntaxOnly` (only syntax that can simply be deleted to get JavaScript). Use union types (`'ACTIVE' | 'INACTIVE'`) and plain fields.
+- Colours come from `theme/theme.ts` (Ant Design tokens, badge tones), never written into a page.
 - **ESLint** from the Vite template; `npm run lint` and `npm run build` (type check + build) must pass before committing. Indentation and line endings come from `.editorconfig` (2 spaces, LF). No Prettier or other tools without asking first.
 - Nothing beyond the stack (no Redux, React Query, i18n or date libraries) without asking. State is `useState` / `useEffect` plus small custom hooks.
 
@@ -407,20 +409,25 @@ The React app in `frontend/`. The same ideas as the backend apply: one place for
 
 ```
 frontend/src/
-├── main.tsx            entry point: providers (Router, Ant Design ConfigProvider), renders <App />
+├── main.tsx            entry point: providers (Router, Ant Design ConfigProvider + App), renders <App />
 ├── App.tsx             the routes
 ├── api/                talking to the backend
-│   ├── client.ts       the one Axios instance (base URL, error handling)
+│   ├── client.ts       the one Axios instance (base URL, every error → ApiError)
 │   └── products.ts     one file per resource: getProducts, getProduct, createProduct, ...
-├── types/              TypeScript types that mirror the backend DTOs: api.ts (PageResponse, ApiError), product.ts, ...
+├── types/              TypeScript types that mirror the backend DTOs: api.ts (PageResponse, ProblemDetail, ErrorCode),
+│                       category.ts, supplier.ts, product.ts, ...; ui.ts (EnumDisplay)
 ├── pages/              one folder per area: products/ProductListPage.tsx, products/ProductFormPage.tsx
 ├── components/         shared building blocks: StatusBadge, DeleteButton, ...
 ├── layouts/            AppLayout (sidebar, top bar, content area from the mockup)
 ├── hooks/              reusable logic: usePagedList, ...
-├── constants/          enums with labels and colors (productStatus.ts), route paths (routes.ts)
+├── constants/          app.ts (time zone, currency, page sizes), routes.ts, one file per enum (productStatus.ts)
 ├── messages/           texts.ts: every text shown in the UI
-└── utils/              format.ts (dates, money), errors.ts (turning API errors into messages)
+├── theme/              theme.ts: the mockup's colours as Ant Design tokens, badge tones
+├── styles/             global.css: the only global CSS
+└── utils/              format.ts (dates, money), errors.ts (ApiError, messages, form errors), table.ts (paging/sorting)
 ```
+
+The shared files above exist since T2.0; use and extend them instead of writing a second version in a page.
 
 - Components and pages: one per file, `PascalCase` file and name (`ProductListPage.tsx`), function components only, named exports. Other files: `camelCase` (`client.ts`, `format.ts`).
 - A page never calls Axios directly; it calls a function in `api/` that returns typed data.

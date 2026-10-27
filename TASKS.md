@@ -72,7 +72,8 @@ Goal: learn the standard layered Spring Boot service (controller / service / rep
 
 | ID | Task | Acceptance criteria | Owner | Status |
 |---|---|---|---|---|
-| T2.1 | Scaffold frontend | Vite + React + TypeScript + Ant Design + React Router + Axios, following `docs/conventions.md` section 10; dev proxy `/api` → product-service; runs on 5173; short README explaining React basics used (components, state, effects) | Claude | TODO |
+| T2.0 | Frontend foundations | Vite + React + TypeScript (strict) + Ant Design + React Router + Axios project in `frontend/`; folder structure from `docs/conventions.md` section 10; shared files: Axios client and `ApiError`, API types mirroring the backend DTOs, `format.ts` (Vietnam time, USD), `table.ts` (paging/sorting), `texts.ts`, routes, enum labels, theme from the mockup, `StatusBadge`; dev proxy `/api` → product-service; `npm run lint` and `npm run build` pass | Claude | DONE |
+| T2.1 | Scaffold frontend | On top of T2.0: React Router with the routes from `constants/routes.ts` and placeholder pages (lazy-loaded, which also splits the bundle); runs on 5173 against product-service through the proxy; short README section explaining React basics used (components, props, state, effects) | Claude | TODO |
 | T2.2 | App layout | Dark sidebar with collapse button, white content area, top bar with avatar and **Log out** button, matching `docs/mockup/` | Claude | TODO |
 | T2.3 | Product pages | List (search, filters, pagination, Edit/Delete icon buttons) and form, calling product-service | Claude | TODO |
 | T2.4 | Category and Supplier pages | Same pattern as T2.3 | Claude | TODO |

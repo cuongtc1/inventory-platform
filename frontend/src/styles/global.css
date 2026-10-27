@@ -1,0 +1,23 @@
+/*
+ * The only global CSS. Everything else comes from the Ant Design theme (src/theme/theme.ts); pages don't add
+ * stylesheets of their own. Values match the mockup (docs/mockup/style.css).
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #f2f6f3;
+  color: #16221b;
+  font: 14px/1.5 "Segoe UI", system-ui, sans-serif;
+}

@@ -80,7 +80,7 @@ docker compose down                    # add -v to wipe data; add --profile serv
 # Health: /actuator/health   Swagger UI: /swagger-ui.html
 
 # Frontend (from frontend/)
-npm install
+npm install                            # needs npm 10+ (`npm -v`); see frontend/README.md
 npm run dev                            # http://localhost:5173, /api is proxied to the backend
 npm run lint
 npm run build                          # type check + production build

@@ -77,7 +77,7 @@ inventory-platform/
 
 - JDK 21 (`JAVA_HOME` pointing to it)
 - Docker Desktop
-- Node.js 20 or newer
+- Node.js 20 or newer, with npm 10 or newer (`npm -v`)
 - Git
 - Editor: IntelliJ reads `.editorconfig` (tabs, UTF-8, LF) by itself; in VS Code install the "EditorConfig for VS Code" extension
 
@@ -117,7 +117,15 @@ Both ways use port 8082 and the same database, so run only one of them at a time
 |---|---|---|---|
 | product-service | categories, suppliers, products API | http://localhost:8082/actuator/health | http://localhost:8082/swagger-ui.html |
 
-The other services and the frontend don't exist yet; this section will grow as each task is completed.
+Run the frontend (needs product-service running; see [frontend/README.md](frontend/README.md)):
+
+```bash
+cd frontend
+npm install
+npm run dev                   # http://localhost:5173, /api is forwarded to product-service
+```
+
+The other services don't exist yet; this section will grow as each task is completed.
 
 To view the UI mockup, open `docs/mockup/index.html` in a browser.
 
