@@ -17,7 +17,7 @@ Business scope: product catalog (categories, suppliers, products), warehouses an
 | Messaging | Kafka in KRaft mode (no Zookeeper), Spring Kafka |
 | Gateway | Spring Cloud Gateway, validates JWT, handles CORS |
 | Auth | Plain JWT (no refresh token), BCrypt passwords, `user_type` = STAFF / MANAGER / ADMIN stored as a string |
-| Frontend | React + Vite + Ant Design + React Router + Axios |
+| Frontend | React + Vite + **TypeScript** (strict) + Ant Design + React Router + Axios; Vite dev proxy `/api` → backend (no CORS in services) |
 | Tests | JUnit 5 + Mockito, Spring slice tests (`@WebMvcTest`, `@DataJpaTest`), Testcontainers (MySQL) for tests that need a database |
 | API docs | springdoc-openapi (Swagger UI) per service |
 
@@ -45,7 +45,7 @@ Order status flow: `PENDING → RESERVED → PAID → SHIPPED → COMPLETED`, pl
 inventory-platform/
 ├── services/        one folder per Spring Boot service, each with its own pom.xml and mvnw
 ├── libs/            stockline-common: shared library (errors, messages, auditing, utils), own pom.xml and mvnw
-├── frontend/        React + Vite app
+├── frontend/        React + Vite + TypeScript app (rules: docs/conventions.md section 10)
 ├── infra/           docker-compose.yml, mysql-init/
 ├── docs/            mockup/ (Stockline HTML mockup), conventions.md
 ├── .history/        one learning summary per finished task (T1-1.md, T1-2.md, ...)
@@ -81,8 +81,9 @@ docker compose down                    # add -v to wipe data; add --profile serv
 
 # Frontend (from frontend/)
 npm install
-npm run dev
-npm run build
+npm run dev                            # http://localhost:5173, /api is proxied to the backend
+npm run lint
+npm run build                          # type check + production build
 ```
 
 On Windows, use `mvnw.cmd`. `JAVA_HOME` must point to JDK 21 before running Maven.
@@ -114,7 +115,8 @@ New services follow `services/product-service` as the template: Spring Boot 4.1 
 - Make Kafka consumers idempotent (`processed_events`), publish events through the outbox table, and use optimistic locking (`@Version`) on stock rows.
 - Enforce role rules in the backend; frontend role checks are only for hiding UI.
 - Read secrets and environment-specific values from environment variables with safe local defaults; commit `.env.example`, never `.env`.
-- Write unit tests for service logic and slice tests for controllers and repositories with every feature. Run `./mvnw test` (or `npm run build` for the frontend) before committing.
+- Write unit tests for service logic and slice tests for controllers and repositories with every feature. Run `./mvnw test` (or `npm run lint` and `npm run build` for the frontend) before committing.
+- Frontend: follow `docs/conventions.md` section 10 (typed API layer, one error handler, `utils/format.ts` for dates/money, enum labels in `constants/`, every UI text in `messages/texts.ts`).
 - Match the mockup's layout and labels when building frontend pages.
 - Use clear commit messages in imperative mood, prefixed with the task id, e.g. `T1.3: Add category CRUD API`.
 

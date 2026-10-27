@@ -47,7 +47,7 @@ Order status flow: `PENDING → RESERVED → PAID → SHIPPED → COMPLETED`, pl
 | Database | MySQL 8 (Docker), Flyway migrations |
 | Messaging | Kafka in KRaft mode (Docker), Spring Kafka |
 | Gateway and auth | Spring Cloud Gateway, JWT, BCrypt |
-| Frontend | React, Vite, Ant Design, React Router, Axios |
+| Frontend | React, Vite, TypeScript, Ant Design, React Router, Axios |
 | Tests | JUnit 5, Mockito, Spring slice tests |
 
 ## Repository layout
@@ -63,7 +63,7 @@ inventory-platform/
 │   └── notification-service/
 ├── libs/
 │   └── stockline-common/   shared library: errors, messages, auditing, time/money/validation utils
-├── frontend/      React + Vite app
+├── frontend/      React + Vite + TypeScript app
 ├── infra/         docker-compose.yml, mysql-init/ (schema init scripts)
 ├── docs/
 │   ├── mockup/    Stockline HTML mockup (UI reference)

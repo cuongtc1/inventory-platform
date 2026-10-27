@@ -12,6 +12,7 @@ Contents:
 7. [Configuration](#7-configuration)
 8. [Tests](#8-tests)
 9. [Git: branches and commits](#9-git-branches-and-commits)
+10. [Frontend](#10-frontend)
 
 ---
 
@@ -385,3 +386,78 @@ T1.3: Add category CRUD API
 - Body (optional): a blank line, then short bullets saying what changed and why.
 - One logical change per commit. Don't mix formatting changes with features.
 - Before committing: the code builds, tests pass, and no secrets, `.env` files or build output are staged.
+
+## 10. Frontend
+
+The React app in `frontend/`. The same ideas as the backend apply: one place for each concern, no hard-coded texts or formats scattered over pages, and rules settled before the second copy appears.
+
+### Language and tooling
+
+- **TypeScript** with `"strict": true` (Vite's `react-ts` template). Components are `.tsx`, everything else `.ts`. No `any`: describe the data with a type, or use `unknown` and narrow it.
+- Vite, React, Ant Design, React Router and Axios at their latest stable versions when T2.1 starts, pinned through `package-lock.json` (committed). Node 20 or newer, npm.
+- **ESLint** from the Vite template; `npm run lint` and `npm run build` (type check + build) must pass before committing. Indentation and line endings come from `.editorconfig` (2 spaces, LF). No Prettier or other tools without asking first.
+- Nothing beyond the stack (no Redux, React Query, i18n or date libraries) without asking. State is `useState` / `useEffect` plus small custom hooks.
+
+### Folder structure
+
+```
+frontend/src/
+├── main.tsx            entry point: providers (Router, Ant Design ConfigProvider), renders <App />
+├── App.tsx             the routes
+├── api/                talking to the backend
+│   ├── client.ts       the one Axios instance (base URL, error handling)
+│   └── products.ts     one file per resource: getProducts, getProduct, createProduct, ...
+├── types/              TypeScript types that mirror the backend DTOs: api.ts (PageResponse, ApiError), product.ts, ...
+├── pages/              one folder per area: products/ProductListPage.tsx, products/ProductFormPage.tsx
+├── components/         shared building blocks: StatusBadge, DeleteButton, ...
+├── layouts/            AppLayout (sidebar, top bar, content area from the mockup)
+├── hooks/              reusable logic: usePagedList, ...
+├── constants/          enums with labels and colors (productStatus.ts), route paths (routes.ts)
+├── messages/           texts.ts: every text shown in the UI
+└── utils/              format.ts (dates, money), errors.ts (turning API errors into messages)
+```
+
+- Components and pages: one per file, `PascalCase` file and name (`ProductListPage.tsx`), function components only, named exports. Other files: `camelCase` (`client.ts`, `format.ts`).
+- A page never calls Axios directly; it calls a function in `api/` that returns typed data.
+
+### Types for API data
+
+- Types mirror the backend DTO records with the **same names and fields**: `ProductResponse`, `ProductRequest`, `PageResponse<T>`, `ApiError`. When a DTO changes, its type changes in the same task.
+- Backend enums are string union types in `types/`: `type ProductStatus = 'ACTIVE' | 'INACTIVE'`.
+- Timestamps stay ISO-8601 strings (`"2026-10-22T08:15:30Z"`) in types and state; they are turned into text only for display.
+- Money arrives as a JSON number. The frontend only **displays** and **sends** amounts; it never calculates totals with JavaScript numbers (binary floating point, like `double`). The backend does all money math with `BigDecimal` and returns the results.
+
+### Calling the backend
+
+- `api/client.ts` creates the one Axios instance: `baseURL` from `import.meta.env.VITE_API_BASE_URL`, empty by default, so calls go to `/api/...` on the same origin.
+- **Development: Vite dev proxy instead of CORS.** `vite.config.ts` forwards `/api` to the backend: to product-service (`http://localhost:8082`) in Phase 2, to the api-gateway (`http://localhost:8080`) from Phase 3 on. The browser only sees `localhost:5173`, so no CORS is needed and the services never get CORS settings. CORS is configured once, in the gateway (T3.3).
+- Lists: Ant Design tables count pages from 1, the API from 0, so send `page = current - 1`; send `size`, and `sort` as `field,asc|desc`. Filters use the backend parameter names (`search`, `categoryId`, `status`, ...).
+- Date filters are sent as `YYYY-MM-DD` (`from`, `to`); the backend turns them into Vietnam-time ranges.
+- Config values come from `VITE_*` environment variables, with `frontend/.env.example` committed and `.env` never committed.
+
+### Errors
+
+- `utils/errors.ts` turns every failed call into one `ApiError` (`status`, `code`, `detail`, `errors`), including network errors (no response at all).
+- Decide by **`code`**, never by `detail` text:
+  - `VALIDATION_FAILED`: put each `errors[]` entry on its form field (`form.setFields`), so the message appears under the field.
+  - Other 4xx (`NOT_FOUND`, `DUPLICATE`, `IN_USE`, ...): show `detail` in an Ant Design message or notification. The backend already wrote it for people.
+  - 5xx and network errors: a generic text from `messages/texts.ts`.
+- From Phase 3: 401 → back to the login page, in the Axios response interceptor; 403 → a "no permission" text.
+
+### Showing dates, money and enums (`utils/format.ts`, `constants/`)
+
+- Dates: `formatDate(iso)` → `22/10/2026`, `formatDateTime(iso)` → `22/10/2026 01:30`, always in **Asia/Ho_Chi_Minh**, with the built-in `Intl.DateTimeFormat` (`timeZone: 'Asia/Ho_Chi_Minh'`). The same formats as the backend's `DateTimeUtils`. Never `toLocaleString()` without a time zone: it would use the viewer's computer settings.
+- Money: `formatMoney(12.5)` → `$12.50` with `Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })`.
+- Enums: never show raw codes. Each enum has one file in `constants/` with its label and badge color, e.g. `PRODUCT_STATUS = { ACTIVE: { label: 'Active', color: 'green' }, INACTIVE: { label: 'Inactive', color: 'default' } }`, used by a shared `StatusBadge`.
+
+### UI texts (`messages/texts.ts`)
+
+- Every text the UI shows (titles, buttons, column headers, confirmations, empty states, generic errors) lives in one typed object in `messages/texts.ts`, grouped like the backend: `common`, `category`, `supplier`, `product`, ... Pages use `texts.product.title`, never a string literal.
+- Labels and wording follow the mockup (`docs/mockup/`).
+- Error texts that come from the backend (`detail`, field messages) are shown as they are; the backend already looks them up in its messages files.
+- No i18n library for now; the one-object structure makes adding one later a mechanical change.
+
+### Routes
+
+- Paths are constants in `constants/routes.ts` and follow the mockup: `/products`, `/products/new`, `/products/:id/edit`, `/categories`, `/suppliers`, ...
+- Every page is inside `AppLayout`, except login (Phase 3).
