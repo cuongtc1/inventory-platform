@@ -1,6 +1,6 @@
 import type { TablePaginationConfig, TableProps } from 'antd'
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from '../constants/app'
-import type { PageQuery, PageResponse } from '../types/api'
+import type { PageQuery } from '../types/api'
 
 /**
  * Translating between Ant Design's Table and our list API (docs/conventions.md sections 4 and 10).
@@ -28,15 +28,30 @@ export function toPageQuery<T>(
   return sort ? { ...query, sort } : query
 }
 
-/** API page → Table pagination: `page` 2 becomes `current` 3. */
-export function toTablePagination(page: PageResponse<unknown>): TablePaginationConfig {
+/**
+ * API paging → Table pagination: `page` 2 becomes `current` 3. Built from the requested page, not the answer,
+ * so the pager moves at once while the next page loads.
+ */
+export function toTablePagination(query: PageQuery, total: number): TablePaginationConfig {
   return {
-    current: page.page + 1,
-    pageSize: page.size,
-    total: page.totalElements,
+    current: query.page + 1,
+    pageSize: query.size,
+    total,
     showSizeChanger: true,
     pageSizeOptions: [...PAGE_SIZE_OPTIONS],
   }
+}
+
+/**
+ * API sort → a column's `sortOrder`, so the column header shows the current sort: sortOrderOf("salePrice,desc",
+ * "salePrice") is "descend". The field is the column's `dataIndex` (or `key`) as used by toPageQuery.
+ */
+export function sortOrderOf(sort: string | undefined, field: string): 'ascend' | 'descend' | null {
+  const [sortField, direction] = (sort ?? '').split(',')
+  if (sortField !== field) {
+    return null
+  }
+  return direction === 'desc' ? 'descend' : 'ascend'
 }
 
 function toSort<T>(sorter?: TableSorter<T>): string | undefined {

@@ -70,6 +70,8 @@ export const texts = {
       search: 'Search',
       reset: 'Reset',
       back: 'Back',
+      saveChanges: 'Save changes',
+      retry: 'Try again',
     },
     confirmDelete: {
       title: 'Delete this record?',
@@ -92,6 +94,20 @@ export const texts = {
     },
     filters: {
       allStatuses: 'All statuses',
+    },
+    // Under a table: "21-40 of 57"
+    pageRange: (from: number, to: number, total: number) => `${from}-${to} of ${total}`,
+    // Under an edit form: "Created 22/10/2026 01:30 by system"
+    audit: {
+      created: (when: string, by: string) => `Created ${when} by ${by}`,
+      updated: (when: string, by: string) => `Last updated ${when} by ${by}`,
+    },
+    // Form checks done in the browser (Ant Design fills in ${label} with the field's label). The backend checks
+    // everything again; its messages are shown as they come.
+    validation: {
+      required: '${label} is required',
+      code: "May contain only letters, digits, '.', '_' and '-'",
+      optionsFailed: 'The choices for this form could not be loaded.',
     },
     errors: {
       // Shown when the backend can't be reached or answered with a 5xx; for 4xx its own `detail` is shown
@@ -160,7 +176,15 @@ export const texts = {
     newButton: 'New Product',
     newTitle: 'New Product',
     editTitle: (id: string) => `Edit Product #${id}`,
-    searchPlaceholder: 'Search products…',
+    searchPlaceholder: 'Search by name or SKU…',
+    allCategories: 'All categories',
+    allSuppliers: 'All suppliers',
+    noSupplier: 'No supplier',
+    selectCategory: 'Select a category',
+    created: (sku: string) => `Product ${sku} created`,
+    updated: (sku: string) => `Product ${sku} saved`,
+    deleted: (sku: string) => `Product ${sku} deleted`,
+    confirmDelete: (name: string) => `Delete "${name}"?`,
     fields: {
       sku: 'SKU',
       name: 'Name',

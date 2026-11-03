@@ -67,9 +67,10 @@ export function AppLayout() {
 
       <Layout>
         <AppHeader isMobile={isMobile} collapsed={collapsed} onMenuClick={onMenuClick} />
-        <Layout.Content style={{ padding: isMobile ? '16px 16px 32px' : '26px 28px 50px' }}>
-          {/* The mockup's content is at most 1280 px wide */}
-          <div style={{ maxWidth: 1280 }}>{navigation.state === 'loading' ? <PageLoading /> : <Outlet />}</div>
+        {/* minWidth 0: lets a wide table scroll inside its card instead of stretching the page */}
+        <Layout.Content style={{ padding: isMobile ? '16px 16px 32px' : '26px 28px 50px', minWidth: 0 }}>
+          {/* Full width on every screen (the mockup stops at 1280 px; lists use the extra room). Forms set their own width. */}
+          {navigation.state === 'loading' ? <PageLoading /> : <Outlet />}
         </Layout.Content>
       </Layout>
     </Layout>

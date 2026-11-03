@@ -417,11 +417,11 @@ frontend/src/
 ├── types/              TypeScript types that mirror the backend DTOs: api.ts (PageResponse, ProblemDetail, ErrorCode),
 │                       category.ts, supplier.ts, product.ts, ...; ui.ts (EnumDisplay)
 ├── pages/              one folder per area: products/ProductListPage.tsx, products/ProductFormPage.tsx
-├── components/         shared building blocks: StatusBadge, DeleteButton, ...
+├── components/         shared building blocks: StatusBadge, PageHeader, EditButton, DeleteButton, ...
 ├── layouts/            AppLayout, AppHeader, SidebarMenu, Logo (sidebar, top bar, content area from the mockup)
-├── hooks/              reusable logic: useIsMobile, useStoredState, usePagedList, ...
+├── hooks/              reusable logic: useIsMobile, useStoredState, usePagedList, useSelectOptions, useReturnTo
 ├── constants/          app.ts (time zone, currency, page sizes, breakpoint), routes.ts, navigation.ts (menu),
-│                       one file per enum (productStatus.ts)
+│                       validation.ts (form rules mirroring the backend), one file per enum (productStatus.ts)
 ├── messages/           texts.ts: every text shown in the UI
 ├── theme/              theme.ts: the mockup's colours as Ant Design tokens, badge tones
 ├── styles/             global.css: the only global CSS
@@ -483,5 +483,26 @@ The shared files above exist since T2.0; use and extend them instead of writing 
 - Every screen works on a phone (390 px wide) as well as on a desktop. Check both before a frontend task goes to review.
 - One breakpoint: `MOBILE_MAX_WIDTH` (991 px) in `constants/app.ts`, the same as Ant Design's `lg`. Below it the sidebar becomes a slide-in menu and the top bar shows icons only. In components, use `useIsMobile()` or Ant Design's responsive props (`Grid`, `Col xs/md/lg`, `Space wrap`); don't write new media queries.
 - The menu is data: `NAVIGATION` in `constants/navigation.ts` (section, label from `texts.nav`, icon, route). A new screen adds its entry there. From Phase 3, role rules hide entries there too.
-- Pages never set their own outer padding or width; `AppLayout` does (content at most 1280 px wide).
-- Wide tables scroll inside themselves (`scroll={{ x: 'max-content' }}`), so the page never scrolls sideways. On phones, forms use one column and the page actions in `PageHeader` wrap under the title.
+- Pages never set their own outer padding; `AppLayout` does. Content uses the **full width** of every screen (no 1280 px cap like the mockup), so lists show more on big monitors. A form card is at most 960 px wide, so its two columns stay readable.
+- Wide tables scroll inside themselves (`scroll={{ x: 'max-content' }}`), so the page never scrolls sideways. On phones, forms use one column (`Col xs={24} md={12}`), filters take a full row each, and the page actions in `PageHeader` wrap under the title.
+
+### List pages (`usePagedList`)
+
+- A list page is a `PageHeader` plus one `Card` holding a filter row and a `Table`, like the mockup. `ProductListPage` is the template.
+- `usePagedList(loader, defaultSort)` holds the list state **in the URL**: `?page=2&size=50&sort=salePrice,desc&status=ACTIVE` (`page` counts from 1 there, like the pager). Reload, Back, bookmarks and shared links show the same list. Default values (page 1, size 20, the default sort) are left out of the URL.
+- The loader is a function declared **outside** the component (`const loadProducts: PageLoader<ProductResponse> = ...`), turning URL filters into the API's filter parameters. Unknown values in the URL (`status=abc`, `categoryId=x`) are ignored, not sent.
+- Sorting happens in the backend: columns have `sorter: true` and `sortOrder={list.sortOrder(field)}`. The field is the `dataIndex`, or the column `key` when the backend sorts by a nested path (`category.name`). Tables use `sortDirections={['ascend', 'descend']}`.
+- Search is `Input.Search` (runs on Enter or the button, no request per key press). Select filters have `allowClear`, a placeholder like "All categories", and set their filter at once. Any filter change goes back to page 1; **Reset** appears when a filter is set.
+- Row actions: `EditButton` and `DeleteButton` (`components/`): small buttons with icon and text, icon only on phones. `DeleteButton` asks first with a `Popconfirm`. After a delete: success message and `list.reload()`; an error shows `errorMessage(error)`.
+- Options of a Select that come from the API (categories, suppliers) are loaded with `useSelectOptions(getCategoryOptions)`. The `get...Options` functions live in the resource's `api/` file.
+- A load error shows an `Alert` above the table with a **Try again** button; the last page stays visible.
+
+### Forms
+
+- One page for create and edit (`/products/new`, `/products/:id/edit`); the form is its own component rendered with `key={record.id}` and `initialValues`, so no `setFieldsValue`.
+- `Form.useForm<XxxRequest>()`, `layout="vertical"`, `validateTrigger="onBlur"`. The browser checks only simple rules: required (`whitespace: true` for text, like `@NotBlank`), `maxLength` on inputs, patterns, `min`/`max`/`precision` on `InputNumber`. The rules mirror the backend and live in `constants/validation.ts`; the backend checks everything again. Required texts come from `texts.common.validation` through `ConfigProvider` (`main.tsx`).
+- Money: `InputNumber` with `prefix="$"`, `precision={MONEY_DECIMALS}`, `max={MONEY_MAX}`. A cleared optional Select is sent as `null`.
+- On save errors: `VALIDATION_FAILED` → `form.setFields(formFieldErrors<XxxRequest>(error))`; `DUPLICATE` → the backend's text under the unique field; always also `message.error(errorMessage(error))`.
+- Save and Cancel go back to the list the form was opened from, with its page and filters: links from the list pass `state={useReturnState()}`, the form uses `useReturnTo(ROUTES.xxx)`. After saving: a success message ("Product A01 saved").
+- An edit form shows the audit line below the buttons: "Created … by …", "Last updated … by …".
+- A missing record (404) shows the backend's text in a `Result`; an id that isn't a number shows "Page not found" without calling the API.

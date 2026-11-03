@@ -8,3 +8,9 @@ export interface EnumDisplay {
   label: string
   tone: BadgeTone
 }
+
+/** One choice of a Select whose options come from the API: the record's id and its name. */
+export interface SelectOption {
+  value: number
+  label: string
+}

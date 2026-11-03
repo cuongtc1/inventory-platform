@@ -86,8 +86,20 @@ export const theme: ThemeConfig = {
       itemMarginInline: 12,
       groupTitleFontSize: 12,
     },
+    // The mockup's `.card`: white, rounded 14 px, 20 px inside
+    Card: {
+      borderRadiusLG: 14,
+      bodyPadding: 20,
+    },
     Table: {
       headerBg: '#f6faf7',
+      headerColor: colors.textMuted,
+      headerSplitColor: 'transparent',
+      rowHoverBg: '#f6faf7',
+      // The mockup doesn't shade the sorted column; the arrow in its header is enough
+      bodySortBg: colors.card,
+      headerSortActiveBg: '#f6faf7',
+      headerSortHoverBg: '#eef4f0',
     },
   },
 }

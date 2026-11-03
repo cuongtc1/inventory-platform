@@ -1,5 +1,7 @@
+import { MAX_PAGE_SIZE } from '../constants/app'
 import type { PageQuery, PageResponse } from '../types/api'
 import type { CategoryResponse } from '../types/category'
+import type { SelectOption } from '../types/ui'
 import { apiClient } from './client'
 
 /**
@@ -14,4 +16,13 @@ export async function getCategories(
 ): Promise<PageResponse<CategoryResponse>> {
   const response = await apiClient.get<PageResponse<CategoryResponse>>('/api/categories', { params: query, signal })
   return response.data
+}
+
+/**
+ * Every category as Select options, sorted by name. One request of the largest page the API allows
+ * (MAX_PAGE_SIZE); enough for this project's catalog. A catalog with more would need a searching Select.
+ */
+export async function getCategoryOptions(signal?: AbortSignal): Promise<SelectOption[]> {
+  const page = await getCategories({ page: 0, size: MAX_PAGE_SIZE, sort: 'name,asc' }, signal)
+  return page.content.map(category => ({ value: category.id, label: category.name }))
 }

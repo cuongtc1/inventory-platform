@@ -1,3 +1,4 @@
+import type { FormInstance } from 'antd'
 import axios from 'axios'
 import { texts } from '../messages/texts'
 import type { ErrorCode, FieldValidationError, ProblemDetail } from '../types/api'
@@ -78,8 +79,12 @@ export function errorMessage(error: unknown): string {
  * so each message appears under its field. Empty for any other error.
  *
  * `field` can be a nested path from the backend ("items[0].quantity"); it is split into Ant Design's name path.
+ *
+ * `Values` is the form's type (`formFieldErrors<ProductRequest>(error)` for a `Form.useForm<ProductRequest>()`).
+ * The field names come from the backend at runtime, so TypeScript can't check them against `Values`; the cast
+ * says "trust the backend": its field names are the request's field names (same DTO).
  */
-export function formFieldErrors(error: unknown): { name: (string | number)[]; errors: string[] }[] {
+export function formFieldErrors<Values = unknown>(error: unknown): FormFieldErrors<Values> {
   const apiError = toApiError(error)
   if (apiError.code !== 'VALIDATION_FAILED') {
     return []
@@ -87,8 +92,11 @@ export function formFieldErrors(error: unknown): { name: (string | number)[]; er
   return apiError.errors.map(fieldError => ({
     name: toNamePath(fieldError.field),
     errors: [fieldError.message],
-  }))
+  })) as FormFieldErrors<Values>
 }
+
+/** What `form.setFields()` takes, from Ant Design's own types instead of a deep import. */
+type FormFieldErrors<Values> = Parameters<FormInstance<Values>['setFields']>[0]
 
 function toNamePath(field: string): (string | number)[] {
   return field

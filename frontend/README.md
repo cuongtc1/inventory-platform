@@ -37,7 +37,9 @@ src/
 ├── App.tsx               the route table (React Router), lazy-loaded pages
 ├── api/
 │   ├── client.ts         the one Axios instance; every failed call becomes an ApiError
-│   └── categories.ts     getCategories (T2.4 adds the rest); one file per resource
+│   ├── products.ts       getProducts, getProduct, createProduct, updateProduct, deleteProduct
+│   ├── categories.ts     getCategories, getCategoryOptions (T2.4 adds the rest); one file per resource
+│   └── suppliers.ts      getSuppliers, getSupplierOptions (T2.4 adds the rest)
 ├── types/                API types mirroring the backend DTOs (api.ts, category.ts, supplier.ts, product.ts) and ui.ts
 ├── utils/
 │   ├── format.ts         formatDate, formatDateTime (Vietnam time), formatMoney (USD), toApiDate
@@ -47,20 +49,32 @@ src/
 │   ├── app.ts            time zone, currency, page sizes, mobile breakpoint, sidebar widths
 │   ├── routes.ts         every path (ROUTES) and route patterns
 │   ├── navigation.ts     the sidebar menu: sections, entries, icons (NAVIGATION), activeNavPath
+│   ├── validation.ts     form rules mirroring the backend (SKU pattern, lengths, money limits)
 │   └── productStatus.ts  enum labels and badge tones (PRODUCT_STATUS, PRODUCT_STATUS_OPTIONS)
 ├── messages/texts.ts     every text the UI shows
 ├── theme/theme.ts        mockup colours as Ant Design tokens; badge tones
 ├── styles/global.css     the only global CSS
-├── components/           shared components: StatusBadge, PageHeader (title row + tab title), PageLoading
+├── components/           shared components: StatusBadge, PageHeader (title row + tab title), PageLoading,
+│                         EditButton, DeleteButton (table row actions)
 ├── layouts/              AppLayout (the frame around pages), AppHeader (top bar), SidebarMenu, Logo
 ├── pages/
 │   ├── dashboard/        DashboardPage (backend connection check, catalog links)
-│   ├── products/         ProductListPage, ProductFormPage (placeholders until T2.3)
+│   ├── products/         ProductListPage (filters, sorting, paging, Edit/Delete), ProductFormPage (create and edit)
 │   ├── categories/       CategoryListPage (placeholder until T2.4)
 │   ├── suppliers/        SupplierListPage (placeholder until T2.4)
 │   └── ComingSoonPage, NotFoundPage, RouteErrorPage
-└── hooks/                useIsMobile (screen width), useStoredState (useState kept in localStorage)
+└── hooks/                useIsMobile (screen width), useStoredState (useState kept in localStorage),
+                          usePagedList (list state in the URL), useSelectOptions, useReturnTo (form → back to the list)
 ```
+
+## Products pages
+
+| Screen | What you can do |
+|---|---|
+| `/products` | Search by name or SKU (Enter), filter by category, supplier and status, sort by clicking a column header, change page and page size. The SKU and **Edit** open the form; **Delete** asks first |
+| `/products/new`, `/products/:id/edit` | Two-column form (one column on phones). Required fields and simple rules are checked in the browser; the backend's errors (e.g. "SKU already exists") appear under the field. Save and Cancel return to the list you came from |
+
+The list's state is in the URL, e.g. `/products?search=cable&status=ACTIVE&sort=salePrice,desc&page=2`: reload, Back and shared links keep it. The rules for building more list and form pages are in [docs/conventions.md](../docs/conventions.md) section 10 ("List pages", "Forms").
 
 ## Layout and screen sizes
 
@@ -84,7 +98,7 @@ To try the phone layout on a computer: browser DevTools (F12) → device toolbar
 | Path | Page |
 |---|---|
 | `/` | Dashboard |
-| `/products`, `/products/new`, `/products/:id/edit` | Product list and form (T2.3) |
+| `/products`, `/products/new`, `/products/:id/edit` | Product list and form |
 | `/categories`, `/suppliers` | Category and supplier pages (T2.4) |
 | `/warehouses`, `/stock-levels`, `/stock-movements`, `/low-stock`, `/customers`, `/sales-orders`, `/purchase-orders`, `/notifications`, `/reports`, `/users`, `/login` | "Coming soon" with the phase that builds them |
 | anything else | 404 page |
@@ -135,7 +149,9 @@ useEffect(() => {
 
 In development, `StrictMode` runs every effect twice (run, cleanup, run) on purpose, to show effects that don't clean up after themselves. That's why the request has a cleanup that cancels it.
 
-**Router hooks.** `useParams()` reads parts of the URL (`:id` in `/products/:id/edit`, see `ProductFormPage`), `useNavigation()` tells whether the next page is still loading (`AppLayout` shows a spinner), and `<Link to={ROUTES.products}>` changes the page without reloading the browser.
+**Router hooks.** `useParams()` reads parts of the URL (`:id` in `/products/:id/edit`, see `ProductFormPage`), `useNavigation()` tells whether the next page is still loading (`AppLayout` shows a spinner), and `<Link to={ROUTES.products}>` changes the page without reloading the browser. `useSearchParams()` reads and changes the `?search=...&page=2` part of the URL like a `useState` (see `usePagedList`), and a link's `state` travels with the history entry without showing in the URL (see `useReturnTo`).
+
+**Forms.** Ant Design's `Form` keeps the field values itself; the page only gets them in `onFinish(values)`, already checked against the `rules`. `Form.useForm<ProductRequest>()` types those values, and `form.setFields(...)` puts the backend's errors under the fields.
 
 **Custom hooks.** A function whose name starts with `use` and that calls other hooks; it lets components share logic, not markup. [useStoredState](src/hooks/useStoredState.ts) is `useState` that also saves the value in `localStorage` (the sidebar remembers being collapsed). [useIsMobile](src/hooks/useIsMobile.ts) uses `useSyncExternalStore`, React's hook for reading something outside React (here the browser's `matchMedia`): the component re-renders when the screen crosses the breakpoint, and the first render already has the right answer, so a phone never flashes the desktop layout.
 

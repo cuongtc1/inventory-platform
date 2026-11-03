@@ -18,6 +18,10 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     build: {
+      // Vite warns above 500 kB. vendor-antd alone is ~820 kB (~265 kB gzipped) once pages use Table, Form, Select
+      // and friends; it is downloaded once and then cached, and splitting it further wouldn't make the total smaller.
+      // The limit still catches a real problem, like a library accidentally landing in our own code.
+      chunkSizeWarningLimit: 1000,
       rolldownOptions: {
         output: {
           // Libraries in their own files, by name: they change less often than our code, so browsers keep them
