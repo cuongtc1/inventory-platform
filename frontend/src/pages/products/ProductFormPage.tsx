@@ -1,96 +1,38 @@
-import { Alert, App, Button, Card, Col, Flex, Form, Input, InputNumber, Result, Row, Select, Typography } from 'antd'
-import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { Alert, App, Card, Col, Form, Input, InputNumber, Row, Select } from 'antd'
+import { useState } from 'react'
+import { useNavigate } from 'react-router'
 import { getCategoryOptions } from '../../api/categories'
 import { createProduct, getProduct, updateProduct } from '../../api/products'
 import { getSupplierOptions } from '../../api/suppliers'
-import { PageHeader } from '../../components/PageHeader'
-import { PageLoading } from '../../components/PageLoading'
+import { AuditInfo } from '../../components/AuditInfo'
+import { FormActions } from '../../components/FormActions'
+import { RecordFormPage } from '../../components/RecordFormPage'
+import { FORM_MAX_WIDTH } from '../../constants/app'
 import { PRODUCT_STATUS_OPTIONS } from '../../constants/productStatus'
 import { ROUTES } from '../../constants/routes'
 import { CODE_MAX_LENGTH, CODE_PATTERN, MONEY_DECIMALS, MONEY_MAX, PRODUCT_NAME_MAX_LENGTH } from '../../constants/validation'
-import { useReturnTo } from '../../hooks/useReturnTo'
 import { useSelectOptions } from '../../hooks/useSelectOptions'
 import { texts } from '../../messages/texts'
 import type { ProductRequest, ProductResponse } from '../../types/product'
-import { errorMessage, formFieldErrors, toApiError } from '../../utils/errors'
-import { formatDateTime } from '../../utils/format'
+import { errorMessage, formFieldErrors } from '../../utils/errors'
 
 /** Default values of a new product. */
 const NEW_PRODUCT: Partial<ProductRequest> = { status: 'ACTIVE', reorderLevel: 0 }
 
-/** What loading the product to edit gave: the product, or the text of the error. */
-type Loaded = { id: number; product: ProductResponse } | { id: number; error: string }
-
 /**
- * Create and edit a product: "/products/new" and "/products/:id/edit" use the same page. `useParams()` reads the
- * `:id` part of the URL; it is missing on "/products/new".
- *
- * Save and Cancel go back to the list the form was opened from, with its page and filters (useReturnTo).
+ * Create and edit a product: "/products/new" and "/products/:id/edit". RecordFormPage loads the product and
+ * handles "not found"; this file only has the form.
  */
 export function ProductFormPage() {
-  const { id } = useParams()
-  const productId = id === undefined ? undefined : Number(id)
-  const [loaded, setLoaded] = useState<Loaded>()
-  const returnTo = useReturnTo(ROUTES.products)
-  const navigate = useNavigate()
-
-  useEffect(() => {
-    if (productId === undefined || !Number.isInteger(productId) || productId <= 0) {
-      return
-    }
-    const controller = new AbortController()
-    getProduct(productId, controller.signal)
-      .then(product => setLoaded({ id: productId, product }))
-      .catch((error: unknown) => {
-        if (!controller.signal.aborted) {
-          setLoaded({ id: productId, error: errorMessage(error) })
-        }
-      })
-    return () => controller.abort()
-  }, [productId])
-
-  const title = id === undefined ? texts.product.newTitle : texts.product.editTitle(id)
-  const header = (
-    <PageHeader title={title} extra={<Button onClick={() => navigate(returnTo)}>{texts.common.actions.back}</Button>} />
-  )
-
-  if (productId === undefined) {
-    return (
-      <>
-        {header}
-        <ProductForm returnTo={returnTo} />
-      </>
-    )
-  }
-  // "/products/abc/edit": no request, just the 404 text
-  if (!Number.isInteger(productId) || productId <= 0) {
-    return (
-      <>
-        {header}
-        <Result status="404" title={texts.pages.notFound.title} subTitle={texts.pages.notFound.description} />
-      </>
-    )
-  }
-  // Still loading, or loaded for another id (the URL changed from one product to another)
-  if (loaded?.id !== productId) {
-    return (
-      <>
-        {header}
-        <PageLoading />
-      </>
-    )
-  }
   return (
-    <>
-      {header}
-      {'error' in loaded ? (
-        <Result status="warning" title={loaded.error} />
-      ) : (
-        // key: a new form (with new initial values) for each product
-        <ProductForm key={loaded.product.id} product={loaded.product} returnTo={returnTo} />
-      )}
-    </>
+    <RecordFormPage
+      newTitle={texts.product.newTitle}
+      editTitle={texts.product.editTitle}
+      load={getProduct}
+      listPath={ROUTES.products}
+    >
+      {(product, returnTo) => <ProductForm key={product?.id} product={product} returnTo={returnTo} />}
+    </RecordFormPage>
   )
 }
 
@@ -123,26 +65,23 @@ function ProductForm({ product, returnTo }: ProductFormProps) {
       message.success(product ? texts.product.updated(saved.sku) : texts.product.created(saved.sku))
       navigate(returnTo)
     } catch (error) {
-      const apiError = toApiError(error)
-      if (apiError.code === 'DUPLICATE') {
-        // The only unique field of a product is its SKU: show the backend's text there
-        form.setFields([{ name: 'sku', errors: [apiError.detail] }])
-      } else {
-        form.setFields(formFieldErrors<ProductRequest>(apiError))
-      }
-      message.error(errorMessage(apiError))
+      // The only unique field of a product is its SKU
+      form.setFields(formFieldErrors<ProductRequest>(error, { DUPLICATE: 'sku' }))
+      message.error(errorMessage(error))
       setSaving(false)
     }
   }
 
+  const optionsError = categories.error ?? suppliers.error
+
   return (
-    <Card style={{ maxWidth: 960 }}>
-      {(categories.error ?? suppliers.error) && (
+    <Card style={{ maxWidth: FORM_MAX_WIDTH }}>
+      {optionsError && (
         <Alert
           type="error"
           showIcon
           title={texts.common.validation.optionsFailed}
-          description={categories.error ?? suppliers.error}
+          description={optionsError}
           style={{ marginBottom: 16 }}
         />
       )}
@@ -216,22 +155,10 @@ function ProductForm({ product, returnTo }: ProductFormProps) {
             </Form.Item>
           </Col>
         </Row>
-
-        <Flex gap={8} wrap>
-          <Button type="primary" htmlType="submit" loading={saving}>
-            {texts.common.actions.saveChanges}
-          </Button>
-          <Button onClick={() => navigate(returnTo)}>{texts.common.actions.cancel}</Button>
-        </Flex>
+        <FormActions saving={saving} onCancel={() => navigate(returnTo)} />
       </Form>
 
-      {product && (
-        <Typography.Paragraph type="secondary" style={{ margin: '18px 0 0' }}>
-          {texts.common.audit.created(formatDateTime(product.createdAt), product.createdBy)}
-          <br />
-          {texts.common.audit.updated(formatDateTime(product.updatedAt), product.updatedBy)}
-        </Typography.Paragraph>
-      )}
+      {product && <AuditInfo record={product} />}
     </Card>
   )
 }

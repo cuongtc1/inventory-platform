@@ -76,7 +76,7 @@ Goal: learn the standard layered Spring Boot service (controller / service / rep
 | T2.1 | Scaffold frontend | On top of T2.0: React Router with the routes from `constants/routes.ts` and placeholder pages (lazy-loaded, which also splits the bundle); runs on 5173 against product-service through the proxy; short README section explaining React basics used (components, props, state, effects) | Claude | DONE |
 | T2.2 | App layout | Dark sidebar with collapse button, white content area, top bar with avatar and **Log out** button, matching `docs/mockup/`; responsive: works on PC and mobile (sidebar becomes a slide-in menu on small screens) | Claude | DONE |
 | T2.3 | Product pages | List (search, filters, pagination, Edit/Delete icon buttons) and form, calling product-service; content uses the full screen width on every page (from the T2.2 review) | Claude | DONE |
-| T2.4 | Category and Supplier pages | Same pattern as T2.3 | Claude | TODO |
+| T2.4 | Category and Supplier pages | Same pattern as T2.3 | Claude | REVIEW |
 | T2.5 | Review | You click through every page; list UI issues | You | TODO |
 
 ## 6. Phase 3: auth-service and api-gateway (about 3 days)

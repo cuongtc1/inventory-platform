@@ -1,12 +1,14 @@
 import { PlusOutlined } from '@ant-design/icons'
-import { Alert, App, Button, Card, Flex, Input, Select, Table, type TableColumnsType } from 'antd'
+import { App, Button, Flex, Select, type TableColumnsType } from 'antd'
 import { Link, useNavigate } from 'react-router'
 import { getCategoryOptions } from '../../api/categories'
 import { deleteProduct, getProducts } from '../../api/products'
 import { getSupplierOptions } from '../../api/suppliers'
 import { DeleteButton } from '../../components/DeleteButton'
 import { EditButton } from '../../components/EditButton'
+import { PagedTable } from '../../components/PagedTable'
 import { PageHeader } from '../../components/PageHeader'
+import { SearchFilter } from '../../components/SearchFilter'
 import { StatusBadge } from '../../components/StatusBadge'
 import { PRODUCT_STATUS, PRODUCT_STATUS_OPTIONS } from '../../constants/productStatus'
 import { ROUTES } from '../../constants/routes'
@@ -129,75 +131,43 @@ export function ProductListPage() {
           </Button>
         }
       />
-      <Card>
-        <Flex gap={10} wrap style={{ marginBottom: 14 }}>
-          <Input.Search
-            // A new key when the URL changes (Reset, Back) makes React create the input again with the URL's value
-            key={list.filter('search') ?? ''}
-            defaultValue={list.filter('search')}
-            placeholder={texts.product.searchPlaceholder}
-            allowClear
-            onSearch={search => list.setFilters({ search })}
-            style={filterWidth(260)}
-          />
-          <Select
-            value={toId(list.filter('categoryId'))}
-            options={categories.options}
-            loading={categories.loading}
-            placeholder={texts.product.allCategories}
-            allowClear
-            showSearch={{ optionFilterProp: 'label' }}
-            onChange={(categoryId?: number) => list.setFilters({ categoryId })}
-            style={filterWidth(200)}
-          />
-          <Select
-            value={toId(list.filter('supplierId'))}
-            options={suppliers.options}
-            loading={suppliers.loading}
-            placeholder={texts.product.allSuppliers}
-            allowClear
-            showSearch={{ optionFilterProp: 'label' }}
-            onChange={(supplierId?: number) => list.setFilters({ supplierId })}
-            style={filterWidth(200)}
-          />
-          <Select
-            value={toStatus(list.filter('status'))}
-            options={PRODUCT_STATUS_OPTIONS}
-            placeholder={texts.common.filters.allStatuses}
-            allowClear
-            onChange={(status?: ProductStatus) => list.setFilters({ status })}
-            style={filterWidth(160)}
-          />
-          {list.hasFilters && <Button onClick={list.resetFilters}>{texts.common.actions.reset}</Button>}
-        </Flex>
-
-        {list.error && (
-          <Alert
-            type="error"
-            showIcon
-            title={list.error}
-            action={<Button size="small" onClick={list.reload}>{texts.common.actions.retry}</Button>}
-            style={{ marginBottom: 14 }}
-          />
-        )}
-
-        <Table
-          rowKey="id"
-          columns={columns}
-          dataSource={list.data?.content}
-          loading={list.loading}
-          pagination={{
-            ...list.pagination,
-            showTotal: (total, [from, to]) => texts.common.pageRange(from, to, total),
-            size: isMobile ? 'small' : undefined,
-          }}
-          onChange={list.onTableChange}
-          // Only asc / desc: there's always a sort (DEFAULT_SORT), so "unsorted" isn't offered
-          sortDirections={['ascend', 'descend']}
-          // Wide table on a narrow screen: it scrolls sideways inside the card, not the whole page
-          scroll={{ x: 'max-content' }}
-        />
-      </Card>
+      <PagedTable
+        list={list}
+        columns={columns}
+        filters={
+          <>
+            <SearchFilter list={list} placeholder={texts.product.searchPlaceholder} />
+            <Select
+              value={toId(list.filter('categoryId'))}
+              options={categories.options}
+              loading={categories.loading}
+              placeholder={texts.product.allCategories}
+              allowClear
+              showSearch={{ optionFilterProp: 'label' }}
+              onChange={(categoryId?: number) => list.setFilters({ categoryId })}
+              style={filterWidth(200)}
+            />
+            <Select
+              value={toId(list.filter('supplierId'))}
+              options={suppliers.options}
+              loading={suppliers.loading}
+              placeholder={texts.product.allSuppliers}
+              allowClear
+              showSearch={{ optionFilterProp: 'label' }}
+              onChange={(supplierId?: number) => list.setFilters({ supplierId })}
+              style={filterWidth(200)}
+            />
+            <Select
+              value={toStatus(list.filter('status'))}
+              options={PRODUCT_STATUS_OPTIONS}
+              placeholder={texts.common.filters.allStatuses}
+              allowClear
+              onChange={(status?: ProductStatus) => list.setFilters({ status })}
+              style={filterWidth(160)}
+            />
+          </>
+        }
+      />
     </>
   )
 }

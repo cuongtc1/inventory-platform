@@ -80,12 +80,22 @@ export function errorMessage(error: unknown): string {
  *
  * `field` can be a nested path from the backend ("items[0].quantity"); it is split into Ant Design's name path.
  *
+ * `codeFields` puts other errors under a field too: `{ DUPLICATE: 'sku' }` shows "Product with SKU 'A01' already
+ * exists" under the SKU field. The backend's `detail` is the text.
+ *
  * `Values` is the form's type (`formFieldErrors<ProductRequest>(error)` for a `Form.useForm<ProductRequest>()`).
  * The field names come from the backend at runtime, so TypeScript can't check them against `Values`; the cast
  * says "trust the backend": its field names are the request's field names (same DTO).
  */
-export function formFieldErrors<Values = unknown>(error: unknown): FormFieldErrors<Values> {
+export function formFieldErrors<Values = unknown>(
+  error: unknown,
+  codeFields: Partial<Record<ErrorCode, keyof Values & string>> = {},
+): FormFieldErrors<Values> {
   const apiError = toApiError(error)
+  const field = codeFields[apiError.code]
+  if (field) {
+    return [{ name: [field], errors: [apiError.detail] }] as FormFieldErrors<Values>
+  }
   if (apiError.code !== 'VALIDATION_FAILED') {
     return []
   }

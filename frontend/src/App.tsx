@@ -50,8 +50,24 @@ const routes: RouteObject[] = [
         lazy: { Component: () => import('./pages/categories/CategoryListPage').then(module => module.CategoryListPage) },
       },
       {
+        path: ROUTES.categoryNew,
+        lazy: { Component: () => import('./pages/categories/CategoryFormPage').then(module => module.CategoryFormPage) },
+      },
+      {
+        path: ROUTE_PATTERNS.categoryEdit,
+        lazy: { Component: () => import('./pages/categories/CategoryFormPage').then(module => module.CategoryFormPage) },
+      },
+      {
         path: ROUTES.suppliers,
         lazy: { Component: () => import('./pages/suppliers/SupplierListPage').then(module => module.SupplierListPage) },
+      },
+      {
+        path: ROUTES.supplierNew,
+        lazy: { Component: () => import('./pages/suppliers/SupplierFormPage').then(module => module.SupplierFormPage) },
+      },
+      {
+        path: ROUTE_PATTERNS.supplierEdit,
+        lazy: { Component: () => import('./pages/suppliers/SupplierFormPage').then(module => module.SupplierFormPage) },
       },
 
       // Later phases

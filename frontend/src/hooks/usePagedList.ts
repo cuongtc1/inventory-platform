@@ -16,6 +16,9 @@ const SORT = 'sort'
 
 type FilterValue = string | number | null | undefined
 
+/** What usePagedList returns, for components that take the list as a prop (PagedTable, SearchFilter). */
+export type PagedList<T> = ReturnType<typeof usePagedList<T>>
+
 interface LoadResult<T> {
   key: string
   data?: PageResponse<T>

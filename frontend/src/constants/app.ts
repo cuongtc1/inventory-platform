@@ -23,3 +23,6 @@ export const SIDEBAR_COLLAPSED_WIDTH = 70
 export const DEFAULT_PAGE_SIZE = 20
 export const MAX_PAGE_SIZE = 100
 export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const
+
+/** A form card is at most this wide, so its two columns stay readable on big screens (pages use the full width). */
+export const FORM_MAX_WIDTH = 960

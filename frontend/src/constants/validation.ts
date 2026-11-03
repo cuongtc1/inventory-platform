@@ -16,5 +16,11 @@ export const PHONE_MAX_LENGTH = 30
 export const MONEY_MAX = 9_999_999_999.99
 export const MONEY_DECIMALS = 2
 
+/** Phone numbers: digits, spaces, "+", "-", "(" and ")": "+84 90 111 2233", "(028) 3800-1122". */
+export const PHONE_PATTERN = /^[0-9+()\- ]*$/
+
 /** `ProductRequest.name` is longer than the common name (VARCHAR(200)). */
 export const PRODUCT_NAME_MAX_LENGTH = 200
+
+/** `SupplierRequest.name`: VARCHAR(150). */
+export const SUPPLIER_NAME_MAX_LENGTH = 150

@@ -417,7 +417,8 @@ frontend/src/
 ├── types/              TypeScript types that mirror the backend DTOs: api.ts (PageResponse, ProblemDetail, ErrorCode),
 │                       category.ts, supplier.ts, product.ts, ...; ui.ts (EnumDisplay)
 ├── pages/              one folder per area: products/ProductListPage.tsx, products/ProductFormPage.tsx
-├── components/         shared building blocks: StatusBadge, PageHeader, EditButton, DeleteButton, ...
+├── components/         shared building blocks: StatusBadge, PageHeader, EditButton, DeleteButton, RecordFormPage,
+│                       FormActions, AuditInfo, ...
 ├── layouts/            AppLayout, AppHeader, SidebarMenu, Logo (sidebar, top bar, content area from the mockup)
 ├── hooks/              reusable logic: useIsMobile, useStoredState, usePagedList, useSelectOptions, useReturnTo
 ├── constants/          app.ts (time zone, currency, page sizes, breakpoint), routes.ts, navigation.ts (menu),
@@ -499,10 +500,13 @@ The shared files above exist since T2.0; use and extend them instead of writing 
 
 ### Forms
 
-- One page for create and edit (`/products/new`, `/products/:id/edit`); the form is its own component rendered with `key={record.id}` and `initialValues`, so no `setFieldsValue`.
+- One page for create and edit (`/products/new`, `/products/:id/edit`), built on `RecordFormPage` (`components/`): it reads `:id`, loads the record, shows the spinner, the backend's "not found" text, or "Page not found" for an id that isn't a number, and the Back button. The page only passes its texts, `load={getXxx}`, the list path, and the form as `children(record, returnTo)`. `ProductFormPage`, `CategoryFormPage` and `SupplierFormPage` are the examples.
+- The form is its own component rendered with `key={record?.id}` and `initialValues`, so no `setFieldsValue`. It sits in a `Card` of `FORM_MAX_WIDTH`, ends with `FormActions` (Save changes, Cancel) and, when editing, `AuditInfo`.
 - `Form.useForm<XxxRequest>()`, `layout="vertical"`, `validateTrigger="onBlur"`. The browser checks only simple rules: required (`whitespace: true` for text, like `@NotBlank`), `maxLength` on inputs, patterns, `min`/`max`/`precision` on `InputNumber`. The rules mirror the backend and live in `constants/validation.ts`; the backend checks everything again. Required texts come from `texts.common.validation` through `ConfigProvider` (`main.tsx`).
-- Money: `InputNumber` with `prefix="$"`, `precision={MONEY_DECIMALS}`, `max={MONEY_MAX}`. A cleared optional Select is sent as `null`.
-- On save errors: `VALIDATION_FAILED` → `form.setFields(formFieldErrors<XxxRequest>(error))`; `DUPLICATE` → the backend's text under the unique field; always also `message.error(errorMessage(error))`.
+- Money: `InputNumber` with `prefix="$"`, `precision={MONEY_DECIMALS}`, `max={MONEY_MAX}`. A cleared optional Select is sent as `null`; so is an emptied optional text field (trimmed first).
+- Email and phone inputs use `inputMode="email"` / `inputMode="tel"` (the right phone keyboard), not `type="email"`, whose browser popup would cover the form's own message. Their rules: `{ type: 'email' }` and `PHONE_PATTERN`.
+- On save errors, one call: `form.setFields(formFieldErrors<XxxRequest>(error, { DUPLICATE: 'name' }))`. It puts `VALIDATION_FAILED` field errors under their fields, and the backend's text for the listed codes under the given field (a category's parent loop: `BAD_REQUEST: 'parentId'`). Always also `message.error(errorMessage(error))`.
+- Delete errors (`IN_USE`: "Category 'Cables' still has products; move or delete them first") are shown with `message.error(errorMessage(error))`; the backend's text already says what to do.
 - Save and Cancel go back to the list the form was opened from, with its page and filters: links from the list pass `state={useReturnState()}`, the form uses `useReturnTo(ROUTES.xxx)`. After saving: a success message ("Product A01 saved").
 - An edit form shows the audit line below the buttons: "Created … by …", "Last updated … by …".
 - A missing record (404) shows the backend's text in a `Result`; an id that isn't a number shows "Page not found" without calling the API.

@@ -38,8 +38,8 @@ src/
 ├── api/
 │   ├── client.ts         the one Axios instance; every failed call becomes an ApiError
 │   ├── products.ts       getProducts, getProduct, createProduct, updateProduct, deleteProduct
-│   ├── categories.ts     getCategories, getCategoryOptions (T2.4 adds the rest); one file per resource
-│   └── suppliers.ts      getSuppliers, getSupplierOptions (T2.4 adds the rest)
+│   ├── categories.ts     the same five calls for categories, plus getCategoryOptions; one file per resource
+│   └── suppliers.ts      the same five calls for suppliers, plus getSupplierOptions
 ├── types/                API types mirroring the backend DTOs (api.ts, category.ts, supplier.ts, product.ts) and ui.ts
 ├── utils/
 │   ├── format.ts         formatDate, formatDateTime (Vietnam time), formatMoney (USD), toApiDate
@@ -55,24 +55,29 @@ src/
 ├── theme/theme.ts        mockup colours as Ant Design tokens; badge tones
 ├── styles/global.css     the only global CSS
 ├── components/           shared components: StatusBadge, PageHeader (title row + tab title), PageLoading,
-│                         EditButton, DeleteButton (table row actions)
+│                         EditButton, DeleteButton (table row actions), RecordFormPage (frame of every create/edit
+│                         page), FormActions (Save changes / Cancel), AuditInfo (created/updated line)
 ├── layouts/              AppLayout (the frame around pages), AppHeader (top bar), SidebarMenu, Logo
 ├── pages/
 │   ├── dashboard/        DashboardPage (backend connection check, catalog links)
 │   ├── products/         ProductListPage (filters, sorting, paging, Edit/Delete), ProductFormPage (create and edit)
-│   ├── categories/       CategoryListPage (placeholder until T2.4)
-│   ├── suppliers/        SupplierListPage (placeholder until T2.4)
+│   ├── categories/       CategoryListPage, CategoryFormPage
+│   ├── suppliers/        SupplierListPage, SupplierFormPage
 │   └── ComingSoonPage, NotFoundPage, RouteErrorPage
 └── hooks/                useIsMobile (screen width), useStoredState (useState kept in localStorage),
                           usePagedList (list state in the URL), useSelectOptions, useReturnTo (form → back to the list)
 ```
 
-## Products pages
+## Catalog pages
 
 | Screen | What you can do |
 |---|---|
 | `/products` | Search by name or SKU (Enter), filter by category, supplier and status, sort by clicking a column header, change page and page size. The SKU and **Edit** open the form; **Delete** asks first |
 | `/products/new`, `/products/:id/edit` | Two-column form (one column on phones). Required fields and simple rules are checked in the browser; the backend's errors (e.g. "SKU already exists") appear under the field. Save and Cancel return to the list you came from |
+| `/categories` | Search, sort by name or parent, paging. The product count opens the products of that category. Deleting a category that still has products or subcategories is refused with the backend's reason |
+| `/categories/new`, `/categories/:id/edit` | Name and parent ("None (top level)" when cleared). A category isn't offered as its own parent; moving it under one of its subcategories shows the backend's error under Parent |
+| `/suppliers` | Search, sort by any column, email opens the mail program. Deleting a supplier that still has products is refused |
+| `/suppliers/new`, `/suppliers/:id/edit` | Name (required), contact, email, phone; an emptied field is saved as "not set" |
 
 The list's state is in the URL, e.g. `/products?search=cable&status=ACTIVE&sort=salePrice,desc&page=2`: reload, Back and shared links keep it. The rules for building more list and form pages are in [docs/conventions.md](../docs/conventions.md) section 10 ("List pages", "Forms").
 
@@ -99,7 +104,8 @@ To try the phone layout on a computer: browser DevTools (F12) → device toolbar
 |---|---|
 | `/` | Dashboard |
 | `/products`, `/products/new`, `/products/:id/edit` | Product list and form |
-| `/categories`, `/suppliers` | Category and supplier pages (T2.4) |
+| `/categories`, `/categories/new`, `/categories/:id/edit` | Category list and form |
+| `/suppliers`, `/suppliers/new`, `/suppliers/:id/edit` | Supplier list and form |
 | `/warehouses`, `/stock-levels`, `/stock-movements`, `/low-stock`, `/customers`, `/sales-orders`, `/purchase-orders`, `/notifications`, `/reports`, `/users`, `/login` | "Coming soon" with the phase that builds them |
 | anything else | 404 page |
 

@@ -12,7 +12,11 @@ export const ROUTES = {
   productNew: '/products/new',
   productEdit: (id: number | string) => `/products/${id}/edit`,
   categories: '/categories',
+  categoryNew: '/categories/new',
+  categoryEdit: (id: number | string) => `/categories/${id}/edit`,
   suppliers: '/suppliers',
+  supplierNew: '/suppliers/new',
+  supplierEdit: (id: number | string) => `/suppliers/${id}/edit`,
 
   // Inventory (Phase 4)
   warehouses: '/warehouses',
@@ -33,8 +37,10 @@ export const ROUTES = {
   users: '/users',
 } as const
 
-/** The route pattern behind productEdit(), for the router: "/products/:id/edit". */
+/** The route patterns behind the path functions above, for the router: "/products/:id/edit". */
 export const ROUTE_PATTERNS = {
   productEdit: '/products/:id/edit',
+  categoryEdit: '/categories/:id/edit',
+  supplierEdit: '/suppliers/:id/edit',
   salesOrderDetail: '/sales-orders/:id',
 } as const

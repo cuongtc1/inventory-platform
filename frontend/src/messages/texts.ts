@@ -28,7 +28,6 @@ export const texts = {
 
   // Pages that don't exist yet, 404 and unexpected errors
   pages: {
-    placeholder: (task: string) => `This page is built in ${task}.`,
     phase: (phase: number) => `Phase ${phase}`,
     comingSoon: {
       title: 'Coming soon',
@@ -107,6 +106,8 @@ export const texts = {
     validation: {
       required: '${label} is required',
       code: "May contain only letters, digits, '.', '_' and '-'",
+      email: 'Enter a valid email address',
+      phone: "May contain only digits, spaces, '+', '-', '(' and ')'",
       optionsFailed: 'The choices for this form could not be loaded.',
     },
     errors: {
@@ -149,7 +150,16 @@ export const texts = {
     title: 'Categories',
     singular: 'Category',
     newButton: 'New Category',
+    newTitle: 'New Category',
+    editTitle: (id: string) => `Edit Category #${id}`,
     searchPlaceholder: 'Search categories…',
+    noParent: 'None (top level)',
+    // On the product count: a link to the products of this category
+    showProducts: (name: string) => `Show the products of ${name}`,
+    created: (name: string) => `Category ${name} created`,
+    updated: (name: string) => `Category ${name} saved`,
+    deleted: (name: string) => `Category ${name} deleted`,
+    confirmDelete: (name: string) => `Delete "${name}"?`,
     fields: {
       name: 'Name',
       parent: 'Parent',
@@ -161,7 +171,13 @@ export const texts = {
     title: 'Suppliers',
     singular: 'Supplier',
     newButton: 'New Supplier',
+    newTitle: 'New Supplier',
+    editTitle: (id: string) => `Edit Supplier #${id}`,
     searchPlaceholder: 'Search suppliers…',
+    created: (name: string) => `Supplier ${name} created`,
+    updated: (name: string) => `Supplier ${name} saved`,
+    deleted: (name: string) => `Supplier ${name} deleted`,
+    confirmDelete: (name: string) => `Delete "${name}"?`,
     fields: {
       name: 'Name',
       contactName: 'Contact',
