@@ -1,0 +1,68 @@
+# auth-service configuration.
+# ${NAME:default} reads environment variable NAME, or uses the default (local Docker setup in infra/).
+
+server:
+  port: ${SERVER_PORT:8081}
+
+spring:
+  application:
+    name: auth-service
+
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/auth_db}
+    username: ${DB_USERNAME:stockline}
+    password: ${DB_PASSWORD:stockline}
+
+  jpa:
+    hibernate:
+      # Flyway creates the tables; Hibernate only checks that entities match them
+      ddl-auto: validate
+    # Don't keep the database session open while the JSON response is written
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    # SQL files in src/main/resources/db/migration, named V<n>__description.sql
+    locations: classpath:db/migration
+
+  messages:
+    # Every API, validation and log text. messages.properties (this service) first, then common-messages.properties
+    # from the stockline-common library; the first file that has a key wins.
+    basename: messages,common-messages
+    encoding: UTF-8
+    # Without a messages_<language>.properties, use messages.properties, not a file for the server's locale
+    fallback-to-system-locale: false
+
+stockline:
+  jwt:
+    # HMAC key for signing tokens, at least 32 bytes. The api-gateway must use the same value (T3.3).
+    # The default is for local development only; every real installation sets its own JWT_SECRET.
+    secret: ${JWT_SECRET:local-dev-only-stockline-jwt-secret-change-me}
+    # How long a token is valid (no refresh token): 8h = one working day. Format: 30m, 8h, 1d, ...
+    expiration: ${JWT_EXPIRATION:8h}
+    issuer: stockline-auth
+  admin:
+    # The first ADMIN, created at startup only when the users table is empty (AdminAccountInitializer).
+    # Local development defaults; set ADMIN_EMAIL / ADMIN_PASSWORD for any shared installation.
+    email: ${ADMIN_EMAIL:admin@stockline.local}
+    password: ${ADMIN_PASSWORD:admin12345}
+    full-name: ${ADMIN_FULL_NAME:Stockline Admin}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      # Show each check (db, diskSpace, ...) in /actuator/health. Fine for local learning; use "when-authorized" in production
+      show-details: always
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html

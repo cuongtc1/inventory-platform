@@ -66,7 +66,7 @@ Fill these in as the pieces are created.
 # Infra (from infra/) - details in infra/README.md
 docker compose up -d                   # MySQL + Kafka
 docker compose --profile tools up -d   # also Kafka UI on :8090
-docker compose --profile services up -d --build   # also build and run the services as containers (product-service :8082)
+docker compose --profile services up -d --build   # also build and run the services as containers (auth-service :8081, product-service :8082)
 docker compose down                    # add -v to wipe data; add --profile services to stop the service containers too
 # MySQL app user: stockline/stockline. Kafka bootstrap: localhost:9092 from host, kafka:29092 from containers.
 
@@ -78,6 +78,7 @@ docker compose down                    # add -v to wipe data; add --profile serv
 ./mvnw test                            # needs Docker running (Testcontainers starts its own MySQL)
 ./mvnw clean package
 # Health: /actuator/health   Swagger UI: /swagger-ui.html
+# Local login (auth-service creates it on an empty users table): admin@stockline.local / admin12345
 
 # Frontend (from frontend/)
 npm install                            # needs npm 10+ (`npm -v`); see frontend/README.md

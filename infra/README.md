@@ -69,6 +69,9 @@ A plain `docker compose down` doesn't stop containers of a profile that isn't na
 
 | Service | Container | Port (host, `.env`) | Database |
 |---|---|---|---|
+| auth-service | `stockline-auth-service` | `8081` (`AUTH_SERVICE_PORT`) | `auth_db` |
 | product-service | `stockline-product-service` | `8082` (`PRODUCT_SERVICE_PORT`) | `product_db` |
+
+auth-service also reads `JWT_SECRET`, `JWT_EXPIRATION`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` from `.env` (defaults in `.env.example`, for local development only).
 
 Inside the compose network a service reaches MySQL as `mysql:3306` and Kafka as `kafka:29092`; the compose file sets `DB_URL` etc. accordingly. A containerized service uses the same schema as a run from the IDE, so data is shared between the two.

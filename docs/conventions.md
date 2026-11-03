@@ -13,6 +13,7 @@ Contents:
 8. [Tests](#8-tests)
 9. [Git: branches and commits](#9-git-branches-and-commits)
 10. [Frontend](#10-frontend)
+11. [Authentication and JWT](#11-authentication-and-jwt)
 
 ---
 
@@ -334,7 +335,7 @@ spring:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 ```
 
-- Standard variable names: `SERVER_PORT`, `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `KAFKA_BOOTSTRAP_SERVERS`, `JWT_SECRET`, and `<SERVICE>_URL` for REST clients, e.g. `PRODUCT_SERVICE_URL`.
+- Standard variable names: `SERVER_PORT`, `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `KAFKA_BOOTSTRAP_SERVERS`, `JWT_SECRET`, `JWT_EXPIRATION`, and `<SERVICE>_URL` for REST clients, e.g. `PRODUCT_SERVICE_URL`. auth-service also reads `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_FULL_NAME` (section 11).
 - Real secrets are never committed. The local defaults above are only for the Docker setup on your machine.
 
 ### Docker
@@ -510,3 +511,28 @@ The shared files above exist since T2.0; use and extend them instead of writing 
 - Save and Cancel go back to the list the form was opened from, with its page and filters: links from the list pass `state={useReturnState()}`, the form uses `useReturnTo(ROUTES.xxx)`. After saving: a success message ("Product A01 saved").
 - An edit form shows the audit line below the buttons: "Created … by …", "Last updated … by …".
 - A missing record (404) shows the backend's text in a `Result`; an id that isn't a number shows "Page not found" without calling the API.
+
+## 11. Authentication and JWT
+
+Decided in T3.1; the gateway (T3.3), role rules (T3.4) and the frontend login (T3.5) build on it.
+
+- **Login** is `POST /api/auth/login` with `{ email, password }` on auth-service. The email is the login name, stored and compared trimmed and in lower case. Every failure (unknown email, wrong password, deactivated user) is the same `401 UNAUTHORIZED` "Wrong email or password", answered in the same time.
+- **Passwords** are stored only as BCrypt hashes (`PasswordEncoder` bean, `BCryptPasswordEncoder`, default cost 10). At most 72 characters (BCrypt reads 72 bytes). A password never appears in a response, a log line or a migration.
+- **Library:** Spring Security's own JWT support (`spring-security-oauth2-jose`, Nimbus inside): `JwtEncoder` in auth-service, `JwtDecoder` / resource server where tokens are checked. No other JWT library.
+- **Token:** a JWT signed with **HS256** and the shared secret `JWT_SECRET` (at least 32 bytes; a service refuses to start with a shorter one). Valid for `JWT_EXPIRATION` (default `8h`). No refresh token: after expiry the user logs in again.
+- **Claims** (names in `com.stockline.common.constant.JwtClaimNames`; never write the strings by hand):
+
+| Claim | Value |
+|---|---|
+| `sub` | The user's id, as a string |
+| `role` | `STAFF`, `MANAGER` or `ADMIN` (from `users.user_type`) |
+| `email` | The login email; becomes `created_by` / `updated_by` in audit columns |
+| `name` | Full name, for display |
+| `iss` | `stockline-auth` |
+| `iat`, `exp` | Issued at and expiry, seconds since 1970 UTC |
+
+- Claims are readable by anyone (Base64, not encrypted): never put secrets or personal data beyond the above in them.
+- **Sending the token:** `Authorization: Bearer <token>` on every request. A missing, invalid or expired token is `401 UNAUTHORIZED`; a valid token without the needed role is `403 FORBIDDEN` (T3.4). Use `UnauthorizedException` from stockline-common for 401s thrown by our own code.
+- **Roles** form a hierarchy, STAFF < MANAGER < ADMIN: a higher role can do everything a lower one can. Checked in the backend (T3.4); the frontend only hides what a role can't use.
+- **First admin:** created by auth-service at startup when the users table is empty, from `ADMIN_EMAIL` / `ADMIN_PASSWORD`. No users or password hashes in migrations.
+- **Secrets:** `JWT_SECRET` and `ADMIN_PASSWORD` come from environment variables. The defaults in `application.yml` and `infra/.env.example` are for local development only.

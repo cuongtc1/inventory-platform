@@ -1,0 +1,69 @@
+package com.stockline.auth.repository;
+
+import com.stockline.auth.TestcontainersConfiguration;
+import com.stockline.auth.constant.UserStatus;
+import com.stockline.auth.constant.UserType;
+import com.stockline.auth.entity.User;
+import com.stockline.common.constant.AuditConstants;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
+import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
+
+import static com.stockline.auth.TestData.user;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+/**
+ * Checks the {@code users} table from V1 against the entity, the lookup by email and the unique email, on MySQL.
+ * (Hibernate's {@code ddl-auto: validate} already fails at startup if a column is missing or has the wrong type.)
+ */
+@DataJpaTest
+@Import(TestcontainersConfiguration.class)
+class UserRepositoryTest {
+
+	@Autowired
+	private UserRepository userRepository;
+
+	@Autowired
+	private TestEntityManager entityManager;
+
+	@BeforeEach
+	void setUp() {
+		entityManager.persist(user("linh@corp.com", "$2a$10$hash", UserType.MANAGER, UserStatus.ACTIVE));
+		entityManager.flush();
+		entityManager.clear();
+	}
+
+	@Test
+	void findByEmail_existingEmail_returnsUserWithAllColumns() {
+		// when
+		User found = userRepository.findByEmail("linh@corp.com").orElseThrow();
+
+		// then
+		assertThat(found.getId()).isNotNull();
+		assertThat(found.getPasswordHash()).isEqualTo("$2a$10$hash");
+		assertThat(found.getFullName()).isEqualTo("Test manager");
+		assertThat(found.getUserType()).isEqualTo(UserType.MANAGER);
+		assertThat(found.getStatus()).isEqualTo(UserStatus.ACTIVE);
+		assertThat(found.getCreatedAt()).isNotNull();
+		assertThat(found.getCreatedBy()).isEqualTo(AuditConstants.SYSTEM_USER);
+	}
+
+	@Test
+	void findByEmail_unknownEmail_returnsEmpty() {
+		assertThat(userRepository.findByEmail("nobody@corp.com")).isEmpty();
+	}
+
+	@Test
+	void save_sameEmailTwice_isRejectedByUniqueKey() {
+		// when / then
+		assertThatThrownBy(() -> userRepository.saveAndFlush(
+				user("linh@corp.com", "$2a$10$other", UserType.STAFF, UserStatus.ACTIVE)))
+				.isInstanceOf(DataIntegrityViolationException.class)
+				.hasMessageContaining("uk_users_email");
+	}
+}

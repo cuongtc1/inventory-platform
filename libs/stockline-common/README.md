@@ -11,6 +11,8 @@ cd libs/stockline-common
 ./mvnw install        # Windows: mvnw.cmd install. Runs the library's tests, then copies the jar to ~/.m2
 ```
 
+On Windows, `install` fails with `Failed to install artifact ... .jar.<number>.tmp -> ... .jar` when another program has the old jar open: a running service, or an IDE's Java tools (Spring Tools / Eclipse, sometimes VS Code's Java extension). Stop the service or close that IDE, then run `install` again.
+
 Then in a service's `pom.xml`:
 
 ```xml
@@ -34,7 +36,7 @@ spring:
 | Package | Classes | Purpose |
 |---|---|---|
 | `constant` | `ErrorCode`, `CommonMessageKeys`, `AuditConstants` | Error codes with HTTP status, keys of `common-messages.properties`, the `system` user |
-| `exception` | `ApiException`, `ResourceNotFoundException`, `DuplicateResourceException`, `ResourceInUseException`, `InvalidRequestException`, `FieldValidationError`, `GlobalExceptionHandler` | The JSON error format (docs/conventions.md section 3) for every service |
+| `exception` | `ApiException`, `ResourceNotFoundException`, `DuplicateResourceException`, `ResourceInUseException`, `InvalidRequestException`, `UnauthorizedException`, `FieldValidationError`, `GlobalExceptionHandler` | The JSON error format (docs/conventions.md section 3) for every service |
 | `entity` | `BaseEntity` | `id` and the four audit columns; services' entities extend it |
 | `dto` | `PageResponse` | The list format (docs/conventions.md section 4) |
 | `util` | `DateTimeUtils`, `MoneyUtils`, `CommonValidationUtils`, `TextUtils` | Asia/Ho_Chi_Minh date ranges, USD with 2 decimals, shared validation rules, text cleanup |
