@@ -83,7 +83,7 @@ Goal: learn the standard layered Spring Boot service (controller / service / rep
 
 | ID | Task | Acceptance criteria | Owner | Status |
 |---|---|---|---|---|
-| T3.1 | auth-service | `users` table with `user_type`; BCrypt passwords; `POST /auth/login` returns JWT (contains user id and role); seeded admin account | Claude | REVIEW |
+| T3.1 | auth-service | `users` table with `user_type`; BCrypt passwords; `POST /auth/login` returns JWT (contains user id and role); seeded admin account | Claude | DONE |
 | T3.2 | User management API | ADMIN only: list, create, update, deactivate users; `GET /auth/me`; change password | Claude | TODO |
 | T3.3 | api-gateway | Spring Cloud Gateway routes `/api/auth/**`, `/api/products/**` and so on; validates JWT; CORS for the frontend | Claude | TODO |
 | T3.4 | Role rules | Hierarchy check (ADMIN ≥ MANAGER ≥ STAFF) enforced in the backend, e.g. only MANAGER+ can edit products, only ADMIN manages users | Claude | TODO |
