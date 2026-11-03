@@ -3,6 +3,7 @@ package com.stockline.auth.repository;
 import com.stockline.auth.TestcontainersConfiguration;
 import com.stockline.auth.constant.UserStatus;
 import com.stockline.auth.constant.UserType;
+import com.stockline.auth.dto.UserFilter;
 import com.stockline.auth.entity.User;
 import com.stockline.common.constant.AuditConstants;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,6 +13,9 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 
 import static com.stockline.auth.TestData.user;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -59,11 +63,45 @@ class UserRepositoryTest {
 	}
 
 	@Test
+	void existsByEmailAndIdNot_ownEmail_isFalse_otherUsersEmail_isTrue() {
+		// given
+		User linh = userRepository.findByEmail("linh@corp.com").orElseThrow();
+		User tom = userRepository.save(user("tom@corp.com", "$2a$10$hash", UserType.STAFF, UserStatus.ACTIVE));
+
+		// then
+		assertThat(userRepository.existsByEmailAndIdNot("linh@corp.com", linh.getId())).isFalse();
+		assertThat(userRepository.existsByEmailAndIdNot("linh@corp.com", tom.getId())).isTrue();
+	}
+
+	@Test
+	void findAll_withFilters_combinesThemWithAnd() {
+		// given
+		userRepository.save(new User("tom@corp.com", "$2a$10$hash", "Tom Lee", UserType.STAFF, UserStatus.ACTIVE));
+		userRepository.save(new User("anna_b@corp.com", "$2a$10$hash", "Anna Linhart", UserType.STAFF, UserStatus.INACTIVE));
+		PageRequest byEmail = PageRequest.of(0, 20, Sort.by("email"));
+
+		// when / then: search in email or name, ignoring case
+		assertThat(userRepository.findAll(matching("LINH", null, null), byEmail).getContent())
+				.extracting(User::getEmail).containsExactly("anna_b@corp.com", "linh@corp.com");
+		assertThat(userRepository.findAll(matching("linh", UserType.STAFF, null), byEmail).getContent())
+				.extracting(User::getEmail).containsExactly("anna_b@corp.com");
+		assertThat(userRepository.findAll(matching(null, null, UserStatus.ACTIVE), byEmail).getContent())
+				.extracting(User::getEmail).containsExactly("linh@corp.com", "tom@corp.com");
+		// "_" is plain text, not "any one character"
+		assertThat(userRepository.findAll(matching("a_b", null, null), byEmail).getContent())
+				.extracting(User::getEmail).containsExactly("anna_b@corp.com");
+	}
+
+	@Test
 	void save_sameEmailTwice_isRejectedByUniqueKey() {
 		// when / then
 		assertThatThrownBy(() -> userRepository.saveAndFlush(
 				user("linh@corp.com", "$2a$10$other", UserType.STAFF, UserStatus.ACTIVE)))
 				.isInstanceOf(DataIntegrityViolationException.class)
 				.hasMessageContaining("uk_users_email");
+	}
+
+	private static Specification<User> matching(String search, UserType userType, UserStatus status) {
+		return UserSpecifications.matching(new UserFilter(search, userType, status));
 	}
 }

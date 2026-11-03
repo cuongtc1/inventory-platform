@@ -57,7 +57,70 @@ Once any user exists, nothing is created or changed: a new `ADMIN_PASSWORD` does
 
 - The email is trimmed and compared in lower case: `" Admin@Stockline.LOCAL "` works.
 - All three login failures give the same answer **and take the same time** (an unknown email is still checked against a dummy BCrypt hash), so nobody can find out which emails exist.
-- The client sends the token back as `Authorization: Bearer <accessToken>`. Checking it is the api-gateway's job (T3.3); `GET /api/auth/me`, users and passwords come in T3.2.
+- The client sends the token back as `Authorization: Bearer <accessToken>` with every other request.
+
+### Who may call what
+
+Every endpoint except login, health and the API docs needs a valid token. Spring Security checks it in a filter before any controller runs (`WebSecurityConfig`): signature (`JWT_SECRET`, HS256), expiry, and `iss` = `stockline-auth`.
+
+| Endpoints | Who |
+|---|---|
+| `POST /api/auth/login`, `/actuator/health`, `/swagger-ui.html`, `/v3/api-docs` | Anyone |
+| `GET /api/auth/me`, `PUT /api/auth/password` | Any signed-in user |
+| `/api/users/**` | ADMIN only |
+
+| Situation | Status | `code` |
+|---|---|---|
+| No token, a broken or wrongly signed one, or an expired one | 401 | `UNAUTHORIZED`, "Please log in (the token is missing, invalid or expired)" |
+| Valid token, but not ADMIN on `/api/users` | 403 | `FORBIDDEN`, "You don't have permission to do this" |
+
+Both use the usual error JSON: the security filter hands the problem to the library's `GlobalExceptionHandler` (`UnauthorizedException`, `ForbiddenException`), so the frontend handles every error the same way.
+
+In Swagger UI: call login, copy `accessToken`, click **Authorize**, paste it. Every request then carries the token.
+
+### `GET /api/auth/me`
+
+`200` with the signed-in user (from the database, not the token):
+
+```json
+{ "id": 1, "email": "admin@stockline.local", "fullName": "Stockline Admin", "userType": "ADMIN", "status": "ACTIVE",
+  "createdAt": "...", "createdBy": "system", "updatedAt": "...", "updatedBy": "system" }
+```
+
+`401` if the account was deactivated after the token was issued.
+
+### `PUT /api/auth/password`
+
+```json
+{ "currentPassword": "admin12345", "newPassword": "a-new-password" }
+```
+
+`204`. `400 BAD_REQUEST` "The current password is wrong"; `400 VALIDATION_FAILED` if the new password has fewer than 8 or more than 72 characters. Tokens issued before the change keep working until they expire.
+
+### Users: `/api/users` (ADMIN)
+
+| Method and path | Result | Errors |
+|---|---|---|
+| `GET /api/users?search=&userType=&status=&page=0&size=20&sort=fullName,asc` | `200`, a page of users. `search` matches part of the email or name; `userType` and `status` filter exactly | `400` unknown sort field or filter value |
+| `GET /api/users/{id}` | `200`, one user | `404` |
+| `POST /api/users` | `201`, `Location: /api/users/{id}`; the user is ACTIVE | `400` validation, `409 DUPLICATE` email |
+| `PUT /api/users/{id}` | `200`, the updated user | `400`, `404`, `409 DUPLICATE` email; `400 BAD_REQUEST` if you take ADMIN away from yourself |
+| `POST /api/users/{id}/deactivate` | `200`, the user with `status: INACTIVE`; they can't log in any more | `404`; `400 BAD_REQUEST` for your own account |
+| `POST /api/users/{id}/activate` | `200`, `status: ACTIVE` again; the old password still works | `404` |
+
+Create: `{ "email", "fullName", "userType", "password" }`. Update: `{ "email", "fullName", "userType" }` (no password, no status). Response: like `/me`, never the password hash.
+
+| Field | Rules |
+|---|---|
+| `email` | Required, valid email, max 150, unique; stored trimmed and in lower case |
+| `fullName` | Required, max 100, trimmed |
+| `userType` | `STAFF`, `MANAGER` or `ADMIN` |
+| `password` (create only) | 8 to 72 characters |
+
+- Users are never deleted, only deactivated, so their email stays meaningful in `created_by` / `updated_by` everywhere.
+- **Deactivating doesn't end existing tokens.** A JWT is checked without asking the database, so a deactivated user's token keeps working on other services until it expires (at most `JWT_EXPIRATION`). auth-service itself refuses `/me` and password changes for them.
+- The two "self" rules keep an ADMIN from locking themselves out. There is always at least one active ADMIN, since only an active ADMIN can deactivate or demote someone, and never themselves.
+- `created_by` / `updated_by` of a user record are the email of the ADMIN who made the change (`AuditorConfig` reads it from the token); `system` for the seeded admin.
 
 ### The token
 
@@ -99,40 +162,53 @@ There is no refresh token: after `exp` the user logs in again.
 |---|---|---|
 | `V1__create_users.sql` | `users` | `email` (unique, lower case), `password_hash` (BCrypt, 60 characters), `full_name`, `user_type` (`STAFF` / `MANAGER` / `ADMIN`), `status` (`ACTIVE` / `INACTIVE`) |
 
-Passwords are never stored, only their BCrypt hash (`$2a$10$` + 22 characters of salt + 31 of hash). Users are deactivated, not deleted (T3.2), so their email stays meaningful in the audit columns of other data.
+Passwords are never stored, only their BCrypt hash (`$2a$10$` + 22 characters of salt + 31 of hash). Users are deactivated, not deleted, so their email stays meaningful in the audit columns of other data.
 
 ## Code
 
 | Path | Purpose |
 |---|---|
-| `controller/AuthController` | `POST /api/auth/login` |
-| `service/AuthService` | Finds the user by email, checks password and status, builds the response |
+| `controller/AuthController` | `POST /api/auth/login`, `GET /api/auth/me`, `PUT /api/auth/password` |
+| `controller/UserController` | `/api/users` (ADMIN) |
+| `controller/CurrentUser` | The user id from the request's token (`sub`) |
+| `service/AuthService` | Login, the signed-in user, changing the own password |
+| `service/UserService` | List, create, update, deactivate, activate users; the two "self" rules |
 | `service/TokenService` | Creates the signed JWT with the claims above, times from the `Clock` bean |
-| `config/SecurityConfig` | `PasswordEncoder` (BCrypt) and `JwtEncoder` (HS256 with `JWT_SECRET`) beans |
+| `config/SecurityConfig` | `PasswordEncoder` (BCrypt), `JwtEncoder` and `JwtDecoder` (HS256 with `JWT_SECRET`) beans |
+| `config/WebSecurityConfig` | The security filter chain: which URL needs which role, `role` claim → `ROLE_...`, 401/403 in our error format |
+| `config/AuditorConfig` | `created_by` / `updated_by` = the email from the token |
+| `config/OpenApiConfig` | The "Authorize" button in Swagger UI |
 | `config/JwtProperties`, `config/AdminProperties` | Typed settings from `application.yml` |
 | `config/AdminAccountInitializer` | Creates the first ADMIN at startup when there are no users |
-| `entity/User`, `repository/UserRepository` | The `users` table |
-| `constant/UserType`, `constant/UserStatus`, `constant/MessageKeys` | Enums and message keys |
+| `entity/User`, `repository/UserRepository`, `repository/UserSpecifications` | The `users` table and the list filters |
+| `dto/`, `mapper/UserMapper` | Request and response records; entity → response (never the hash) |
+| `constant/UserType`, `UserStatus`, `PasswordPolicy`, `MessageKeys` | Enums, password lengths, message keys |
 
 ## Tests
 
-`./mvnw test`: 30 tests, Docker must be running.
+`./mvnw test`: 66 tests, Docker must be running.
 
 | Kind | Classes | What they check |
 |---|---|---|
-| Unit | `service/AuthServiceTest` | Login success, email normalization, wrong password, unknown email, deactivated user, a 216-byte password (all 401, never a 500) |
+| Unit | `service/AuthServiceTest` | Login success and every failure (all 401, never a 500, also for a 216-byte password); `/me` for a deactivated user; password change with a right and a wrong current password |
+| Unit | `service/UserServiceTest` | Create (normalized email, hashed password, ACTIVE), duplicate emails, update, the two "self" rules, deactivate, activate |
 | Unit | `service/TokenServiceTest` | Real tokens decoded by Spring Security's `NimbusJwtDecoder`: claims and expiry; another secret and a changed role are rejected |
 | Unit | `config/AdminAccountInitializerTest`, `config/JwtPropertiesTest` | Admin created only on an empty table, password hashed; secrets under 32 bytes rejected |
 | Unit | `constant/MessagesPropertiesTest` | messages.properties and `MessageKeys` in step (same checks as product-service) |
-| Web slice | `controller/AuthControllerTest` | JSON shape (no hash in it), 400 validation, 401 format, 405 |
-| Repository slice (MySQL) | `repository/UserRepositoryTest` | Mapping of every column, lookup by email, unique email |
-| Integration (MySQL) | `AuthIntegrationTest`, `AuthServiceApplicationTests` | Seeded admin logs in over HTTP, the token decodes with `JWT_SECRET`; wrong password and unknown email give the same 401 |
+| Web slice + security | `controller/AuthControllerTest`, `controller/UserControllerTest` | With the real `WebSecurityConfig`: JSON shape (no hash), validation, 401 without or with a broken token, 403 for MANAGER and STAFF on `/api/users`, actor id passed from the token. `TestTokens.as(id, role)` signs a request in as a user |
+| Repository slice (MySQL) | `repository/UserRepositoryTest` | Every column, lookup by email, unique email, the list filters (search in email or name, `_` as plain text) |
+| Integration (MySQL) | `AuthIntegrationTest`, `AuthServiceApplicationTests` | Real tokens through the real filters: admin creates a staff user, staff gets 403 on `/api/users`, changes their password, is promoted, deactivated (login and `/me` refused), activated again; audit columns name the admin; an admin can't lock themselves out; an expired token gets 401 |
 
 ## New compared to Spring Boot 2.x / Java 8–11
 
 | Old | Now | Notes |
 |---|---|---|
-| `spring-boot-starter-security` for everything, or jjwt for tokens | Two Spring Security modules: `spring-security-crypto` (BCrypt) and `spring-security-oauth2-jose` (`JwtEncoder`, built on Nimbus) | Login only needs to hash and sign. The full starter, which locks every endpoint behind a filter, comes when a request must carry a token (T3.2) |
+| `spring-boot-starter-oauth2-resource-server` | `spring-boot-starter-security-oauth2-resource-server` (+ `...-test`) | Boot 4 renamed the security starters to `spring-boot-starter-security-*`. It brings Spring Security, BCrypt and `JwtEncoder`/`JwtDecoder` (Nimbus) |
+| `class SecurityConfig extends WebSecurityConfigurerAdapter` with `configure(HttpSecurity)` | A `SecurityFilterChain` `@Bean` | The adapter was removed in Spring Security 6 |
+| `http.csrf().disable().authorizeRequests().antMatchers(...)` | `http.csrf(csrf -> csrf.disable()).authorizeHttpRequests(auth -> auth.requestMatchers(...))` | Only the lambda style exists since Spring Security 7; `antMatchers`/`mvcMatchers` became `requestMatchers` |
+| `@MockBean` user + `@WithMockUser` | `.with(jwt().jwt(...).authorities(...))` from spring-security-test | A request "with a token" without signing one (`TestTokens`) |
+| Custom JWT filter (`OncePerRequestFilter`) parsing the header | `oauth2ResourceServer(o -> o.jwt(...))` | Spring Security reads `Authorization: Bearer`, checks the token with the `JwtDecoder` bean and puts it into the `SecurityContext` |
+| `jjwt` `Jwts.parser()` | `NimbusJwtDecoder.withSecretKey(key).macAlgorithm(HS256)` + `setJwtValidator(...)` | Expiry checked against our `Clock`, issuer checked too |
 | `Jwts.builder().signWith(key)...` (jjwt) | `JwtClaimsSet.builder()` + `JwtEncoder.encode(JwtEncoderParameters.from(header, claims))` | The same encoder/decoder pair the gateway's resource-server support uses |
 | `new NimbusJwtEncoder(new ImmutableSecret<>(key))` | `NimbusJwtEncoder.withSecretKey(key).algorithm(MacAlgorithm.HS256).build()` | The builder style of Spring Security 7 (7.1.1 here) |
 | `@ConfigurationProperties` class with getters and setters, `@EnableConfigurationProperties` | A `record` + `@ConfigurationPropertiesScan` on the application class | Constructor binding is automatic for records (Boot 3); the compact constructor checks the secret's length |

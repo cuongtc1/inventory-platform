@@ -1,5 +1,6 @@
 package com.stockline.auth.dto;
 
+import com.stockline.auth.constant.PasswordPolicy;
 import com.stockline.common.util.CommonValidationUtils;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -10,6 +11,6 @@ import jakarta.validation.constraints.Size;
  */
 public record LoginRequest(
 		@NotBlank @Size(max = CommonValidationUtils.EMAIL_MAX_LENGTH) String email,
-		@NotBlank @Size(max = 72) String password
+		@NotBlank @Size(max = PasswordPolicy.MAX_LENGTH) String password
 ) {
 }

@@ -3,10 +3,15 @@ package com.stockline.auth.service;
 import com.stockline.auth.constant.MessageKeys;
 import com.stockline.auth.constant.UserStatus;
 import com.stockline.auth.constant.UserType;
+import com.stockline.auth.dto.ChangePasswordRequest;
 import com.stockline.auth.dto.LoginRequest;
 import com.stockline.auth.dto.LoginResponse;
+import com.stockline.auth.dto.UserResponse;
 import com.stockline.auth.entity.User;
+import com.stockline.auth.mapper.UserMapper;
 import com.stockline.auth.repository.UserRepository;
+import com.stockline.common.constant.CommonMessageKeys;
+import com.stockline.common.exception.InvalidRequestException;
 import com.stockline.common.exception.UnauthorizedException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,7 +55,7 @@ class AuthServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		authService = new AuthService(userRepository, PASSWORD_ENCODER, tokenService);
+		authService = new AuthService(userRepository, PASSWORD_ENCODER, tokenService, new UserMapper());
 	}
 
 	@Test
@@ -123,6 +128,59 @@ class AuthServiceTest {
 
 		// when / then
 		assertLoginFails(new LoginRequest("linh@corp.com", "ằ".repeat(72)));
+	}
+
+	@Test
+	void me_activeUser_returnsUserWithoutHash() {
+		// given
+		when(userRepository.findById(7L)).thenReturn(Optional.of(
+				user(7L, "linh@corp.com", PASSWORD_HASH, UserType.MANAGER, UserStatus.ACTIVE)));
+
+		// when
+		UserResponse me = authService.me(7L);
+
+		// then
+		assertThat(me.email()).isEqualTo("linh@corp.com");
+		assertThat(me.userType()).isEqualTo(UserType.MANAGER);
+	}
+
+	@Test
+	void me_userDeactivatedAfterLogin_throwsUnauthorized() {
+		// given: the token is still valid, but the account was deactivated meanwhile
+		when(userRepository.findById(8L)).thenReturn(Optional.of(
+				user(8L, "old@corp.com", PASSWORD_HASH, UserType.STAFF, UserStatus.INACTIVE)));
+
+		// when / then
+		assertThatThrownBy(() -> authService.me(8L))
+				.isInstanceOfSatisfying(UnauthorizedException.class,
+						ex -> assertThat(ex.getMessageKey()).isEqualTo(CommonMessageKeys.AUTH_UNAUTHORIZED));
+	}
+
+	@Test
+	void changePassword_correctCurrentPassword_storesNewHash() {
+		// given
+		User linh = user(7L, "linh@corp.com", PASSWORD_HASH, UserType.MANAGER, UserStatus.ACTIVE);
+		when(userRepository.findById(7L)).thenReturn(Optional.of(linh));
+
+		// when
+		authService.changePassword(7L, new ChangePasswordRequest(PASSWORD, "brand-new-pass"));
+
+		// then: the entity is changed; the transaction writes it (no save() call needed)
+		assertThat(PASSWORD_ENCODER.matches("brand-new-pass", linh.getPasswordHash())).isTrue();
+		assertThat(PASSWORD_ENCODER.matches(PASSWORD, linh.getPasswordHash())).isFalse();
+	}
+
+	@Test
+	void changePassword_wrongCurrentPassword_throwsAndKeepsOldHash() {
+		// given
+		User linh = user(7L, "linh@corp.com", PASSWORD_HASH, UserType.MANAGER, UserStatus.ACTIVE);
+		when(userRepository.findById(7L)).thenReturn(Optional.of(linh));
+
+		// when / then
+		assertThatThrownBy(() -> authService.changePassword(7L, new ChangePasswordRequest("wrong", "brand-new-pass")))
+				.isInstanceOfSatisfying(InvalidRequestException.class,
+						ex -> assertThat(ex.getMessageKey()).isEqualTo(MessageKeys.AUTH_PASSWORD_CURRENT_WRONG));
+		assertThat(linh.getPasswordHash()).isEqualTo(PASSWORD_HASH);
 	}
 
 	private void assertLoginFails(LoginRequest request) {

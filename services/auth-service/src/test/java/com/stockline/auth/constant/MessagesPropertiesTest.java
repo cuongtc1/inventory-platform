@@ -1,7 +1,10 @@
 package com.stockline.auth.constant;
 
 import com.stockline.common.constant.CommonMessageKeys;
+import com.stockline.auth.dto.ChangePasswordRequest;
+import com.stockline.auth.dto.CreateUserRequest;
 import com.stockline.auth.dto.LoginRequest;
+import com.stockline.auth.dto.UpdateUserRequest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -31,7 +34,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class MessagesPropertiesTest {
 
 	// DTOs whose Bean Validation annotations may reference message keys, e.g. "{common.validation.code.invalid}"
-	private static final List<Class<?>> REQUEST_CLASSES = List.of(LoginRequest.class);
+	private static final List<Class<?>> REQUEST_CLASSES = List.of(
+			LoginRequest.class, CreateUserRequest.class, UpdateUserRequest.class, ChangePasswordRequest.class);
 
 	// Keys that Hibernate Validator or Spring MVC look up by themselves; no constant in MessageKeys needed
 	private static final List<String> FRAMEWORK_KEY_PREFIXES = List.of("jakarta.validation.", "problemDetail.");

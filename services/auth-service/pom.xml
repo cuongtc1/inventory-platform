@@ -47,19 +47,14 @@
 			<artifactId>spring-boot-starter-webmvc</artifactId>
 		</dependency>
 		<!--
-			Two Spring Security modules, not the whole spring-boot-starter-security: login only needs to check a
-			password and create a token. The starter would also lock every endpoint behind a login filter; that
-			comes with T3.2 (GET /api/auth/me needs a valid token). Versions come from Spring Boot.
+			Spring Security as an OAuth2 "resource server": every request except login must carry a valid JWT
+			(Authorization: Bearer ...), which a security filter checks before the controller runs. Includes
+			BCryptPasswordEncoder (spring-security-crypto) and JwtEncoder / JwtDecoder (spring-security-oauth2-jose,
+			built on the Nimbus JOSE + JWT library). Boot 4 name of Boot 3's spring-boot-starter-oauth2-resource-server.
 		-->
-		<!-- BCryptPasswordEncoder -->
 		<dependency>
-			<groupId>org.springframework.security</groupId>
-			<artifactId>spring-security-crypto</artifactId>
-		</dependency>
-		<!-- JwtEncoder / NimbusJwtEncoder: creates and signs JWTs (uses the Nimbus JOSE + JWT library) -->
-		<dependency>
-			<groupId>org.springframework.security</groupId>
-			<artifactId>spring-security-oauth2-jose</artifactId>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.flywaydb</groupId>
@@ -99,6 +94,12 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!-- spring-security-test: MockMvc requests "as" a user with a JWT, e.g. .with(jwt().authorities(...)) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security-oauth2-resource-server-test</artifactId>
 			<scope>test</scope>
 		</dependency>
 		<!-- Testcontainers: tests start a throwaway MySQL in Docker. Versions come from Spring Boot -->

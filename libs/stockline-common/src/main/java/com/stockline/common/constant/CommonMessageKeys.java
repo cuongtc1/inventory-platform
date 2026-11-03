@@ -25,6 +25,10 @@ public final class CommonMessageKeys {
 	public static final String RESOURCE_IN_USE = "common.resource.in-use";
 	public static final String RESOURCE_REFERENCE_MISSING = "common.resource.reference-missing";
 
+	// Security
+	public static final String AUTH_UNAUTHORIZED = "common.auth.unauthorized";
+	public static final String AUTH_FORBIDDEN = "common.auth.forbidden";
+
 	// Server errors
 	public static final String ERROR_UNEXPECTED = "common.error.unexpected";
 

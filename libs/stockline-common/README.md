@@ -36,7 +36,7 @@ spring:
 | Package | Classes | Purpose |
 |---|---|---|
 | `constant` | `ErrorCode`, `CommonMessageKeys`, `AuditConstants` | Error codes with HTTP status, keys of `common-messages.properties`, the `system` user |
-| `exception` | `ApiException`, `ResourceNotFoundException`, `DuplicateResourceException`, `ResourceInUseException`, `InvalidRequestException`, `UnauthorizedException`, `FieldValidationError`, `GlobalExceptionHandler` | The JSON error format (docs/conventions.md section 3) for every service |
+| `exception` | `ApiException`, `ResourceNotFoundException`, `DuplicateResourceException`, `ResourceInUseException`, `InvalidRequestException`, `UnauthorizedException`, `ForbiddenException`, `FieldValidationError`, `GlobalExceptionHandler` | The JSON error format (docs/conventions.md section 3) for every service |
 | `entity` | `BaseEntity` | `id` and the four audit columns; services' entities extend it |
 | `dto` | `PageResponse` | The list format (docs/conventions.md section 4) |
 | `util` | `DateTimeUtils`, `MoneyUtils`, `CommonValidationUtils`, `TextUtils` | Asia/Ho_Chi_Minh date ranges, USD with 2 decimals, shared validation rules, text cleanup |

@@ -53,19 +53,39 @@ public class User extends BaseEntity {
 		return email;
 	}
 
+	public void setEmail(String email) {
+		this.email = email;
+	}
+
 	public String getPasswordHash() {
 		return passwordHash;
+	}
+
+	public void setPasswordHash(String passwordHash) {
+		this.passwordHash = passwordHash;
 	}
 
 	public String getFullName() {
 		return fullName;
 	}
 
+	public void setFullName(String fullName) {
+		this.fullName = fullName;
+	}
+
 	public UserType getUserType() {
 		return userType;
 	}
 
+	public void setUserType(UserType userType) {
+		this.userType = userType;
+	}
+
 	public UserStatus getStatus() {
 		return status;
+	}
+
+	public void setStatus(UserStatus status) {
+		this.status = status;
 	}
 }
