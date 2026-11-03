@@ -1,4 +1,5 @@
 import type { ThemeConfig } from 'antd'
+import { SIDEBAR_COLLAPSED_WIDTH } from '../constants/app'
 
 /**
  * The mockup's look (docs/mockup/style.css) as Ant Design theme settings. Components take their colours from
@@ -22,6 +23,13 @@ export const colors = {
   sidebarText: '#e3eee7',
   sidebarSection: '#6f8a7b',
   accent: '#2fe07a',
+  // Sidebar entries: normal text, hover and selected backgrounds (mockup `aside a.nv`, `a.nv:hover`, `a.on`)
+  sidebarItem: '#b5c9bd',
+  sidebarItemHover: '#132119',
+  sidebarItemSelected: '#123d25',
+  // Avatar circle in the top bar (mockup `.av`)
+  avatarBackground: '#d6f3e1',
+  avatarText: '#0f7a37',
 } as const
 
 /** Badge tones from the mockup (`.bd` + `.r` / `.y` / `.b`): light background, darker text. */
@@ -64,10 +72,19 @@ export const theme: ThemeConfig = {
     Menu: {
       darkItemBg: colors.sidebar,
       darkSubMenuItemBg: colors.sidebar,
-      darkItemColor: colors.sidebarText,
-      darkItemSelectedBg: '#14281e',
+      darkItemColor: colors.sidebarItem,
+      darkItemHoverColor: colors.sidebarText,
+      darkItemHoverBg: colors.sidebarItemHover,
+      darkItemSelectedBg: colors.sidebarItemSelected,
       darkItemSelectedColor: colors.accent,
       darkGroupTitleColor: colors.sidebarSection,
+      // Lines between sections in the collapsed sidebar
+      colorSplit: colors.sidebarBorder,
+      // Same as the collapsed sidebar (Ant Design's default is 80, which would overflow it)
+      collapsedWidth: SIDEBAR_COLLAPSED_WIDTH,
+      itemBorderRadius: 8,
+      itemMarginInline: 12,
+      groupTitleFontSize: 12,
     },
     Table: {
       headerBg: '#f6faf7',

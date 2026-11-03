@@ -418,9 +418,10 @@ frontend/src/
 │                       category.ts, supplier.ts, product.ts, ...; ui.ts (EnumDisplay)
 ├── pages/              one folder per area: products/ProductListPage.tsx, products/ProductFormPage.tsx
 ├── components/         shared building blocks: StatusBadge, DeleteButton, ...
-├── layouts/            AppLayout (sidebar, top bar, content area from the mockup)
-├── hooks/              reusable logic: usePagedList, ...
-├── constants/          app.ts (time zone, currency, page sizes), routes.ts, one file per enum (productStatus.ts)
+├── layouts/            AppLayout, AppHeader, SidebarMenu, Logo (sidebar, top bar, content area from the mockup)
+├── hooks/              reusable logic: useIsMobile, useStoredState, usePagedList, ...
+├── constants/          app.ts (time zone, currency, page sizes, breakpoint), routes.ts, navigation.ts (menu),
+│                       one file per enum (productStatus.ts)
 ├── messages/           texts.ts: every text shown in the UI
 ├── theme/              theme.ts: the mockup's colours as Ant Design tokens, badge tones
 ├── styles/             global.css: the only global CSS
@@ -476,3 +477,11 @@ The shared files above exist since T2.0; use and extend them instead of writing 
 - The route table lives in `App.tsx` (React Router's `createBrowserRouter`). Every real page is **lazy**: `lazy: { Component: () => import('./pages/...').then(module => module.XxxPage) }`. A screen of a later phase is already a route showing `ComingSoonPage`, so the menu can link to it; its task replaces the element.
 - Every page starts with `PageHeader` (title, actions on the right, and the browser tab title). Unknown URLs show `NotFoundPage`; a page that crashes shows `RouteErrorPage`.
 - Data loading in a page: `useEffect` with an `AbortController`, cancelled in the effect's cleanup.
+
+### Layout and responsive design
+
+- Every screen works on a phone (390 px wide) as well as on a desktop. Check both before a frontend task goes to review.
+- One breakpoint: `MOBILE_MAX_WIDTH` (991 px) in `constants/app.ts`, the same as Ant Design's `lg`. Below it the sidebar becomes a slide-in menu and the top bar shows icons only. In components, use `useIsMobile()` or Ant Design's responsive props (`Grid`, `Col xs/md/lg`, `Space wrap`); don't write new media queries.
+- The menu is data: `NAVIGATION` in `constants/navigation.ts` (section, label from `texts.nav`, icon, route). A new screen adds its entry there. From Phase 3, role rules hide entries there too.
+- Pages never set their own outer padding or width; `AppLayout` does (content at most 1280 px wide).
+- Wide tables scroll inside themselves (`scroll={{ x: 'max-content' }}`), so the page never scrolls sideways. On phones, forms use one column and the page actions in `PageHeader` wrap under the title.

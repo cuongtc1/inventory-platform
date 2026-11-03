@@ -15,6 +15,17 @@ export const texts = {
     documentTitle: (page: string) => `${page} · Stockline`,
   },
 
+  // Sidebar and top bar (AppLayout)
+  layout: {
+    openMenu: 'Open menu',
+    collapseMenu: 'Collapse menu',
+    expandMenu: 'Expand menu',
+    notifications: 'Notifications',
+    profile: 'My profile',
+    // Until login exists (Phase 3) there is no signed-in user to show
+    guest: 'Guest',
+  },
+
   // Pages that don't exist yet, 404 and unexpected errors
   pages: {
     placeholder: (task: string) => `This page is built in ${task}.`,

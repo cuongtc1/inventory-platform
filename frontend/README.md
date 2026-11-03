@@ -44,22 +44,38 @@ src/
 │   ├── errors.ts         ApiError, toApiError, errorMessage, formFieldErrors (validation errors → form fields)
 │   └── table.ts          Ant Design Table ↔ API paging and sorting (current 1 ↔ page 0, ascend ↔ asc)
 ├── constants/
-│   ├── app.ts            time zone, currency, page sizes
+│   ├── app.ts            time zone, currency, page sizes, mobile breakpoint, sidebar widths
 │   ├── routes.ts         every path (ROUTES) and route patterns
+│   ├── navigation.ts     the sidebar menu: sections, entries, icons (NAVIGATION), activeNavPath
 │   └── productStatus.ts  enum labels and badge tones (PRODUCT_STATUS, PRODUCT_STATUS_OPTIONS)
 ├── messages/texts.ts     every text the UI shows
 ├── theme/theme.ts        mockup colours as Ant Design tokens; badge tones
 ├── styles/global.css     the only global CSS
 ├── components/           shared components: StatusBadge, PageHeader (title row + tab title), PageLoading
-├── layouts/AppLayout.tsx the frame around pages (content area now; sidebar and top bar in T2.2)
+├── layouts/              AppLayout (the frame around pages), AppHeader (top bar), SidebarMenu, Logo
 ├── pages/
 │   ├── dashboard/        DashboardPage (backend connection check, catalog links)
 │   ├── products/         ProductListPage, ProductFormPage (placeholders until T2.3)
 │   ├── categories/       CategoryListPage (placeholder until T2.4)
 │   ├── suppliers/        SupplierListPage (placeholder until T2.4)
 │   └── ComingSoonPage, NotFoundPage, RouteErrorPage
-└── hooks/                reusable hooks
+└── hooks/                useIsMobile (screen width), useStoredState (useState kept in localStorage)
 ```
+
+## Layout and screen sizes
+
+Every page except login sits inside [AppLayout](src/layouts/AppLayout.tsx), which is built like the mockup: a dark sidebar menu, a white top bar (menu button, notifications bell, avatar, Log out) and the light content area. The layout changes with the screen width:
+
+| Width | Menu | Top bar |
+|---|---|---|
+| ≥ 992 px (laptop, desktop) | Sidebar on the left. The top bar's button collapses it to icons (70 px) and back; the browser remembers the choice | Bell, avatar with name, "Log out" button |
+| < 992 px (phone, tablet) | No sidebar. The ☰ button opens the same menu as a panel sliding in from the left; choosing an entry closes it | Icons only, smaller paddings |
+
+- The breakpoint is `MOBILE_MAX_WIDTH` in `constants/app.ts`; components ask `useIsMobile()` instead of writing their own media query.
+- The menu entries come from `NAVIGATION` in `constants/navigation.ts`; a new screen gets its menu entry there, not in the layout.
+- Not built yet: the mockup's search box, the "View as" role switch (T3.5) and the unread count on the bell (Phase 8). Log out only goes to the login page until Phase 3.
+
+To try the phone layout on a computer: browser DevTools (F12) → device toolbar (Ctrl+Shift+M) → pick a phone.
 
 ## Routing
 
@@ -73,7 +89,7 @@ src/
 | `/warehouses`, `/stock-levels`, `/stock-movements`, `/low-stock`, `/customers`, `/sales-orders`, `/purchase-orders`, `/notifications`, `/reports`, `/users`, `/login` | "Coming soon" with the phase that builds them |
 | anything else | 404 page |
 
-- **Lazy pages:** each Phase 2 page is downloaded only when it is first opened (`lazy: { Component: () => import(...) }`), so the first download stays small and every page is its own file in `dist/`. Libraries go into named files (`vendor-react`, `vendor-antd`, `vendor`) that browsers can keep cached across our releases.
+- **Lazy pages:** each Phase 2 page is downloaded only when it is first opened (`lazy: { Component: () => import(...) }`), so the first download stays small and every page is its own file in `dist/`. Libraries go into named files (`vendor-react`, `vendor-antd`, `vendor-icons`, `vendor`) that browsers can keep cached across our releases.
 - **Errors:** a page that crashes shows `RouteErrorPage` instead of a blank screen; the rest of the app keeps working.
 - **Tab titles:** `PageHeader` renders a `<title>` ("Products · Stockline"); React 19 moves it into `<head>` by itself.
 
@@ -120,6 +136,8 @@ useEffect(() => {
 In development, `StrictMode` runs every effect twice (run, cleanup, run) on purpose, to show effects that don't clean up after themselves. That's why the request has a cleanup that cancels it.
 
 **Router hooks.** `useParams()` reads parts of the URL (`:id` in `/products/:id/edit`, see `ProductFormPage`), `useNavigation()` tells whether the next page is still loading (`AppLayout` shows a spinner), and `<Link to={ROUTES.products}>` changes the page without reloading the browser.
+
+**Custom hooks.** A function whose name starts with `use` and that calls other hooks; it lets components share logic, not markup. [useStoredState](src/hooks/useStoredState.ts) is `useState` that also saves the value in `localStorage` (the sidebar remembers being collapsed). [useIsMobile](src/hooks/useIsMobile.ts) uses `useSyncExternalStore`, React's hook for reading something outside React (here the browser's `matchMedia`): the component re-renders when the screen crosses the breakpoint, and the first render already has the right answer, so a phone never flashes the desktop layout.
 
 Rules in short: pages call functions in `api/` (never Axios directly), show texts from `messages/texts.ts`, format with `utils/format.ts`, show enums with `StatusBadge` and a `constants/` map, take colours from the theme, and decide on errors by `ApiError.code`.
 

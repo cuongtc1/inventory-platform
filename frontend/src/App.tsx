@@ -55,6 +55,7 @@ const routes: RouteObject[] = [
       },
 
       // Later phases
+      { path: ROUTES.profile, element: comingSoon(texts.layout.profile, 3) },
       { path: ROUTES.users, element: comingSoon(texts.nav.items.users, 3) },
       { path: ROUTES.warehouses, element: comingSoon(texts.nav.items.warehouses, 4) },
       { path: ROUTES.stockLevels, element: comingSoon(texts.nav.items.stockLevels, 4) },

@@ -5,6 +5,7 @@
 export const ROUTES = {
   dashboard: '/',
   login: '/login',
+  profile: '/profile',
 
   // Catalog (product-service)
   products: '/products',
