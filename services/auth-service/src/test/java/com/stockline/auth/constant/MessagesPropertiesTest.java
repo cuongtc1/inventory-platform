@@ -1,10 +1,10 @@
 package com.stockline.auth.constant;
 
-import com.stockline.common.constant.CommonMessageKeys;
 import com.stockline.auth.dto.ChangePasswordRequest;
 import com.stockline.auth.dto.CreateUserRequest;
 import com.stockline.auth.dto.LoginRequest;
 import com.stockline.auth.dto.UpdateUserRequest;
+import com.stockline.common.constant.CommonMessageKeys;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 

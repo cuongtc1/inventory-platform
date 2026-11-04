@@ -1,9 +1,9 @@
 package com.stockline.auth.config;
 
 import com.stockline.auth.constant.UserStatus;
-import com.stockline.auth.constant.UserType;
 import com.stockline.auth.entity.User;
 import com.stockline.auth.repository.UserRepository;
+import com.stockline.common.constant.UserType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

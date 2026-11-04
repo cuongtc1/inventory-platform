@@ -2,7 +2,6 @@ package com.stockline.auth.service;
 
 import com.stockline.auth.constant.MessageKeys;
 import com.stockline.auth.constant.UserStatus;
-import com.stockline.auth.constant.UserType;
 import com.stockline.auth.dto.ChangePasswordRequest;
 import com.stockline.auth.dto.LoginRequest;
 import com.stockline.auth.dto.LoginResponse;
@@ -11,6 +10,7 @@ import com.stockline.auth.entity.User;
 import com.stockline.auth.mapper.UserMapper;
 import com.stockline.auth.repository.UserRepository;
 import com.stockline.common.constant.CommonMessageKeys;
+import com.stockline.common.constant.UserType;
 import com.stockline.common.exception.InvalidRequestException;
 import com.stockline.common.exception.UnauthorizedException;
 import org.junit.jupiter.api.BeforeEach;

@@ -8,16 +8,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
-import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 
@@ -31,39 +27,23 @@ import java.util.List;
  * </ol>
  *
  * <p>The gateway only checks <em>who</em> is calling. <em>What they may do</em> depends on the resource and is
- * decided by each service: the role rules are there (T3.4). The {@code Authorization} header is forwarded unchanged,
- * so a service can read the same token.
+ * decided by each service. The {@code Authorization} header is forwarded unchanged, so a service checks the same
+ * token again and reads the role from it.
  */
 @Configuration(proxyBeanMethods = false)
 public class SecurityConfig {
 
 	@Bean
-	JwtDecoder jwtDecoder(JwtProperties properties, Clock clock) {
-		return JwtSecurity.jwtDecoder(properties.secret(), properties.issuer(), clock);
-	}
-
-	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http,
 			@Qualifier("handlerExceptionResolver") HandlerExceptionResolver exceptionResolver) throws Exception {
-		AuthenticationEntryPoint notLoggedIn = JwtSecurity.notLoggedIn(exceptionResolver);
-
-		http
+		JwtSecurity.configure(http, exceptionResolver)
 				// Uses the corsConfigurationSource bean below. Must happen in the security chain: a browser's preflight
 				// request (OPTIONS) carries no token, so it has to be answered before the token check
 				.cors(Customizer.withDefaults())
-				// No cookies or sessions: the token is in a header, so CSRF can't happen
-				.csrf(csrf -> csrf.disable())
-				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
-						.requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
-						// Spring Boot forwards errors to /error; without this, an error would become a 401
-						.requestMatchers("/error").permitAll()
-						.anyRequest().authenticated())
-				.oauth2ResourceServer(resourceServer -> resourceServer
-						.jwt(Customizer.withDefaults())
-						.authenticationEntryPoint(notLoggedIn))
-				.exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(notLoggedIn));
+						.requestMatchers(JwtSecurity.OPEN_PATHS).permitAll()
+						.anyRequest().authenticated());
 		return http.build();
 	}
 

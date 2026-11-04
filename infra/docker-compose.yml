@@ -186,6 +186,8 @@ services:
       DB_URL: jdbc:mysql://mysql:3306/product_db
       DB_USERNAME: stockline
       DB_PASSWORD: ${MYSQL_PASSWORD:-stockline}
+      # Same value as auth-service, which signs the tokens
+      JWT_SECRET: ${JWT_SECRET:-local-dev-only-stockline-jwt-secret-change-me}
       TZ: UTC
     ports:
       - "${PRODUCT_SERVICE_PORT:-8082}:8082"

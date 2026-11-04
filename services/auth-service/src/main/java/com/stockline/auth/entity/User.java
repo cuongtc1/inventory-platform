@@ -1,7 +1,7 @@
 package com.stockline.auth.entity;
 
 import com.stockline.auth.constant.UserStatus;
-import com.stockline.auth.constant.UserType;
+import com.stockline.common.constant.UserType;
 import com.stockline.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

@@ -30,7 +30,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>Tests don't roll back (that would hide commit-time errors), so each test uses its own names and SKUs.
  */
 @SpringBootTest
-@AutoConfigureMockMvc
+// Security filters off: this class checks the layers together; SecurityIntegrationTest checks real tokens
+@AutoConfigureMockMvc(addFilters = false)
 @Import(TestcontainersConfiguration.class)
 class ProductCatalogIntegrationTest {
 

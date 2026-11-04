@@ -2,7 +2,6 @@ package com.stockline.auth.service;
 
 import com.stockline.auth.constant.MessageKeys;
 import com.stockline.auth.constant.UserStatus;
-import com.stockline.auth.constant.UserType;
 import com.stockline.auth.dto.CreateUserRequest;
 import com.stockline.auth.dto.UpdateUserRequest;
 import com.stockline.auth.dto.UserFilter;
@@ -11,6 +10,7 @@ import com.stockline.auth.entity.User;
 import com.stockline.auth.mapper.UserMapper;
 import com.stockline.auth.repository.UserRepository;
 import com.stockline.auth.repository.UserSpecifications;
+import com.stockline.common.constant.UserType;
 import com.stockline.common.dto.PageResponse;
 import com.stockline.common.exception.DuplicateResourceException;
 import com.stockline.common.exception.InvalidRequestException;

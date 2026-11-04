@@ -35,9 +35,9 @@ spring:
 
 | Package | Classes | Purpose |
 |---|---|---|
-| `constant` | `ErrorCode`, `CommonMessageKeys`, `AuditConstants` | Error codes with HTTP status, keys of `common-messages.properties`, the `system` user |
+| `constant` | `ErrorCode`, `CommonMessageKeys`, `AuditConstants`, `JwtClaimNames`, `UserType` | Error codes with HTTP status, keys of `common-messages.properties`, the `system` user |
 | `exception` | `ApiException`, `ResourceNotFoundException`, `DuplicateResourceException`, `ResourceInUseException`, `InvalidRequestException`, `UnauthorizedException`, `ForbiddenException`, `FieldValidationError`, `GlobalExceptionHandler`, `DataExceptionHandler` | The JSON error format (docs/conventions.md section 3) for every service. `DataExceptionHandler` holds the Hibernate and Spring Data errors, so a service without a database (the gateway) can load the rest |
-| `security` | `JwtSecurity` | What checking a JWT has in common everywhere: key, `JwtDecoder`, `role` claim, 401/403 answers (docs/conventions.md section 11). Needs the resource-server starter in the service |
+| `security` | `JwtSecurity`, `JwtCheckProperties`, `JwtAuditorAware` | What checking a JWT has in common everywhere: key, `JwtDecoder`, `role` claim, role hierarchy, shared `HttpSecurity` settings, 401/403 answers, the auditor from the token (docs/conventions.md section 11). Needs the resource-server starter in the service |
 | `entity` | `BaseEntity` | `id` and the four audit columns; services' entities extend it |
 | `dto` | `PageResponse` | The list format (docs/conventions.md section 4) |
 | `util` | `DateTimeUtils`, `MoneyUtils`, `CommonValidationUtils`, `TextUtils` | Asia/Ho_Chi_Minh date ranges, USD with 2 decimals, shared validation rules, text cleanup |
@@ -49,7 +49,8 @@ spring:
 | Bean | Condition | Replace it by defining your own |
 |---|---|---|
 | `Clock` (UTC) | always | a `Clock` bean (tests use a fixed or movable clock) |
-| JPA auditing (`auditDateTimeProvider`, `auditorAware` = `system`) | Spring Data JPA on the classpath | a bean named `auditorAware` (Phase 3: the user from the JWT) |
+| JPA auditing (`auditDateTimeProvider`, `auditorAware`: the email in the token with Spring Security, else `system`) | Spring Data JPA on the classpath | a bean named `auditorAware` |
+| `JwtDecoder` (from `stockline.jwt.secret` and `.issuer`), `RoleHierarchy` | the resource-server starter on the classpath | a bean of that type |
 | `GlobalExceptionHandler` | servlet web application | a `GlobalExceptionHandler` bean |
 | `DataExceptionHandler` | servlet web application with Hibernate and Spring Data | a `DataExceptionHandler` bean |
 

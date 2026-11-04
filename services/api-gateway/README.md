@@ -9,7 +9,7 @@ browser ──▶ api-gateway :8080 ──▶ auth-service :8081, product-servic
             3. route by URL
 ```
 
-The gateway checks **who** is calling. **What they may do** is decided by each service (T3.4). Until T3.4, product-service on :8082 doesn't check tokens itself, so only requests through the gateway are protected.
+The gateway checks **who** is calling. **What they may do** is decided by each service, which checks the same token again.
 
 ## Run
 
@@ -99,7 +99,7 @@ Checked: login without a token, body and token forwarded, every path to its serv
 |---|---|
 | `src/main/resources/application.yml` | The routes and all settings |
 | `config/SecurityConfig` | JWT check, open URLs, CORS |
-| `config/JwtProperties`, `config/CorsProperties` | Typed settings |
+| `config/CorsProperties` | Typed setting; `stockline.jwt.*` is read by stockline-common |
 | `Dockerfile` | Same structure as product-service's |
 
 ## New compared to Spring Boot 2.x / Java 8–11

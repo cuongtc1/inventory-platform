@@ -4,6 +4,7 @@ import com.stockline.product.controller.CategoryController;
 import com.stockline.product.service.CategoryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -18,6 +19,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * "problemDetail.&lt;exception class&gt;" keys. The real texts equal Spring's defaults, so this test loads
  * test-messages.properties first, with a different 405 text, and checks that the response uses it.
  */
+// Security filters off: this class checks URLs, JSON and errors; the role rules are tested in CatalogSecurityTest
+@AutoConfigureMockMvc(addFilters = false)
 @WebMvcTest(CategoryController.class)
 // The first file that has a key wins
 @TestPropertySource(properties = "spring.messages.basename=test-messages,messages,common-messages")

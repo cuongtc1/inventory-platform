@@ -1,9 +1,9 @@
 package com.stockline.auth.repository;
 
 import com.stockline.auth.constant.UserStatus;
-import com.stockline.auth.constant.UserType;
 import com.stockline.auth.dto.UserFilter;
 import com.stockline.auth.entity.User;
+import com.stockline.common.constant.UserType;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.ArrayList;

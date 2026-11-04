@@ -1,3 +1,4 @@
 com.stockline.common.autoconfigure.CommonTimeAutoConfiguration
 com.stockline.common.autoconfigure.CommonJpaAutoConfiguration
 com.stockline.common.autoconfigure.CommonWebAutoConfiguration
+com.stockline.common.autoconfigure.CommonSecurityAutoConfiguration

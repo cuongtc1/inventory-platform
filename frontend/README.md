@@ -18,10 +18,12 @@ Settings (optional): copy `.env.example` to `.env`.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `API_PROXY_TARGET` | `http://localhost:8082` | Where the dev server forwards `/api` (product-service now, the api-gateway on 8080 from Phase 3). Dev server only, never reaches the browser |
+| `API_PROXY_TARGET` | `http://localhost:8082` | Where the dev server forwards `/api` (product-service now, the api-gateway on 8080 from T3.5). Dev server only, never reaches the browser |
 | `VITE_API_BASE_URL` | empty | Base URL of API calls in the browser; empty = same origin, through the proxy |
 
 ## How the browser reaches the API
+
+Since T3.4 product-service needs a token, and login comes in T3.5: until then the catalog pages show a 401 error.
 
 ```
 browser ──/api/products──▶ Vite dev server :5173 ──proxy──▶ product-service :8082

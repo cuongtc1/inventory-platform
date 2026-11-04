@@ -1,7 +1,7 @@
 package com.stockline.auth;
 
-import com.stockline.auth.constant.UserType;
 import com.stockline.common.constant.JwtClaimNames;
+import com.stockline.common.constant.UserType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;

@@ -7,6 +7,7 @@ import org.hibernate.exception.ConstraintViolationException;
 import org.hibernate.exception.ConstraintViolationException.ConstraintKind;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
@@ -33,6 +34,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * unexpected exceptions. ProductController is used as the example endpoint; its service is a mock.
  * Every response must have the full convention format (type, title, status, detail, instance, code, timestamp).
  */
+// Security filters off: this class checks URLs, JSON and errors; the role rules are tested in CatalogSecurityTest
+@AutoConfigureMockMvc(addFilters = false)
 @WebMvcTest(ProductController.class)
 class GlobalExceptionHandlerTest {
 

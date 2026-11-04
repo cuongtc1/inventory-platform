@@ -515,7 +515,7 @@ The shared files above exist since T2.0; use and extend them instead of writing 
 
 ## 11. Authentication and JWT
 
-Decided in T3.1; the gateway (T3.3), role rules (T3.4) and the frontend login (T3.5) build on it.
+Decided in T3.1 to T3.4; the frontend login (T3.5) builds on it.
 
 - **Login** is `POST /api/auth/login` with `{ email, password }` on auth-service. The email is the login name, stored and compared trimmed and in lower case. Every failure (unknown email, wrong password, deactivated user) is the same `401 UNAUTHORIZED` "Wrong email or password", answered in the same time.
 - **Passwords** are stored only as BCrypt hashes (`PasswordEncoder` bean, `BCryptPasswordEncoder`, default cost 10). At most 72 characters (BCrypt reads 72 bytes). A password never appears in a response, a log line or a migration.
@@ -535,10 +535,16 @@ Decided in T3.1; the gateway (T3.3), role rules (T3.4) and the frontend login (T
 - Claims are readable by anyone (Base64, not encrypted): never put secrets or personal data beyond the above in them.
 - **Sending the token:** `Authorization: Bearer <token>` on every request. A missing, invalid or expired token is `401 UNAUTHORIZED`; a valid token without the needed role is `403 FORBIDDEN`. Use `UnauthorizedException` / `ForbiddenException` from stockline-common (texts `common.auth.unauthorized` / `common.auth.forbidden`).
 - **The api-gateway** (T3.3) is the one entrance: Spring Cloud Gateway WebMVC. It handles CORS (`CORS_ALLOWED_ORIGINS`, never in the services), checks that every request except login and health has a valid token, and forwards the request unchanged, including `Authorization`. It checks who is calling, not what they may do: role rules belong to the service that owns the resource. Routes are in its `application.yml`, one per service; a new base path from section 2 needs a line there.
-- **Checking the token in a service** (auth-service and the gateway; the pattern for the others in T3.4): Spring Security as a resource server (`spring-boot-starter-security-oauth2-resource-server`) and a `SecurityFilterChain` bean that is stateless with CSRF off. The parts that are the same everywhere are in `JwtSecurity` (stockline-common): `jwtDecoder(...)` checks signature, expiry (with the `Clock` bean) and `iss`; `roleConverter()` makes the `role` claim the authority `ROLE_<role>`, checked with `hasRole(...)` on URL patterns; `notLoggedIn(...)` and `noPermission(...)` pass `UnauthorizedException` / `ForbiddenException` to the `handlerExceptionResolver`, so 401 and 403 use the normal error JSON. Login, `/actuator/health`, the API docs and `/error` stay open.
+- **Checking the token in a service:** every service does it itself, not only the gateway. It needs three things: `spring-boot-starter-security-oauth2-resource-server` (and `...-test`), `stockline.jwt.secret` / `.issuer` in `application.yml`, and a `config/WebSecurityConfig` with a `SecurityFilterChain` bean that starts with `JwtSecurity.configure(http, exceptionResolver)` and adds `authorizeHttpRequests` with `JwtSecurity.OPEN_PATHS` and its own rules (product-service is the template). stockline-common creates the `JwtDecoder` (signature, expiry with the `Clock` bean, `iss`) and the `RoleHierarchy`; `configure` turns off sessions and CSRF, makes the `role` claim the authority `ROLE_<role>`, and answers 401 and 403 with the normal error JSON.
+- **Role rules:** use `hasRole(UserType.X.name())` with the lowest role that may do it; the hierarchy lets higher roles through. Controller tests run with `@AutoConfigureMockMvc(addFilters = false)`; one test class per service checks the rule table with the real filters (`CatalogSecurityTest`), and one with really signed tokens (`SecurityIntegrationTest`).
+
+| Service | STAFF | MANAGER | ADMIN |
+|---|---|---|---|
+| auth-service | Own account (`/api/auth/me`, password) | Same | Also `/api/users` |
+| product-service | Read products, categories, suppliers | Also create, change, delete them | Same as MANAGER |
 - **Role checks on URLs, not with `@PreAuthorize`** for now: the library's `GlobalExceptionHandler` would turn the `AccessDeniedException` thrown inside a controller into a 500.
-- **Who changed a row:** with a token, `created_by` / `updated_by` are its `email` claim (an `auditorAware` bean replacing the library's); without one, `system`. A service that changes an entity and returns it calls `flush()` first, so the response already has the new `updatedAt` / `updatedBy`.
+- **Who changed a row:** with a token, `created_by` / `updated_by` are its `email` claim (`JwtAuditorAware` in stockline-common); without one, `system`. A service that changes an entity and returns it calls `flush()` first, so the response already has the new `updatedAt` / `updatedBy`.
 - **Users** are deactivated, never deleted. Deactivating doesn't end tokens already issued: they work until they expire.
-- **Roles** form a hierarchy, STAFF < MANAGER < ADMIN: a higher role can do everything a lower one can. Checked in the backend (T3.4); the frontend only hides what a role can't use.
+- **Roles** form a hierarchy, STAFF < MANAGER < ADMIN: a higher role can do everything a lower one can. Checked in the backend; the frontend only hides what a role can't use.
 - **First admin:** created by auth-service at startup when the users table is empty, from `ADMIN_EMAIL` / `ADMIN_PASSWORD`. No users or password hashes in migrations.
 - **Secrets:** `JWT_SECRET` and `ADMIN_PASSWORD` come from environment variables. The defaults in `application.yml` and `infra/.env.example` are for local development only.

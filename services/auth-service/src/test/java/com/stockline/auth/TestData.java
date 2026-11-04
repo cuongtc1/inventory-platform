@@ -1,8 +1,8 @@
 package com.stockline.auth;
 
 import com.stockline.auth.constant.UserStatus;
-import com.stockline.auth.constant.UserType;
 import com.stockline.auth.entity.User;
+import com.stockline.common.constant.UserType;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**

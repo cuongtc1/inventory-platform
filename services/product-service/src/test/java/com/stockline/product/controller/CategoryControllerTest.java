@@ -10,6 +10,7 @@ import com.stockline.product.dto.CategoryResponse;
 import com.stockline.product.service.CategoryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -41,6 +42,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Starts only the web layer (this controller, JSON conversion, validation, GlobalExceptionHandler).
  * The service is a Mockito mock, so no database is needed. Checks URLs, status codes and JSON shape.
  */
+// Security filters off: this class checks URLs, JSON and errors; the role rules are tested in CatalogSecurityTest
+@AutoConfigureMockMvc(addFilters = false)
 @WebMvcTest(CategoryController.class)
 class CategoryControllerTest {
 

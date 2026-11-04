@@ -1,7 +1,7 @@
 package com.stockline.auth.dto;
 
 import com.stockline.auth.constant.PasswordPolicy;
-import com.stockline.auth.constant.UserType;
+import com.stockline.common.constant.UserType;
 import com.stockline.common.util.CommonValidationUtils;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

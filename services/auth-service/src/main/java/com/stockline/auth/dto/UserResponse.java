@@ -1,7 +1,7 @@
 package com.stockline.auth.dto;
 
 import com.stockline.auth.constant.UserStatus;
-import com.stockline.auth.constant.UserType;
+import com.stockline.common.constant.UserType;
 
 import java.time.Instant;
 

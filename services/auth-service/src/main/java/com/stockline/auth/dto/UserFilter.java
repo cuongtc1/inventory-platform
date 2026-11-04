@@ -1,7 +1,7 @@
 package com.stockline.auth.dto;
 
 import com.stockline.auth.constant.UserStatus;
-import com.stockline.auth.constant.UserType;
+import com.stockline.common.constant.UserType;
 
 /**
  * Optional filters of GET /api/users, filled from query parameters with the same names:

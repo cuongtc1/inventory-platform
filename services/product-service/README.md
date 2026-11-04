@@ -65,6 +65,18 @@ Maven's repository is a BuildKit **cache mount** (`RUN --mount=type=cache,target
 
 Build the image without compose (from the repo root): `docker build -f services/product-service/Dockerfile -t stockline/product-service .`
 
+## Who may call what
+
+Every request needs a valid JWT (from `POST /api/auth/login` on auth-service, normally through the api-gateway on :8080), except health and the API docs. The service checks the token itself, so the rules also hold for a request that doesn't come through the gateway. Rules: `config/WebSecurityConfig`.
+
+| Requests | Who |
+|---|---|
+| `/actuator/health`, `/swagger-ui.html`, `/v3/api-docs` | Anyone |
+| `GET /api/products`, `/api/categories`, `/api/suppliers` (and by id) | STAFF and up: any signed-in user |
+| `POST`, `PUT`, `DELETE` on those | MANAGER and up; ADMIN through the role hierarchy |
+
+No token, a bad one or an expired one is `401 UNAUTHORIZED`; a role that's too low is `403 FORBIDDEN`. Both use the usual error JSON. `created_by` / `updated_by` are the email in the token. In Swagger UI: log in on auth-service, click **Authorize**, paste the `accessToken`.
+
 ## API
 
 Try every endpoint in Swagger UI. Errors use the JSON format from [docs/conventions.md](../../docs/conventions.md#3-json-error-format).
@@ -173,6 +185,7 @@ All settings are in `src/main/resources/application.yml`. Values that differ per
 | `SERVER_PORT` | `8082` |
 | `DB_URL` | `jdbc:mysql://localhost:3306/product_db` |
 | `DB_USERNAME` / `DB_PASSWORD` | `stockline` / `stockline` |
+| `JWT_SECRET` | `local-dev-only-stockline-jwt-secret-change-me`; must equal auth-service's |
 
 ## Project files
 
@@ -199,7 +212,7 @@ All settings are in `src/main/resources/application.yml`. Values that differ per
 
 ## Tests
 
-`./mvnw test` runs all 122 tests in about a minute (the library has 37 more of its own); Docker must be running. Run one class with `-Dtest=CategoryServiceTest`, one method with `"-Dtest=CategoryServiceTest#delete_withProducts_throwsResourceInUseException"`.
+`./mvnw test` runs all 152 tests in about a minute (the library has 44 more of its own); Docker must be running. Run one class with `-Dtest=CategoryServiceTest`, one method with `"-Dtest=CategoryServiceTest#delete_withProducts_throwsResourceInUseException"`.
 
 | Kind | Classes | What they check | Speed |
 |---|---|---|---|
@@ -207,6 +220,8 @@ All settings are in `src/main/resources/application.yml`. Values that differ per
 | Unit (plain JUnit) | `constant/MessagesPropertiesTest` | Every `MessageKeys` constant and annotation key has a text, no unused keys, `''` in messages with `{0}`, every `constraint.*` key names a unique key in the migrations | Milliseconds |
 | Web slice (`@WebMvcTest`) | `controller/*ControllerTest`, `exception/GlobalExceptionHandlerTest`, `exception/ProblemDetailMessagesTest` | URLs, status codes, JSON shape, validation messages, filter binding, every error format | Fast, service mocked |
 | Repository slice (`@DataJpaTest`, MySQL) | `repository/*RepositoryTest`, `repository/ProductSpecificationsTest`, `exception/GlobalExceptionHandlerMySqlTest`, `entity/AuditingTest` | Mapping, unique keys, derived queries, product filters, real constraint errors through the handler, audit columns with a test clock | Seconds (container start) |
+| Security, web slice | `controller/CatalogSecurityTest` | The rule table with the real filters and hierarchy: what each role may do, 403 for STAFF on every write, 401 | Fast, services mocked |
+| Security, integration (MySQL) | `SecurityIntegrationTest` | Really signed tokens through the real filters: STAFF, MANAGER and ADMIN, audit columns from the token, expired token | Seconds |
 | Integration (`@SpringBootTest`, MySQL) | `ProductCatalogIntegrationTest`, `ProductServiceApplicationTests` | All layers together over HTTP: create, list with filters, update, delete rules, messages; app starts and the schema validates | Seconds |
 
 Shared: `TestcontainersConfiguration` (MySQL 8.4 container), `TestData` (ready-made entities, use with a static import), `src/test/resources/test-messages.properties` (only for `ProblemDetailMessagesTest`).
@@ -222,7 +237,7 @@ Schema `product_db`, created by Flyway:
 | `V3__create_products.sql` | `products` | `sku` (unique), `name`, `category_id` (required), `supplier_id` (optional), `cost_price`, `sale_price` (USD, `DECIMAL(12,2)`), `reorder_level`, `status` (`ACTIVE` / `INACTIVE`) |
 | `V4__add_audit_columns.sql` | all three | `created_by`, `updated_by` (`VARCHAR(100)`); existing rows got `system` |
 
-Audit columns on every table: `created_at`, `updated_at` (UTC), `created_by`, `updated_by` (`system` until login exists in Phase 3). They are filled automatically and every response returns them as `createdAt`, `createdBy`, `updatedAt`, `updatedBy`. Deletes are hard deletes.
+Audit columns on every table: `created_at`, `updated_at` (UTC), `created_by`, `updated_by` (the email in the request's token). They are filled automatically and every response returns them as `createdAt`, `createdBy`, `updatedAt`, `updatedBy`. Deletes are hard deletes.
 
 Foreign keys: `categories.parent_id → categories`, `products.category_id → categories`, `products.supplier_id → suppliers`. Deleting a category or supplier that is still used fails. Stock quantities are not here; they belong to inventory-service.
 

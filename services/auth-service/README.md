@@ -120,7 +120,7 @@ Create: `{ "email", "fullName", "userType", "password" }`. Update: `{ "email", "
 - Users are never deleted, only deactivated, so their email stays meaningful in `created_by` / `updated_by` everywhere.
 - **Deactivating doesn't end existing tokens.** A JWT is checked without asking the database, so a deactivated user's token keeps working on other services until it expires (at most `JWT_EXPIRATION`). auth-service itself refuses `/me` and password changes for them.
 - The two "self" rules keep an ADMIN from locking themselves out. There is always at least one active ADMIN, since only an active ADMIN can deactivate or demote someone, and never themselves.
-- `created_by` / `updated_by` of a user record are the email of the ADMIN who made the change (`AuditorConfig` reads it from the token); `system` for the seeded admin.
+- `created_by` / `updated_by` of a user record are the email of the ADMIN who made the change (the library's `JwtAuditorAware` reads it from the token); `system` for the seeded admin.
 
 ### The token
 
@@ -174,15 +174,14 @@ Passwords are never stored, only their BCrypt hash (`$2a$10$` + 22 characters of
 | `service/AuthService` | Login, the signed-in user, changing the own password |
 | `service/UserService` | List, create, update, deactivate, activate users; the two "self" rules |
 | `service/TokenService` | Creates the signed JWT with the claims above, times from the `Clock` bean |
-| `config/SecurityConfig` | `PasswordEncoder` (BCrypt), `JwtEncoder` and `JwtDecoder` (HS256 with `JWT_SECRET`) beans |
+| `config/SecurityConfig` | `PasswordEncoder` (BCrypt) and `JwtEncoder` (HS256 with `JWT_SECRET`) beans; the `JwtDecoder` and role hierarchy come from stockline-common |
 | `config/WebSecurityConfig` | The security filter chain: which URL needs which role, `role` claim → `ROLE_...`, 401/403 in our error format |
-| `config/AuditorConfig` | `created_by` / `updated_by` = the email from the token |
 | `config/OpenApiConfig` | The "Authorize" button in Swagger UI |
 | `config/JwtProperties`, `config/AdminProperties` | Typed settings from `application.yml` |
 | `config/AdminAccountInitializer` | Creates the first ADMIN at startup when there are no users |
 | `entity/User`, `repository/UserRepository`, `repository/UserSpecifications` | The `users` table and the list filters |
 | `dto/`, `mapper/UserMapper` | Request and response records; entity → response (never the hash) |
-| `constant/UserType`, `UserStatus`, `PasswordPolicy`, `MessageKeys` | Enums, password lengths, message keys |
+| `constant/UserStatus`, `PasswordPolicy`, `MessageKeys` | Enum, password lengths, message keys. `UserType` is in stockline-common, because every service's rules name the roles |
 
 ## Tests
 

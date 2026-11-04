@@ -2,10 +2,10 @@ package com.stockline.auth.config;
 
 import com.stockline.auth.constant.MessageKeys;
 import com.stockline.auth.constant.UserStatus;
-import com.stockline.auth.constant.UserType;
 import com.stockline.auth.entity.User;
 import com.stockline.auth.repository.UserRepository;
 import com.stockline.auth.service.AuthService;
+import com.stockline.common.constant.UserType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;

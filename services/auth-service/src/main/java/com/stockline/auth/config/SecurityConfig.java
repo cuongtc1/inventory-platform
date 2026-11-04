@@ -7,16 +7,14 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 
 import javax.crypto.SecretKey;
-import java.time.Clock;
 
 /**
- * The security tools: a password hasher, a token signer (login) and a token checker (every other request).
- * Which URL needs what is in {@link WebSecurityConfig}.
+ * The tools only auth-service needs: a password hasher and a token signer. The token checker comes from
+ * stockline-common, and which URL needs what is in {@link WebSecurityConfig}.
  */
 @Configuration(proxyBeanMethods = false)
 // Registers JwtProperties here too, not only through @ConfigurationPropertiesScan on the application class:
@@ -34,19 +32,13 @@ public class SecurityConfig {
 	}
 
 	/**
-	 * Signs tokens with HMAC-SHA256 (HS256) and the shared secret: whoever knows the secret (the api-gateway in
-	 * T3.3) can check that a token is genuine and unchanged. Spring Security's {@code NimbusJwtEncoder} does the
-	 * JSON, Base64 and signing work.
+	 * Signs tokens with HMAC-SHA256 (HS256) and the shared secret: whoever knows the secret (the api-gateway and
+	 * the services) can check that a token is genuine and unchanged. Spring Security's {@code NimbusJwtEncoder} does
+	 * the JSON, Base64 and signing work.
 	 */
 	@Bean
 	public JwtEncoder jwtEncoder(JwtProperties properties) {
 		return NimbusJwtEncoder.withSecretKey(secretKey(properties)).algorithm(MacAlgorithm.HS256).build();
-	}
-
-	/** Checks the token of each request (signature, expiry, issuer); the same check as the api-gateway's. */
-	@Bean
-	public JwtDecoder jwtDecoder(JwtProperties properties, Clock clock) {
-		return JwtSecurity.jwtDecoder(properties.secret(), properties.issuer(), clock);
 	}
 
 	/** The JWT_SECRET text as an HMAC key. Also used by tests to check tokens. */

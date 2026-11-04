@@ -4,6 +4,7 @@ import com.stockline.common.constant.JwtClaimNames;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.JwsHeader;
@@ -17,6 +18,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -69,6 +71,18 @@ class JwtSecurityTest {
 		// then
 		assertThat(authentication.getAuthorities()).extracting(GrantedAuthority::getAuthority)
 				.contains("ROLE_MANAGER");
+	}
+
+	@Test
+	void roleHierarchy_higherRolesIncludeLowerOnes() {
+		assertThat(reachableRoles("ROLE_ADMIN")).containsExactlyInAnyOrder("ROLE_ADMIN", "ROLE_MANAGER", "ROLE_STAFF");
+		assertThat(reachableRoles("ROLE_MANAGER")).containsExactlyInAnyOrder("ROLE_MANAGER", "ROLE_STAFF");
+		assertThat(reachableRoles("ROLE_STAFF")).containsExactly("ROLE_STAFF");
+	}
+
+	private static List<String> reachableRoles(String role) {
+		return JwtSecurity.roleHierarchy().getReachableGrantedAuthorities(List.of(new SimpleGrantedAuthority(role)))
+				.stream().map(GrantedAuthority::getAuthority).toList();
 	}
 
 	private static String token(String secret, String issuer, Instant expiresAt) {

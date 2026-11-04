@@ -11,6 +11,7 @@ import com.stockline.product.dto.ProductResponse;
 import com.stockline.product.service.ProductService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -40,6 +41,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Web layer only; the service is a Mockito mock. Checks URLs, filter binding, status codes, JSON and validation.
  */
+// Security filters off: this class checks URLs, JSON and errors; the role rules are tested in CatalogSecurityTest
+@AutoConfigureMockMvc(addFilters = false)
 @WebMvcTest(ProductController.class)
 class ProductControllerTest {
 
