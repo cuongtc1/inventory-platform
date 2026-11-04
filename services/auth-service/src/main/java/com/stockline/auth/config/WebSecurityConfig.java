@@ -1,18 +1,13 @@
 package com.stockline.auth.config;
 
 import com.stockline.auth.constant.UserType;
-import com.stockline.common.constant.CommonMessageKeys;
-import com.stockline.common.constant.JwtClaimNames;
-import com.stockline.common.exception.ForbiddenException;
-import com.stockline.common.exception.UnauthorizedException;
+import com.stockline.common.security.JwtSecurity;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
@@ -32,16 +27,11 @@ import org.springframework.web.servlet.HandlerExceptionResolver;
 @Configuration(proxyBeanMethods = false)
 public class WebSecurityConfig {
 
-	/** Spring Security's convention: a role is an authority named "ROLE_" + the role, checked by hasRole(...). */
-	private static final String ROLE_PREFIX = "ROLE_";
-
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http,
 			@Qualifier("handlerExceptionResolver") HandlerExceptionResolver exceptionResolver) throws Exception {
-		AuthenticationEntryPoint notLoggedIn = (request, response, ex) -> exceptionResolver.resolveException(
-				request, response, null, new UnauthorizedException(CommonMessageKeys.AUTH_UNAUTHORIZED));
-		AccessDeniedHandler noPermission = (request, response, ex) -> exceptionResolver.resolveException(
-				request, response, null, new ForbiddenException(CommonMessageKeys.AUTH_FORBIDDEN));
+		AuthenticationEntryPoint notLoggedIn = JwtSecurity.notLoggedIn(exceptionResolver);
+		AccessDeniedHandler noPermission = JwtSecurity.noPermission(exceptionResolver);
 
 		http
 				// CSRF protection is for browsers that send cookies automatically. This API uses no cookies or
@@ -58,7 +48,7 @@ public class WebSecurityConfig {
 						.requestMatchers("/api/users/**").hasRole(UserType.ADMIN.name())
 						.anyRequest().authenticated())
 				.oauth2ResourceServer(resourceServer -> resourceServer
-						.jwt(jwt -> jwt.jwtAuthenticationConverter(roleFromClaim()))
+						.jwt(jwt -> jwt.jwtAuthenticationConverter(JwtSecurity.roleConverter()))
 						// A bad or expired token: answered by our handler, so the JSON is the usual error format
 						.authenticationEntryPoint(notLoggedIn)
 						.accessDeniedHandler(noPermission))
@@ -67,18 +57,5 @@ public class WebSecurityConfig {
 						.authenticationEntryPoint(notLoggedIn)
 						.accessDeniedHandler(noPermission));
 		return http.build();
-	}
-
-	/**
-	 * Turns the token's {@code role} claim ("ADMIN") into the authority "ROLE_ADMIN" that
-	 * {@code hasRole("ADMIN")} looks for. Spring's default would read a {@code scope} claim instead.
-	 */
-	private static JwtAuthenticationConverter roleFromClaim() {
-		JwtGrantedAuthoritiesConverter authorities = new JwtGrantedAuthoritiesConverter();
-		authorities.setAuthoritiesClaimName(JwtClaimNames.ROLE);
-		authorities.setAuthorityPrefix(ROLE_PREFIX);
-		JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-		converter.setJwtGrantedAuthoritiesConverter(authorities);
-		return converter;
 	}
 }

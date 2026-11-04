@@ -1,22 +1,17 @@
 package com.stockline.auth.config;
 
+import com.stockline.common.security.JwtSecurity;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
-import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
-import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 
 import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 
 /**
@@ -48,23 +43,14 @@ public class SecurityConfig {
 		return NimbusJwtEncoder.withSecretKey(secretKey(properties)).algorithm(MacAlgorithm.HS256).build();
 	}
 
-	/**
-	 * Checks the token of each request: the signature (same secret, HS256), the expiry against the {@code Clock}
-	 * bean (tests can move time), and that {@code iss} is ours. A token that fails any check is a 401.
-	 */
+	/** Checks the token of each request (signature, expiry, issuer); the same check as the api-gateway's. */
 	@Bean
 	public JwtDecoder jwtDecoder(JwtProperties properties, Clock clock) {
-		NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(secretKey(properties))
-				.macAlgorithm(MacAlgorithm.HS256)
-				.build();
-		JwtTimestampValidator expiry = new JwtTimestampValidator();
-		expiry.setClock(clock);
-		decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(expiry, new JwtIssuerValidator(properties.issuer())));
-		return decoder;
+		return JwtSecurity.jwtDecoder(properties.secret(), properties.issuer(), clock);
 	}
 
 	/** The JWT_SECRET text as an HMAC key. Also used by tests to check tokens. */
 	public static SecretKey secretKey(JwtProperties properties) {
-		return new SecretKeySpec(properties.secret().getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+		return JwtSecurity.secretKey(properties.secret());
 	}
 }

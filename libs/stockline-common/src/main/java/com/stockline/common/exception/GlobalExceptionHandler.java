@@ -3,14 +3,11 @@ package com.stockline.common.exception;
 import com.stockline.common.constant.ErrorCode;
 import com.stockline.common.constant.CommonMessageKeys;
 import jakarta.servlet.http.HttpServletRequest;
-import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -20,6 +17,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -41,8 +39,7 @@ import java.util.List;
  *   <li>Our own {@link ApiException}s carry their {@link ErrorCode} and message key.</li>
  *   <li>Spring MVC's errors (405, 415, unknown URL, ...) are handled by {@link ResponseEntityExceptionHandler};
  *       {@link #handleExceptionInternal} adds our fields to them. A few get a clearer message below.</li>
- *   <li>Database constraint errors that slip past the service checks (two requests at the same moment)
- *       become 409 instead of 500.</li>
+ *   <li>Database errors are in {@link DataExceptionHandler}, because not every service has a database.</li>
  *   <li>Anything else is a 500 with a generic message; the details go only to the log.</li>
  * </ul>
  *
@@ -58,9 +55,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
 	private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-	// MySQL error code for "Cannot delete or update a parent row: a foreign key constraint fails"
-	private static final int MYSQL_ROW_IS_REFERENCED = 1451;
-
 	private final MessageSource messageSource;
 	private final Clock clock;
 
@@ -75,37 +69,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	}
 
 	/**
-	 * Unknown sort field, e.g. {@code ?sort=color,asc}. Spring Data throws this when it builds the query.
+	 * A call to another service failed before an answer came back: it is down, or too slow. Thrown by Spring's
+	 * HTTP clients, e.g. in the api-gateway. A 503, not a 500: nothing is wrong with the request or with this service.
 	 */
-	@ExceptionHandler(PropertyReferenceException.class)
-	public ResponseEntity<ProblemDetail> handleUnknownSortField(PropertyReferenceException ex,
+	@ExceptionHandler(ResourceAccessException.class)
+	public ResponseEntity<ProblemDetail> handleServiceUnavailable(ResourceAccessException ex,
 			HttpServletRequest request) {
-		return response(ErrorCode.BAD_REQUEST, message(CommonMessageKeys.REQUEST_UNKNOWN_SORT_FIELD, ex.getPropertyName()),
+		log.warn(message(CommonMessageKeys.SYSTEM_ERROR_UNEXPECTED, request.getMethod(), request.getRequestURI())
+				+ ": " + ex.getMessage());
+		return response(ErrorCode.SERVICE_UNAVAILABLE, message(CommonMessageKeys.ERROR_SERVICE_UNAVAILABLE),
 				request.getRequestURI());
-	}
-
-	/**
-	 * A unique key or foreign key rejected the change. The services check these rules first and give a precise
-	 * message; this only happens when two requests pass the check at the same moment, e.g. both create SKU "A01".
-	 */
-	@ExceptionHandler(DataIntegrityViolationException.class)
-	public ResponseEntity<ProblemDetail> handleDataIntegrityViolation(DataIntegrityViolationException ex,
-			HttpServletRequest request) {
-		String path = request.getRequestURI();
-		ConstraintViolationException violation = findCause(ex, ConstraintViolationException.class);
-		if (violation == null) {
-			return handleUnexpected(ex, request);
-		}
-
-		String constraint = violation.getConstraintName() == null ? "" : violation.getConstraintName();
-		return switch (violation.getKind()) {
-			case UNIQUE -> response(ErrorCode.DUPLICATE, uniqueKeyMessage(constraint), path);
-			case FOREIGN_KEY -> violation.getErrorCode() == MYSQL_ROW_IS_REFERENCED
-					? response(ErrorCode.IN_USE, message(CommonMessageKeys.RESOURCE_IN_USE), path)
-					// The other direction: the row we point to (category, supplier) was deleted meanwhile
-					: response(ErrorCode.NOT_FOUND, message(CommonMessageKeys.RESOURCE_REFERENCE_MISSING), path);
-			default -> handleUnexpected(ex, request);
-		};
 	}
 
 	/**
@@ -198,7 +171,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	 * Looks up a text in messages.properties, in the request's language (only English exists for now).
 	 * Numbers are passed as text: MessageFormat would otherwise print the id 1234 as "1,234".
 	 */
-	private String message(String key, Object... args) {
+	String message(String key, Object... args) {
 		Object[] textArgs = Arrays.stream(args)
 				.map(arg -> arg instanceof Number ? arg.toString() : arg)
 				.toArray();
@@ -211,7 +184,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return ResponseEntity.badRequest().body(problem);
 	}
 
-	private ResponseEntity<ProblemDetail> response(ErrorCode code, String detail, String path) {
+	ResponseEntity<ProblemDetail> response(ErrorCode code, String detail, String path) {
 		return ResponseEntity.status(code.getStatus()).body(problem(code, detail, path));
 	}
 
@@ -246,18 +219,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	}
 
 	/**
-	 * The library doesn't know the services' tables, so each service names the text for its unique keys in its own
-	 * messages.properties: {@code constraint.uk_products_sku=...}. Without such a line, the common text is used.
-	 */
-	private String uniqueKeyMessage(String constraint) {
-		// MySQL may prefix the key with the table name ("products.uk_products_sku")
-		String keyName = constraint.substring(constraint.lastIndexOf('.') + 1);
-		String fallback = message(CommonMessageKeys.RESOURCE_DUPLICATE);
-		return messageSource.getMessage(CommonMessageKeys.CONSTRAINT_PREFIX + keyName, null, fallback,
-				LocaleContextHolder.getLocale());
-	}
-
-	/**
 	 * Jackson's path to the bad value, e.g. {@code status} or, for nested data, {@code items[0].quantity}.
 	 */
 	private static String fieldPath(JacksonException ex) {
@@ -277,14 +238,5 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
 	private static String path(WebRequest request) {
 		return ((ServletWebRequest) request).getRequest().getRequestURI();
-	}
-
-	private static <T extends Throwable> T findCause(Throwable ex, Class<T> type) {
-		for (Throwable current = ex; current != null; current = current.getCause()) {
-			if (type.isInstance(current)) {
-				return type.cast(current);
-			}
-		}
-		return null;
 	}
 }

@@ -1,0 +1,73 @@
+# api-gateway configuration.
+# ${NAME:default} reads environment variable NAME, or uses the default (services running on this machine).
+
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: api-gateway
+
+  threads:
+    virtual:
+      # Java 21 virtual threads: a request waiting for a service doesn't block a real thread, so the gateway
+      # handles many waiting requests without reactive code
+      enabled: true
+
+  http:
+    clients:
+      # The gateway's calls to the services. Too slow or unreachable gives 503 SERVICE_UNAVAILABLE
+      connect-timeout: 2s
+      read-timeout: ${GATEWAY_READ_TIMEOUT:30s}
+
+  cloud:
+    gateway:
+      server:
+        webmvc:
+          # A request goes to the first route whose paths match, unchanged (docs/conventions.md section 2).
+          # The Authorization header is forwarded too. Services that don't exist yet answer 503 until they do.
+          routes:
+            - id: auth-service
+              uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/auth/**,/api/users/**
+            - id: product-service
+              uri: ${PRODUCT_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/categories/**,/api/suppliers/**,/api/products/**
+            - id: inventory-service
+              uri: ${INVENTORY_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/warehouses/**,/api/stock-levels/**,/api/stock-movements/**
+            - id: order-service
+              uri: ${ORDER_SERVICE_URL:http://localhost:8084}
+              predicates:
+                - Path=/api/customers/**,/api/sales-orders/**,/api/purchase-orders/**
+            - id: notification-service
+              uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8085}
+              predicates:
+                - Path=/api/notifications/**
+
+  messages:
+    # Error texts: the gateway has none of its own, only common-messages.properties from stockline-common
+    basename: common-messages
+    encoding: UTF-8
+    fallback-to-system-locale: false
+
+stockline:
+  jwt:
+    # Must be the same value as in auth-service, which signs the tokens. The default is for local development only.
+    secret: ${JWT_SECRET:local-dev-only-stockline-jwt-secret-change-me}
+    issuer: stockline-auth
+  cors:
+    # Comma-separated. The Vite dev server by default
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

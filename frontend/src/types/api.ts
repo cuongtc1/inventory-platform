@@ -34,6 +34,7 @@ export type ErrorCode =
   | 'CONCURRENT_UPDATE'
   | 'INSUFFICIENT_STOCK'
   | 'INTERNAL_ERROR'
+  | 'SERVICE_UNAVAILABLE'
   // Frontend only: the backend can't be reached (no response at all, or 502/503/504 from the proxy or gateway)
   | 'NETWORK_ERROR'
 

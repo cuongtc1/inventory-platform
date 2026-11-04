@@ -1,5 +1,6 @@
 package com.stockline.product.exception;
 
+import com.stockline.common.exception.DataExceptionHandler;
 import com.stockline.common.exception.GlobalExceptionHandler;
 import com.stockline.product.TestData;
 import com.stockline.product.TestcontainersConfiguration;
@@ -38,7 +39,8 @@ import static org.assertj.core.api.Assertions.catchThrowableOfType;
 @Import(TestcontainersConfiguration.class)
 class GlobalExceptionHandlerMySqlTest {
 
-	private final GlobalExceptionHandler handler = new GlobalExceptionHandler(messageSource(), Clock.systemUTC());
+	private final DataExceptionHandler handler = new DataExceptionHandler(
+			new GlobalExceptionHandler(messageSource(), Clock.systemUTC()), messageSource());
 
 	@Autowired
 	private ProductRepository productRepository;

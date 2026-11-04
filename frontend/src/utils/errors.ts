@@ -44,14 +44,14 @@ export function toApiError(error: unknown): ApiError {
     if (!response) {
       return new ApiError(0, 'NETWORK_ERROR', texts.common.errors.network)
     }
+    // 502/503/504: something in between (the Vite dev proxy, or the api-gateway's 503 SERVICE_UNAVAILABLE) couldn't
+    // reach the service: same as no response.
+    if (GATEWAY_STATUSES.includes(response.status)) {
+      return new ApiError(response.status, 'NETWORK_ERROR', texts.common.errors.network)
+    }
     if (isProblemDetail(response.data)) {
       const problem = response.data
       return new ApiError(problem.status, problem.code, problem.detail, problem.errors ?? [])
-    }
-    // Our services always answer with Problem Details. 502/503/504 without it come from something in between
-    // (the Vite dev proxy now, the api-gateway from Phase 3) that couldn't reach the service: same as no response.
-    if (GATEWAY_STATUSES.includes(response.status)) {
-      return new ApiError(response.status, 'NETWORK_ERROR', texts.common.errors.network)
     }
     return new ApiError(response.status, response.status >= 500 ? 'INTERNAL_ERROR' : 'BAD_REQUEST',
       texts.common.errors.unexpected)

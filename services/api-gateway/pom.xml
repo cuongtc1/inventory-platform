@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>4.1.1</version>
+		<relativePath/> <!-- lookup parent from repository -->
+	</parent>
+	<groupId>com.stockline</groupId>
+	<artifactId>api-gateway</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>api-gateway</name>
+	<description>Stockline API gateway: the one entrance for the frontend; routes requests, checks JWTs, handles CORS</description>
+	<properties>
+		<java.version>21</java.version>
+		<!--
+			Spring Cloud has its own release train, not managed by Spring Boot. 2025.1.x is the line for Boot 4.0 and 4.1
+			(start.spring.io: >=4.0.0 and <4.2.0-M1); when Boot moves to 4.2 this must move to 2026.0.x.
+		-->
+		<spring-cloud.version>2025.1.4</spring-cloud.version>
+		<!-- Our shared library in libs/stockline-common; install it first: libs/stockline-common/mvnw install -->
+		<stockline-common.version>0.0.1-SNAPSHOT</stockline-common.version>
+	</properties>
+	<dependencyManagement>
+		<dependencies>
+			<!-- A "BOM": sets the versions of all Spring Cloud libraries, so the dependencies below need none -->
+			<dependency>
+				<groupId>org.springframework.cloud</groupId>
+				<artifactId>spring-cloud-dependencies</artifactId>
+				<version>${spring-cloud.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+	<dependencies>
+		<dependency>
+			<groupId>com.stockline</groupId>
+			<artifactId>stockline-common</artifactId>
+			<version>${stockline-common.version}</version>
+		</dependency>
+		<!-- Spring Cloud Gateway on Spring MVC (servlet), not the reactive WebFlux variant -->
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-gateway-server-webmvc</artifactId>
+		</dependency>
+		<!-- Checks the JWT of every request, like auth-service -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webmvc-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>

@@ -31,6 +31,7 @@ public final class CommonMessageKeys {
 
 	// Server errors
 	public static final String ERROR_UNEXPECTED = "common.error.unexpected";
+	public static final String ERROR_SERVICE_UNAVAILABLE = "common.error.service-unavailable";
 
 	// System (log only, never sent to the client)
 	public static final String SYSTEM_ERROR_UNEXPECTED = "system.error.unexpected";

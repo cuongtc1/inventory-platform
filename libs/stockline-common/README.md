@@ -36,7 +36,8 @@ spring:
 | Package | Classes | Purpose |
 |---|---|---|
 | `constant` | `ErrorCode`, `CommonMessageKeys`, `AuditConstants` | Error codes with HTTP status, keys of `common-messages.properties`, the `system` user |
-| `exception` | `ApiException`, `ResourceNotFoundException`, `DuplicateResourceException`, `ResourceInUseException`, `InvalidRequestException`, `UnauthorizedException`, `ForbiddenException`, `FieldValidationError`, `GlobalExceptionHandler` | The JSON error format (docs/conventions.md section 3) for every service |
+| `exception` | `ApiException`, `ResourceNotFoundException`, `DuplicateResourceException`, `ResourceInUseException`, `InvalidRequestException`, `UnauthorizedException`, `ForbiddenException`, `FieldValidationError`, `GlobalExceptionHandler`, `DataExceptionHandler` | The JSON error format (docs/conventions.md section 3) for every service. `DataExceptionHandler` holds the Hibernate and Spring Data errors, so a service without a database (the gateway) can load the rest |
+| `security` | `JwtSecurity` | What checking a JWT has in common everywhere: key, `JwtDecoder`, `role` claim, 401/403 answers (docs/conventions.md section 11). Needs the resource-server starter in the service |
 | `entity` | `BaseEntity` | `id` and the four audit columns; services' entities extend it |
 | `dto` | `PageResponse` | The list format (docs/conventions.md section 4) |
 | `util` | `DateTimeUtils`, `MoneyUtils`, `CommonValidationUtils`, `TextUtils` | Asia/Ho_Chi_Minh date ranges, USD with 2 decimals, shared validation rules, text cleanup |
@@ -50,6 +51,7 @@ spring:
 | `Clock` (UTC) | always | a `Clock` bean (tests use a fixed or movable clock) |
 | JPA auditing (`auditDateTimeProvider`, `auditorAware` = `system`) | Spring Data JPA on the classpath | a bean named `auditorAware` (Phase 3: the user from the JWT) |
 | `GlobalExceptionHandler` | servlet web application | a `GlobalExceptionHandler` bean |
+| `DataExceptionHandler` | servlet web application with Hibernate and Spring Data | a `DataExceptionHandler` bean |
 
 ## How auto-configuration works
 

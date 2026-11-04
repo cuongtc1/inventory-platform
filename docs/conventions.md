@@ -237,6 +237,7 @@ Error codes:
 | `CONCURRENT_UPDATE` | 409 | Optimistic-lock failure; the client should reload and retry |
 | `INSUFFICIENT_STOCK` | 409 | A stock adjustment would make available stock negative |
 | `INTERNAL_ERROR` | 500 | Anything unexpected. `detail` is generic; the stack trace goes only to the log |
+| `SERVICE_UNAVAILABLE` | 503 | A call to another service got no answer: it is down or too slow, e.g. behind the api-gateway. The frontend treats it like a network error |
 
 Add new codes to this table when a task needs one. Other errors raised by Spring MVC itself use the HTTP status name as the code (e.g. `PAYLOAD_TOO_LARGE`); every 5xx is `INTERNAL_ERROR`.
 
@@ -445,7 +446,7 @@ The shared files above exist since T2.0; use and extend them instead of writing 
 ### Calling the backend
 
 - `api/client.ts` creates the one Axios instance: `baseURL` from `import.meta.env.VITE_API_BASE_URL`, empty by default, so calls go to `/api/...` on the same origin.
-- **Development: Vite dev proxy instead of CORS.** `vite.config.ts` forwards `/api` to the backend: to product-service (`http://localhost:8082`) in Phase 2, to the api-gateway (`http://localhost:8080`) from Phase 3 on. The browser only sees `localhost:5173`, so no CORS is needed and the services never get CORS settings. CORS is configured once, in the gateway (T3.3).
+- **Development: Vite dev proxy instead of CORS.** `vite.config.ts` forwards `/api` to the backend: to product-service (`http://localhost:8082`) in Phase 2, to the api-gateway (`http://localhost:8080`) from T3.5 on (the gateway needs a token, and the frontend can log in only then). The browser only sees `localhost:5173`, so no CORS is needed and the services never get CORS settings. CORS is configured once, in the gateway (T3.3).
 - Lists: Ant Design tables count pages from 1, the API from 0, so send `page = current - 1`; send `size`, and `sort` as `field,asc|desc`. Filters use the backend parameter names (`search`, `categoryId`, `status`, ...).
 - Date filters are sent as `YYYY-MM-DD` (`from`, `to`); the backend turns them into Vietnam-time ranges.
 - Config values come from `VITE_*` environment variables, with `frontend/.env.example` committed and `.env` never committed.
@@ -533,7 +534,8 @@ Decided in T3.1; the gateway (T3.3), role rules (T3.4) and the frontend login (T
 
 - Claims are readable by anyone (Base64, not encrypted): never put secrets or personal data beyond the above in them.
 - **Sending the token:** `Authorization: Bearer <token>` on every request. A missing, invalid or expired token is `401 UNAUTHORIZED`; a valid token without the needed role is `403 FORBIDDEN`. Use `UnauthorizedException` / `ForbiddenException` from stockline-common (texts `common.auth.unauthorized` / `common.auth.forbidden`).
-- **Checking the token in a service** (auth-service since T3.2; the pattern for the others in T3.4): Spring Security as a resource server (`spring-boot-starter-security-oauth2-resource-server`), a `JwtDecoder` bean checking signature, expiry (with the `Clock` bean) and `iss`, and a `SecurityFilterChain` bean that is stateless with CSRF off. The `role` claim becomes the authority `ROLE_<role>`, checked with `hasRole(...)` on URL patterns. The entry point and access-denied handler pass `UnauthorizedException` / `ForbiddenException` to the `handlerExceptionResolver`, so 401 and 403 use the normal error JSON. Login, `/actuator/health`, the API docs and `/error` stay open.
+- **The api-gateway** (T3.3) is the one entrance: Spring Cloud Gateway WebMVC. It handles CORS (`CORS_ALLOWED_ORIGINS`, never in the services), checks that every request except login and health has a valid token, and forwards the request unchanged, including `Authorization`. It checks who is calling, not what they may do: role rules belong to the service that owns the resource. Routes are in its `application.yml`, one per service; a new base path from section 2 needs a line there.
+- **Checking the token in a service** (auth-service and the gateway; the pattern for the others in T3.4): Spring Security as a resource server (`spring-boot-starter-security-oauth2-resource-server`) and a `SecurityFilterChain` bean that is stateless with CSRF off. The parts that are the same everywhere are in `JwtSecurity` (stockline-common): `jwtDecoder(...)` checks signature, expiry (with the `Clock` bean) and `iss`; `roleConverter()` makes the `role` claim the authority `ROLE_<role>`, checked with `hasRole(...)` on URL patterns; `notLoggedIn(...)` and `noPermission(...)` pass `UnauthorizedException` / `ForbiddenException` to the `handlerExceptionResolver`, so 401 and 403 use the normal error JSON. Login, `/actuator/health`, the API docs and `/error` stay open.
 - **Role checks on URLs, not with `@PreAuthorize`** for now: the library's `GlobalExceptionHandler` would turn the `AccessDeniedException` thrown inside a controller into a 500.
 - **Who changed a row:** with a token, `created_by` / `updated_by` are its `email` claim (an `auditorAware` bean replacing the library's); without one, `system`. A service that changes an entity and returns it calls `flush()` first, so the response already has the new `updatedAt` / `updatedBy`.
 - **Users** are deactivated, never deleted. Deactivating doesn't end tokens already issued: they work until they expire.

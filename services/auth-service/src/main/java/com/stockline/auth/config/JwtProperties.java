@@ -1,11 +1,11 @@
 package com.stockline.auth.config;
 
+import com.stockline.common.security.JwtSecurity;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 /**
@@ -27,14 +27,10 @@ public record JwtProperties(
 		@NotBlank String issuer
 ) {
 
-	/** HS256 needs a key of at least 256 bits (RFC 7518); a shorter one is rejected by the signer anyway. */
-	public static final int MIN_SECRET_BYTES = 32;
-
 	public JwtProperties {
 		// A compact constructor (records, Java 16): runs before the fields are set, for checks like this one
-		if (secret != null && secret.getBytes(StandardCharsets.UTF_8).length < MIN_SECRET_BYTES) {
-			throw new IllegalArgumentException(
-					"stockline.jwt.secret (JWT_SECRET) must be at least " + MIN_SECRET_BYTES + " bytes long");
+		if (secret != null) {
+			JwtSecurity.secretKey(secret);
 		}
 	}
 }

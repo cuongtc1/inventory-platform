@@ -22,7 +22,8 @@ public enum ErrorCode {
 	INVALID_STATUS_TRANSITION(HttpStatus.CONFLICT),
 	CONCURRENT_UPDATE(HttpStatus.CONFLICT),
 	INSUFFICIENT_STOCK(HttpStatus.CONFLICT),
-	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR);
+	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR),
+	SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE);
 
 	// Enums can have fields and a constructor; each constant above calls it with its own status
 	private final HttpStatus status;
