@@ -82,7 +82,7 @@ docker compose down                    # add -v to wipe data; add --profile serv
 
 # Frontend (from frontend/)
 npm install                            # needs npm 10+ (`npm -v`); see frontend/README.md
-npm run dev                            # http://localhost:5173, /api is proxied to the backend
+npm run dev                            # http://localhost:5173, /api is proxied to the api-gateway (start the backend first)
 npm run lint
 npm run build                          # type check + production build
 ```

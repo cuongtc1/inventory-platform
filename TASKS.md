@@ -87,7 +87,7 @@ Goal: learn the standard layered Spring Boot service (controller / service / rep
 | T3.2 | User management API | ADMIN only: list, create, update, deactivate users; `GET /auth/me`; change password | Claude | DONE |
 | T3.3 | api-gateway | Spring Cloud Gateway routes `/api/auth/**`, `/api/products/**` and so on; validates JWT; CORS for the frontend | Claude | DONE |
 | T3.4 | Role rules | Hierarchy check (ADMIN ≥ MANAGER ≥ STAFF) enforced in the backend, e.g. only MANAGER+ can edit products, only ADMIN manages users | Claude | DONE |
-| T3.5 | Frontend login | Login page, token storage, route guards, role-based menu (like the mockup's "View as"), Users page (ADMIN), Log out | Claude | TODO |
+| T3.5 | Frontend login | Login page, token storage, route guards, role-based menu (like the mockup's "View as"), Users page (ADMIN), Log out; My profile page with change password (from the T3.5 discussion) | Claude | REVIEW |
 | T3.6 | Tests and review | Unit tests for JWT and role logic; you test all three roles | Claude + You | TODO |
 
 ## 7. Phase 4: inventory-service (about 3 days)

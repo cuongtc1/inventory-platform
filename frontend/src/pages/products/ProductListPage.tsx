@@ -16,6 +16,7 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { type PageLoader, usePagedList } from '../../hooks/usePagedList'
 import { useReturnState } from '../../hooks/useReturnTo'
 import { useSelectOptions } from '../../hooks/useSelectOptions'
+import { useHasRole } from '../../hooks/useSession'
 import { texts } from '../../messages/texts'
 import type { ProductResponse, ProductStatus } from '../../types/product'
 import { errorMessage } from '../../utils/errors'
@@ -47,6 +48,7 @@ export function ProductListPage() {
   const navigate = useNavigate()
   const isMobile = useIsMobile()
   const returnState = useReturnState()
+  const canEdit = useHasRole('MANAGER')
   const list = usePagedList(loadProducts, DEFAULT_SORT)
   const categories = useSelectOptions(getCategoryOptions)
   const suppliers = useSelectOptions(getSupplierOptions)
@@ -69,11 +71,14 @@ export function ProductListPage() {
       dataIndex: 'sku',
       sorter: true,
       sortOrder: list.sortOrder('sku'),
-      render: (sku: string, product) => (
-        <Link to={ROUTES.productEdit(product.id)} state={returnState}>
-          {sku}
-        </Link>
-      ),
+      render: (sku: string, product) =>
+        canEdit ? (
+          <Link to={ROUTES.productEdit(product.id)} state={returnState}>
+            {sku}
+          </Link>
+        ) : (
+          sku
+        ),
     },
     { title: fields.name, dataIndex: 'name', sorter: true, sortOrder: list.sortOrder('name') },
     {
@@ -106,7 +111,10 @@ export function ProductListPage() {
       sortOrder: list.sortOrder('status'),
       render: (status: ProductStatus) => <StatusBadge value={status} display={PRODUCT_STATUS} />,
     },
-    {
+  ]
+  // Staff only read (hiding only: the backend refuses their changes anyway)
+  if (canEdit) {
+    columns.push({
       title: texts.common.fields.actions,
       key: 'actions',
       render: (_, product) => (
@@ -115,8 +123,8 @@ export function ProductListPage() {
           <DeleteButton title={texts.product.confirmDelete(product.name)} onConfirm={() => onDelete(product)} />
         </Flex>
       ),
-    },
-  ]
+    })
+  }
 
   // Filters share the row on wide screens and take a full row each on phones
   const filterWidth = (desktop: number) => ({ width: isMobile ? '100%' : desktop })
@@ -126,9 +134,11 @@ export function ProductListPage() {
       <PageHeader
         title={texts.product.title}
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate(ROUTES.productNew, { state: returnState })}>
-            {texts.product.newButton}
-          </Button>
+          canEdit && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate(ROUTES.productNew, { state: returnState })}>
+              {texts.product.newButton}
+            </Button>
+          )
         }
       />
       <PagedTable

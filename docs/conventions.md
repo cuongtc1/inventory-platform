@@ -446,7 +446,7 @@ The shared files above exist since T2.0; use and extend them instead of writing 
 ### Calling the backend
 
 - `api/client.ts` creates the one Axios instance: `baseURL` from `import.meta.env.VITE_API_BASE_URL`, empty by default, so calls go to `/api/...` on the same origin.
-- **Development: Vite dev proxy instead of CORS.** `vite.config.ts` forwards `/api` to the backend: to product-service (`http://localhost:8082`) in Phase 2, to the api-gateway (`http://localhost:8080`) from T3.5 on (the gateway needs a token, and the frontend can log in only then). The browser only sees `localhost:5173`, so no CORS is needed and the services never get CORS settings. CORS is configured once, in the gateway (T3.3).
+- **Development: Vite dev proxy instead of CORS.** `vite.config.ts` forwards `/api` to the backend: to the api-gateway (`http://localhost:8080`). The browser only sees `localhost:5173`, so no CORS is needed and the services never get CORS settings. CORS is configured once, in the gateway (T3.3).
 - Lists: Ant Design tables count pages from 1, the API from 0, so send `page = current - 1`; send `size`, and `sort` as `field,asc|desc`. Filters use the backend parameter names (`search`, `categoryId`, `status`, ...).
 - Date filters are sent as `YYYY-MM-DD` (`from`, `to`); the backend turns them into Vietnam-time ranges.
 - Config values come from `VITE_*` environment variables, with `frontend/.env.example` committed and `.env` never committed.
@@ -458,7 +458,8 @@ The shared files above exist since T2.0; use and extend them instead of writing 
   - `VALIDATION_FAILED`: put each `errors[]` entry on its form field (`form.setFields`), so the message appears under the field.
   - Other 4xx (`NOT_FOUND`, `DUPLICATE`, `IN_USE`, ...): show `detail` in an Ant Design message or notification. The backend already wrote it for people.
   - 5xx and network errors: a generic text from `messages/texts.ts`.
-- From Phase 3: 401 → back to the login page, in the Axios response interceptor; 403 → a "no permission" text.
+- 401: the Axios response interceptor clears the session, and `RequireLogin` shows the login page. 403 shows the backend's `detail` like any other 4xx.
+- 502, 503, 504 (`SERVICE_UNAVAILABLE`) count as `NETWORK_ERROR`: "Cannot reach the server".
 
 ### Showing dates, money and enums (`utils/format.ts`, `constants/`)
 
@@ -476,7 +477,7 @@ The shared files above exist since T2.0; use and extend them instead of writing 
 ### Routes
 
 - Paths are constants in `constants/routes.ts` and follow the mockup: `/products`, `/products/new`, `/products/:id/edit`, `/categories`, `/suppliers`, ...
-- Every page is inside `AppLayout`, except login (Phase 3).
+- Every page is inside `RequireLogin` and `AppLayout`, except login.
 - The route table lives in `App.tsx` (React Router's `createBrowserRouter`). Every real page is **lazy**: `lazy: { Component: () => import('./pages/...').then(module => module.XxxPage) }`. A screen of a later phase is already a route showing `ComingSoonPage`, so the menu can link to it; its task replaces the element.
 - Every page starts with `PageHeader` (title, actions on the right, and the browser tab title). Unknown URLs show `NotFoundPage`; a page that crashes shows `RouteErrorPage`.
 - Data loading in a page: `useEffect` with an `AbortController`, cancelled in the effect's cleanup.
@@ -485,7 +486,7 @@ The shared files above exist since T2.0; use and extend them instead of writing 
 
 - Every screen works on a phone (390 px wide) as well as on a desktop. Check both before a frontend task goes to review.
 - One breakpoint: `MOBILE_MAX_WIDTH` (991 px) in `constants/app.ts`, the same as Ant Design's `lg`. Below it the sidebar becomes a slide-in menu and the top bar shows icons only. In components, use `useIsMobile()` or Ant Design's responsive props (`Grid`, `Col xs/md/lg`, `Space wrap`); don't write new media queries.
-- The menu is data: `NAVIGATION` in `constants/navigation.ts` (section, label from `texts.nav`, icon, route). A new screen adds its entry there. From Phase 3, role rules hide entries there too.
+- The menu is data: `NAVIGATION` in `constants/navigation.ts` (section, label from `texts.nav`, icon, route). A new screen adds its entry there. Its `role` (the lowest role that sees the entry) hides entries with `navigationFor(userType)`.
 - Pages never set their own outer padding; `AppLayout` does. Content uses the **full width** of every screen (no 1280 px cap like the mockup), so lists show more on big monitors. A form card is at most 960 px wide, so its two columns stay readable.
 - Wide tables scroll inside themselves (`scroll={{ x: 'max-content' }}`), so the page never scrolls sideways. On phones, forms use one column (`Col xs={24} md={12}`), filters take a full row each, and the page actions in `PageHeader` wrap under the title.
 
@@ -546,5 +547,6 @@ Decided in T3.1 to T3.4; the frontend login (T3.5) builds on it.
 - **Who changed a row:** with a token, `created_by` / `updated_by` are its `email` claim (`JwtAuditorAware` in stockline-common); without one, `system`. A service that changes an entity and returns it calls `flush()` first, so the response already has the new `updatedAt` / `updatedBy`.
 - **Users** are deactivated, never deleted. Deactivating doesn't end tokens already issued: they work until they expire.
 - **Roles** form a hierarchy, STAFF < MANAGER < ADMIN: a higher role can do everything a lower one can. Checked in the backend; the frontend only hides what a role can't use.
+- **In the frontend:** the session (token, expiry, user) is in `localStorage` through `utils/session.ts`; components read it with `useSession()` / `useHasRole(role)`. A page of a higher role sits under `RequireRole` in `App.tsx`, with the same role as its `NAVIGATION` entry. Buttons a role can't use are hidden with `useHasRole`, not disabled. All of this only hides things; the backend decides.
 - **First admin:** created by auth-service at startup when the users table is empty, from `ADMIN_EMAIL` / `ADMIN_PASSWORD`. No users or password hashes in migrations.
 - **Secrets:** `JWT_SECRET` and `ADMIN_PASSWORD` come from environment variables. The defaults in `application.yml` and `infra/.env.example` are for local development only.

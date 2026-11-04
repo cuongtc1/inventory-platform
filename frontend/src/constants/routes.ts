@@ -35,6 +35,8 @@ export const ROUTES = {
   reports: '/reports',
   notifications: '/notifications',
   users: '/users',
+  userNew: '/users/new',
+  userEdit: (id: number | string) => `/users/${id}/edit`,
 } as const
 
 /** The route patterns behind the path functions above, for the router: "/products/:id/edit". */
@@ -42,5 +44,6 @@ export const ROUTE_PATTERNS = {
   productEdit: '/products/:id/edit',
   categoryEdit: '/categories/:id/edit',
   supplierEdit: '/suppliers/:id/edit',
+  userEdit: '/users/:id/edit',
   salesOrderDetail: '/sales-orders/:id',
 } as const

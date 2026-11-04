@@ -27,6 +27,8 @@ export const colors = {
   sidebarItem: '#b5c9bd',
   sidebarItemHover: '#132119',
   sidebarItemSelected: '#123d25',
+  // The green glow behind the login card (mockup `.login`)
+  loginGlow: '#cdf3dc',
   // Avatar circle in the top bar (mockup `.av`)
   avatarBackground: '#d6f3e1',
   avatarText: '#0f7a37',

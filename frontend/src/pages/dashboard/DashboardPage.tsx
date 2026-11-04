@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { getCategories } from '../../api/categories'
 import { PageHeader } from '../../components/PageHeader'
 import { ROUTES } from '../../constants/routes'
+import { useHasRole } from '../../hooks/useSession'
 import { texts } from '../../messages/texts'
 import { errorMessage } from '../../utils/errors'
 
@@ -26,6 +27,7 @@ type Connection =
  */
 export function DashboardPage() {
   const [connection, setConnection] = useState<Connection>({ status: 'checking' })
+  const canManage = useHasRole('MANAGER')
 
   useEffect(() => {
     const controller = new AbortController()
@@ -56,8 +58,8 @@ export function DashboardPage() {
         <Card title={texts.dashboard.quickLinks}>
           <Flex gap={16} wrap>
             <Link to={ROUTES.products}>{texts.nav.items.products}</Link>
-            <Link to={ROUTES.categories}>{texts.nav.items.categories}</Link>
-            <Link to={ROUTES.suppliers}>{texts.nav.items.suppliers}</Link>
+            {canManage && <Link to={ROUTES.categories}>{texts.nav.items.categories}</Link>}
+            {canManage && <Link to={ROUTES.suppliers}>{texts.nav.items.suppliers}</Link>}
           </Flex>
         </Card>
       </Flex>

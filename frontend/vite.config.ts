@@ -6,14 +6,14 @@ import { defineConfig, loadEnv } from 'vite'
  *
  * Dev proxy (docs/conventions.md section 10): the browser calls "/api/..." on localhost:5173, and the Vite dev
  * server forwards it to the backend. So the browser only ever sees one origin, and the services need no CORS
- * settings. The target is product-service in Phase 2, the api-gateway (http://localhost:8080) from Phase 3.
+ * settings. The target is the api-gateway, which needs the login token and passes each call to its service.
  * Change it with API_PROXY_TARGET in frontend/.env (see .env.example); it has no VITE_ prefix on purpose, so it
  * stays in the dev server and never reaches the browser.
  */
 export default defineConfig(({ mode }) => {
   // loadEnv reads frontend/.env* for this mode; '' = all variables, not only VITE_*
   const env = loadEnv(mode, process.cwd(), '')
-  const apiTarget = env.API_PROXY_TARGET || 'http://localhost:8082'
+  const apiTarget = env.API_PROXY_TARGET || 'http://localhost:8080'
 
   return {
     plugins: [react()],

@@ -22,8 +22,31 @@ export const texts = {
     expandMenu: 'Expand menu',
     notifications: 'Notifications',
     profile: 'My profile',
-    // Until login exists (Phase 3) there is no signed-in user to show
-    guest: 'Guest',
+  },
+
+  // Login page, like the mockup
+  login: {
+    title: 'Sign in',
+    subtitle: 'Manage products, stock and orders in one place.',
+    email: 'Email',
+    password: 'Password',
+    submit: 'Sign in',
+    // Sent here from a page, or the session ended
+    pleaseLogIn: 'Please sign in to continue.',
+  },
+
+  // My profile page
+  profile: {
+    account: 'Account',
+    fullName: 'Full name',
+    email: 'Email',
+    role: 'Role',
+    changePassword: 'Change password',
+    currentPassword: 'Current password',
+    newPassword: 'New password',
+    confirmPassword: 'Confirm new password',
+    passwordsDiffer: 'The two passwords are not the same',
+    passwordChanged: 'Password changed',
   },
 
   // Pages that don't exist yet, 404 and unexpected errors
@@ -32,6 +55,10 @@ export const texts = {
     comingSoon: {
       title: 'Coming soon',
       description: (phase: string) => `This part of Stockline arrives in ${phase}.`,
+    },
+    forbidden: {
+      title: 'No permission',
+      description: "You don't have permission to see this page.",
     },
     notFound: {
       title: 'Page not found',
@@ -107,6 +134,7 @@ export const texts = {
       required: '${label} is required',
       code: "May contain only letters, digits, '.', '_' and '-'",
       email: 'Enter a valid email address',
+      passwordLength: (min: number, max: number) => `Must have ${min} to ${max} characters`,
       phone: "May contain only digits, spaces, '+', '-', '(' and ')'",
       optionsFailed: 'The choices for this form could not be loaded.',
     },
@@ -143,6 +171,42 @@ export const texts = {
       reports: 'Reports',
       notifications: 'Notifications',
       users: 'Users & Roles',
+    },
+  },
+
+  user: {
+    title: 'Users & Roles',
+    newButton: 'New User',
+    newTitle: 'New User',
+    editTitle: (id: string) => `Edit User #${id}`,
+    searchPlaceholder: 'Search by name or email…',
+    allRoles: 'All roles',
+    selectRole: 'Select a role',
+    deactivate: 'Deactivate',
+    activate: 'Activate',
+    confirmDeactivate: (name: string) => `Deactivate ${name}?`,
+    deactivateHint: 'They can no longer sign in. You can activate them again.',
+    created: (email: string) => `User ${email} created`,
+    updated: (email: string) => `User ${email} saved`,
+    deactivated: (email: string) => `User ${email} deactivated`,
+    activated: (email: string) => `User ${email} activated`,
+    roleNote: 'Admin includes Manager rights; Manager includes Staff rights.',
+    ownRoleNote: "You can't change your own role.",
+    fields: {
+      fullName: 'Name',
+      email: 'Email',
+      userType: 'Role',
+      status: 'Status',
+      password: 'Password',
+    },
+    userType: {
+      ADMIN: 'Admin',
+      MANAGER: 'Manager',
+      STAFF: 'Staff',
+    },
+    status: {
+      ACTIVE: 'Active',
+      INACTIVE: 'Inactive',
     },
   },
 

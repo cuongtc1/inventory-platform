@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { toApiError } from '../utils/errors'
+import { clearSession, getSession } from '../utils/session'
 
 /**
  * The one Axios instance every API function uses (docs/conventions.md section 10).
@@ -17,9 +18,25 @@ export const apiClient = axios.create({
   paramsSerializer: { indexes: null },
 })
 
+// An "interceptor" runs on every request or response. This one adds the token (nothing before login).
+apiClient.interceptors.request.use(config => {
+  const session = getSession()
+  if (session) {
+    config.headers.Authorization = `Bearer ${session.token}`
+  }
+  return config
+})
+
 // Every failed call is rejected with an ApiError, so pages never deal with Axios' own error shape.
-// (From Phase 3: the JWT goes on in a request interceptor, and a 401 sends the user back to the login page.)
 apiClient.interceptors.response.use(
   response => response,
-  error => Promise.reject(toApiError(error)),
+  error => {
+    const apiError = toApiError(error)
+    // The token stopped working, e.g. it expired or the account was deactivated. Clearing the session makes
+    // RequireLogin show the login page. A wrong password at login is a 401 too, but there is no session then.
+    if (apiError.status === 401 && getSession()) {
+      clearSession()
+    }
+    return Promise.reject(apiError)
+  },
 )

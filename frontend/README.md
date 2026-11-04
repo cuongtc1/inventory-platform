@@ -18,18 +18,18 @@ Settings (optional): copy `.env.example` to `.env`.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `API_PROXY_TARGET` | `http://localhost:8082` | Where the dev server forwards `/api` (product-service now, the api-gateway on 8080 from T3.5). Dev server only, never reaches the browser |
+| `API_PROXY_TARGET` | `http://localhost:8080` | Where the dev server forwards `/api`: the api-gateway. Dev server only, never reaches the browser |
 | `VITE_API_BASE_URL` | empty | Base URL of API calls in the browser; empty = same origin, through the proxy |
 
 ## How the browser reaches the API
 
-Since T3.4 product-service needs a token, and login comes in T3.5: until then the catalog pages show a 401 error.
-
 ```
-browser ──/api/products──▶ Vite dev server :5173 ──proxy──▶ product-service :8082
+browser ──/api/products──▶ Vite dev server :5173 ──proxy──▶ api-gateway :8080 ──▶ product-service :8082
 ```
 
-The browser only talks to `localhost:5173`, so there is no cross-origin request and the services need no CORS settings. From Phase 3 the proxy target becomes the api-gateway, which handles CORS for deployments.
+The browser only talks to `localhost:5173`, so there is no cross-origin request and the services need no CORS settings. The api-gateway handles CORS for deployments where the frontend has its own address.
+
+Start the backend first: `docker compose --profile services up -d --build` in `infra/`, or run api-gateway, auth-service and product-service yourself. Local logins: `admin@stockline.local` / `admin12345`; ADMINs create the others on Users & Roles.
 
 ## Folder structure
 
@@ -41,9 +41,12 @@ src/
 │   ├── client.ts         the one Axios instance; every failed call becomes an ApiError
 │   ├── products.ts       getProducts, getProduct, createProduct, updateProduct, deleteProduct
 │   ├── categories.ts     the same five calls for categories, plus getCategoryOptions; one file per resource
-│   └── suppliers.ts      the same five calls for suppliers, plus getSupplierOptions
+│   ├── suppliers.ts      the same five calls for suppliers, plus getSupplierOptions
+│   ├── auth.ts           login, changePassword
+│   └── users.ts          list, get, create, update, deactivate, activate users (ADMIN)
 ├── types/                API types mirroring the backend DTOs (api.ts, category.ts, supplier.ts, product.ts) and ui.ts
 ├── utils/
+│   ├── session.ts        who is logged in: token and user, kept in localStorage; logOut
 │   ├── format.ts         formatDate, formatDateTime (Vietnam time), formatMoney (USD), toApiDate
 │   ├── errors.ts         ApiError, toApiError, errorMessage, formFieldErrors (validation errors → form fields)
 │   └── table.ts          Ant Design Table ↔ API paging and sorting (current 1 ↔ page 0, ascend ↔ asc)
@@ -52,22 +55,28 @@ src/
 │   ├── routes.ts         every path (ROUTES) and route patterns
 │   ├── navigation.ts     the sidebar menu: sections, entries, icons (NAVIGATION), activeNavPath
 │   ├── validation.ts     form rules mirroring the backend (SKU pattern, lengths, money limits)
-│   └── productStatus.ts  enum labels and badge tones (PRODUCT_STATUS, PRODUCT_STATUS_OPTIONS)
+│   ├── productStatus.ts  enum labels and badge tones (PRODUCT_STATUS, PRODUCT_STATUS_OPTIONS)
+│   └── userType.ts       role and user status labels, hasRole() (the hierarchy)
 ├── messages/texts.ts     every text the UI shows
 ├── theme/theme.ts        mockup colours as Ant Design tokens; badge tones
 ├── styles/global.css     the only global CSS
 ├── components/           shared components: StatusBadge, PageHeader (title row + tab title), PageLoading,
 │                         EditButton, DeleteButton (table row actions), RecordFormPage (frame of every create/edit
-│                         page), FormActions (Save changes / Cancel), AuditInfo (created/updated line)
+│                         page), FormActions (Save changes / Cancel), AuditInfo (created/updated line),
+│                         RequireLogin, RequireRole (route guards)
 ├── layouts/              AppLayout (the frame around pages), AppHeader (top bar), SidebarMenu, Logo
 ├── pages/
 │   ├── dashboard/        DashboardPage (backend connection check, catalog links)
 │   ├── products/         ProductListPage (filters, sorting, paging, Edit/Delete), ProductFormPage (create and edit)
 │   ├── categories/       CategoryListPage, CategoryFormPage
 │   ├── suppliers/        SupplierListPage, SupplierFormPage
+│   ├── login/            LoginPage
+│   ├── profile/          ProfilePage (account, change password)
+│   ├── users/            UserListPage, UserFormPage (ADMIN)
 │   └── ComingSoonPage, NotFoundPage, RouteErrorPage
 └── hooks/                useIsMobile (screen width), useStoredState (useState kept in localStorage),
-                          usePagedList (list state in the URL), useSelectOptions, useReturnTo (form → back to the list)
+                          usePagedList (list state in the URL), useSelectOptions, useReturnTo (form → back to the list),
+                          useSession, useHasRole (who is logged in)
 ```
 
 ## Catalog pages
@@ -94,9 +103,23 @@ Every page except login sits inside [AppLayout](src/layouts/AppLayout.tsx), whic
 
 - The breakpoint is `MOBILE_MAX_WIDTH` in `constants/app.ts`; components ask `useIsMobile()` instead of writing their own media query.
 - The menu entries come from `NAVIGATION` in `constants/navigation.ts`; a new screen gets its menu entry there, not in the layout.
-- Not built yet: the mockup's search box, the "View as" role switch (T3.5) and the unread count on the bell (Phase 8). Log out only goes to the login page until Phase 3.
+- Not built yet: the mockup's search box and the unread count on the bell (Phase 8).
 
 To try the phone layout on a computer: browser DevTools (F12) → device toolbar (Ctrl+Shift+M) → pick a phone.
+
+## Login and roles
+
+- **Session:** login stores the token and user in `localStorage` (`utils/session.ts`), so a reload or a new tab stays logged in until the token expires (8 hours). A malicious script on the page could read it; for a real product an HttpOnly cookie would be safer, at the cost of backend work.
+- **Token on requests:** the Axios client adds `Authorization: Bearer ...` to every call. A 401 clears the session.
+- **Route guards:** `RequireLogin` wraps everything except login and sends you to the login page, then back to the page you wanted. `RequireRole` shows "No permission" for pages of a higher role.
+- **Log out** is a full page load: nothing of the user stays in memory, and the next user starts at the dashboard. Logging out in one tab logs out the others.
+
+| | STAFF | MANAGER | ADMIN |
+|---|---|---|---|
+| Menu | Dashboard, Products, Stock Levels, Stock Movements, Low-Stock Alerts, Sales Orders, Customers, Notifications | Also Categories, Suppliers, Warehouses, Purchase Orders, Reports | Also Users & Roles |
+| Products | Read only | New, Edit, Delete | Same as MANAGER |
+
+Hiding is only for convenience: the backend enforces every rule again. The menu's roles are in `constants/navigation.ts` (the mockup's levels), the pages' guards in `App.tsx`. The mockup's "View as" switch isn't built: the menu follows the logged-in user.
 
 ## Routing
 
@@ -108,7 +131,10 @@ To try the phone layout on a computer: browser DevTools (F12) → device toolbar
 | `/products`, `/products/new`, `/products/:id/edit` | Product list and form |
 | `/categories`, `/categories/new`, `/categories/:id/edit` | Category list and form |
 | `/suppliers`, `/suppliers/new`, `/suppliers/:id/edit` | Supplier list and form |
-| `/warehouses`, `/stock-levels`, `/stock-movements`, `/low-stock`, `/customers`, `/sales-orders`, `/purchase-orders`, `/notifications`, `/reports`, `/users`, `/login` | "Coming soon" with the phase that builds them |
+| `/login` | Login, outside the layout |
+| `/profile` | My profile |
+| `/users`, `/users/new`, `/users/:id/edit` | Users & Roles (ADMIN) |
+| `/warehouses`, `/stock-levels`, `/stock-movements`, `/low-stock`, `/customers`, `/sales-orders`, `/purchase-orders`, `/notifications`, `/reports` | "Coming soon" with the phase that builds them |
 | anything else | 404 page |
 
 - **Lazy pages:** each Phase 2 page is downloaded only when it is first opened (`lazy: { Component: () => import(...) }`), so the first download stays small and every page is its own file in `dist/`. Libraries go into named files (`vendor-react`, `vendor-antd`, `vendor-icons`, `vendor`) that browsers can keep cached across our releases.

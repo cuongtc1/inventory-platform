@@ -1,7 +1,8 @@
 import { Menu, type MenuProps } from 'antd'
 import { createElement } from 'react'
 import { Link, useLocation } from 'react-router'
-import { activeNavPath, NAVIGATION } from '../constants/navigation'
+import { activeNavPath, navigationFor } from '../constants/navigation'
+import { useSession } from '../hooks/useSession'
 
 type MenuItem = Required<MenuProps>['items'][number]
 
@@ -13,14 +14,16 @@ interface SidebarMenuProps {
 }
 
 /**
- * The dark sidebar menu built from constants/navigation.ts. Each entry is a real link (<Link>), so it can also be
- * opened in a new tab; the entry for the current URL is highlighted.
+ * The dark sidebar menu built from constants/navigation.ts, with the entries the user's role may see. Each entry is
+ * a real link (<Link>), so it can also be opened in a new tab; the entry for the current URL is highlighted.
  */
 export function SidebarMenu({ collapsed, onNavigate }: SidebarMenuProps) {
   const location = useLocation()
   const selected = activeNavPath(location.pathname)
+  const session = useSession()
+  const sections = session ? navigationFor(session.user.userType) : []
 
-  const items: MenuItem[] = NAVIGATION.flatMap((section, index): MenuItem[] => {
+  const items: MenuItem[] = sections.flatMap((section, index): MenuItem[] => {
     const entries: MenuItem[] = section.items.map(item => ({
       key: item.path,
       icon: createElement(item.icon),

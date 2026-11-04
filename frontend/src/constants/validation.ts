@@ -24,3 +24,7 @@ export const PRODUCT_NAME_MAX_LENGTH = 200
 
 /** `SupplierRequest.name`: VARCHAR(150). */
 export const SUPPLIER_NAME_MAX_LENGTH = 150
+
+/** Backend `PasswordPolicy`. BCrypt reads at most 72 bytes. */
+export const PASSWORD_MIN_LENGTH = 8
+export const PASSWORD_MAX_LENGTH = 72

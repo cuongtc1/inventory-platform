@@ -6,10 +6,13 @@ import { colors } from '../theme/theme'
 interface LogoProps {
   /** Collapsed sidebar: only the "S" tile. */
   compact?: boolean
+  /** On a white background (login page): dark text and no padding. */
+  onWhite?: boolean
 }
 
 /** The mockup's logo: a green "S" tile and the app name, linking to the dashboard. */
-export function Logo({ compact = false }: LogoProps) {
+export function Logo({ compact = false, onWhite = false }: LogoProps) {
+  const sidebarPadding = compact ? '22px 0 18px' : '22px 22px 18px'
   return (
     <Link
       to={ROUTES.dashboard}
@@ -18,8 +21,8 @@ export function Logo({ compact = false }: LogoProps) {
         alignItems: 'center',
         justifyContent: compact ? 'center' : 'flex-start',
         gap: 10,
-        padding: compact ? '22px 0 18px' : '22px 22px 18px',
-        color: colors.sidebarText,
+        padding: onWhite ? '0 0 18px' : sidebarPadding,
+        color: onWhite ? colors.text : colors.sidebarText,
         fontWeight: 700,
         fontSize: 18,
         textDecoration: 'none',
