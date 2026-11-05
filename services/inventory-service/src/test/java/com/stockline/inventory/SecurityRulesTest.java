@@ -17,8 +17,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The starting rules of WebSecurityConfig, before any endpoint exists: a request the rules let through gets 404
- * (no such endpoint yet), one they stop gets 401 or 403.
+ * The rules of WebSecurityConfig with the real filters. POST without a body: a request the rules let through
+ * reaches the controller and gets 400; one they stop gets 401 or 403.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -43,7 +43,7 @@ class SecurityRulesTest {
 
 	@Test
 	void staff_readsButDoesntChange() throws Exception {
-		mockMvc.perform(get("/api/warehouses").with(as(UserType.STAFF))).andExpect(status().isNotFound());
+		mockMvc.perform(get("/api/warehouses").with(as(UserType.STAFF))).andExpect(status().isOk());
 		mockMvc.perform(post("/api/warehouses").with(as(UserType.STAFF)))
 				.andExpect(status().isForbidden())
 				.andExpect(jsonPath("$.code").value("FORBIDDEN"));
@@ -51,8 +51,8 @@ class SecurityRulesTest {
 
 	@Test
 	void managerAndAdmin_getThrough() throws Exception {
-		mockMvc.perform(post("/api/warehouses").with(as(UserType.MANAGER))).andExpect(status().isNotFound());
-		mockMvc.perform(post("/api/warehouses").with(as(UserType.ADMIN))).andExpect(status().isNotFound());
+		mockMvc.perform(post("/api/warehouses").with(as(UserType.MANAGER))).andExpect(status().isBadRequest());
+		mockMvc.perform(post("/api/warehouses").with(as(UserType.ADMIN))).andExpect(status().isBadRequest());
 	}
 
 	/** A request with an already "checked" token; the authority is set the way our role converter does. */
