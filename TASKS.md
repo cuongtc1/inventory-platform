@@ -96,7 +96,7 @@ Goal: learn the standard layered Spring Boot service (controller / service / rep
 |---|---|---|---|---|
 | T4.1 | Scaffold and migrations | Service, Flyway for `warehouses`, `stock_levels` (with `version`), `stock_movements`, `stock_reservations`, `processed_events` | Claude | DONE |
 | T4.2 | Warehouse CRUD | API plus tests | Claude | DONE |
-| T4.3 | Stock levels and adjustment | List stock (filters, low-stock only); adjust stock writes a movement record; `available = on_hand − reserved` | Claude | TODO |
+| T4.3 | Stock levels and adjustment | List stock (filters, low-stock only); adjust stock writes a movement record; `available = on_hand − reserved` | Claude | REVIEW |
 | T4.4 | Movements API | Filter by product, warehouse, type, date | Claude | TODO |
 | T4.5 | Frontend pages | Warehouses, Stock Levels, Stock Movements, Low-Stock Alerts | Claude | TODO |
 | T4.6 | Tests and review | Unit tests; you review | Claude + You | TODO |
@@ -123,6 +123,7 @@ Goal: learn the standard layered Spring Boot service (controller / service / rep
 | T6.6 | Paid, ship, cancel | Fake "Mark as paid"; ship confirms the reservation and reduces `on_hand`; cancel publishes `order.cancelled` and releases stock | Claude | TODO |
 | T6.7 | Frontend | Order detail shows live status (polling is enough); error and rejected states are clear | Claude | TODO |
 | T6.8 | Tests and review | Unit tests for saga logic; one end-to-end run through Docker; you test the happy path and the failure path | Claude + You | TODO |
+| T6.9 | Product changes reach inventory | product-service publishes `product.updated` (through an outbox) when a name, SKU or reorder level changes; inventory-service refreshes its copies on `stock_levels` right away; idempotent like the other consumers. Agreed in T4.3 | Claude | TODO |
 
 ## 10. Phase 7: Purchase orders (about 2 days)
 

@@ -47,12 +47,15 @@ class SecurityRulesTest {
 		mockMvc.perform(post("/api/warehouses").with(as(UserType.STAFF)))
 				.andExpect(status().isForbidden())
 				.andExpect(jsonPath("$.code").value("FORBIDDEN"));
+		mockMvc.perform(get("/api/stock-levels").with(as(UserType.STAFF))).andExpect(status().isOk());
+		mockMvc.perform(post("/api/stock-levels/adjust").with(as(UserType.STAFF))).andExpect(status().isForbidden());
 	}
 
 	@Test
 	void managerAndAdmin_getThrough() throws Exception {
 		mockMvc.perform(post("/api/warehouses").with(as(UserType.MANAGER))).andExpect(status().isBadRequest());
 		mockMvc.perform(post("/api/warehouses").with(as(UserType.ADMIN))).andExpect(status().isBadRequest());
+		mockMvc.perform(post("/api/stock-levels/adjust").with(as(UserType.MANAGER))).andExpect(status().isBadRequest());
 	}
 
 	/** A request with an already "checked" token; the authority is set the way our role converter does. */

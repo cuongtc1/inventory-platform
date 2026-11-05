@@ -2,7 +2,7 @@ package com.stockline.inventory.repository;
 
 import com.stockline.inventory.TestcontainersConfiguration;
 import com.stockline.inventory.entity.Warehouse;
-import com.stockline.inventory.repository.WarehouseRepository.WarehouseSkuCount;
+import com.stockline.inventory.repository.StockLevelRepository.WarehouseSkuCount;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +28,9 @@ class WarehouseRepositoryTest {
 
 	@Autowired
 	private WarehouseRepository warehouseRepository;
+
+	@Autowired
+	private StockLevelRepository stockLevelRepository;
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
@@ -73,13 +76,13 @@ class WarehouseRepositoryTest {
 	}
 
 	@Test
-	void countSkus_countsStockLevelsPerWarehouse_withoutRowsForEmptyOnes() {
+	void countByWarehouseIds_countsStockLevelsPerWarehouse_withoutRowsForEmptyOnes() {
 		// given
 		insertStockLevel(main.getId(), 12);
 		insertStockLevel(main.getId(), 13);
 
 		// when
-		List<WarehouseSkuCount> counts = warehouseRepository.countSkus(List.of(main.getId(), north.getId()));
+		List<WarehouseSkuCount> counts = stockLevelRepository.countByWarehouseIds(List.of(main.getId(), north.getId()));
 
 		// then
 		assertThat(counts).singleElement().satisfies(count -> {

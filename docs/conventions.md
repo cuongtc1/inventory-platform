@@ -544,9 +544,10 @@ Decided in T3.1 to T3.4; the frontend login (T3.5) builds on it.
 |---|---|---|---|
 | auth-service | Own account (`/api/auth/me`, password) | Same | Also `/api/users` |
 | product-service | Read products, categories, suppliers | Also create, change, delete them | Same as MANAGER |
-| inventory-service | Read (T4.2 to T4.4 refine this) | Also change | Same as MANAGER |
+| inventory-service | Read warehouses and stock | Also change warehouses and adjust stock | Same as MANAGER |
 - **Role checks on URLs, not with `@PreAuthorize`** for now: the library's `GlobalExceptionHandler` would turn the `AccessDeniedException` thrown inside a controller into a 500.
 - **Who changed a row:** with a token, `created_by` / `updated_by` are its `email` claim (`JwtAuditorAware` in stockline-common); without one, `system`. A service that changes an entity and returns it calls `flush()` first, so the response already has the new `updatedAt` / `updatedBy`.
+- **Calling another service:** REST with `RestClient` in a `client/` class, to `<SERVICE>_URL` directly, not through the gateway. The call carries the user's token, because every service checks tokens. A 404 becomes our own `ResourceNotFoundException`; an unreachable service becomes 503 by itself. No transaction stays open during such a call: read first, then write in a separate `@Transactional` bean (`StockAdjuster`).
 - **Users** are deactivated, never deleted. Deactivating doesn't end tokens already issued: they work until they expire.
 - **Roles** form a hierarchy, STAFF < MANAGER < ADMIN: a higher role can do everything a lower one can. Checked in the backend; the frontend only hides what a role can't use.
 - **In the frontend:** the session (token, expiry, user) is in `localStorage` through `utils/session.ts`; components read it with `useSession()` / `useHasRole(role)`. A page of a higher role sits under `RequireRole` in `App.tsx`, with the same role as its `NAVIGATION` entry. Buttons a role can't use are hidden with `useHasRole`, not disabled. All of this only hides things; the backend decides.

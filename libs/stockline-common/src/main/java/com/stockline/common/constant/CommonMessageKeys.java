@@ -24,6 +24,7 @@ public final class CommonMessageKeys {
 	public static final String RESOURCE_DUPLICATE = "common.resource.duplicate";
 	public static final String RESOURCE_IN_USE = "common.resource.in-use";
 	public static final String RESOURCE_REFERENCE_MISSING = "common.resource.reference-missing";
+	public static final String RESOURCE_CONCURRENT_UPDATE = "common.resource.concurrent-update";
 
 	// Security
 	public static final String AUTH_UNAUTHORIZED = "common.auth.unauthorized";

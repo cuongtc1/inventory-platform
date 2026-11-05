@@ -1,6 +1,7 @@
 package com.stockline.inventory.constant;
 
 import com.stockline.common.constant.CommonMessageKeys;
+import com.stockline.inventory.dto.AdjustStockRequest;
 import com.stockline.inventory.dto.WarehouseRequest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -31,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class MessagesPropertiesTest {
 
 	// DTOs whose Bean Validation annotations may reference message keys, e.g. "{common.validation.code.invalid}"
-	private static final List<Class<?>> REQUEST_CLASSES = List.of(WarehouseRequest.class);
+	private static final List<Class<?>> REQUEST_CLASSES = List.of(WarehouseRequest.class, AdjustStockRequest.class);
 
 	// Keys that Hibernate Validator or Spring MVC look up by themselves; no constant in MessageKeys needed
 	private static final List<String> FRAMEWORK_KEY_PREFIXES = List.of("jakarta.validation.", "problemDetail.");
@@ -113,7 +114,7 @@ class MessagesPropertiesTest {
 	@Test
 	void messageKeyConstants_followTheSectionNaming() {
 		assertThat(messageKeyConstants())
-				.allSatisfy(key -> assertThat(key).matches("(warehouse)\\.[a-z.-]+"));
+				.allSatisfy(key -> assertThat(key).matches("(warehouse|stock)\\.[a-z.-]+"));
 	}
 
 	private static Properties load(String resource) throws IOException {

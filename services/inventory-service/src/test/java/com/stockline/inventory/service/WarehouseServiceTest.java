@@ -9,8 +9,9 @@ import com.stockline.inventory.dto.WarehouseRequest;
 import com.stockline.inventory.dto.WarehouseResponse;
 import com.stockline.inventory.entity.Warehouse;
 import com.stockline.inventory.mapper.WarehouseMapper;
+import com.stockline.inventory.repository.StockLevelRepository;
+import com.stockline.inventory.repository.StockLevelRepository.WarehouseSkuCount;
 import com.stockline.inventory.repository.WarehouseRepository;
-import com.stockline.inventory.repository.WarehouseRepository.WarehouseSkuCount;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,11 +42,14 @@ class WarehouseServiceTest {
 	@Mock
 	private WarehouseRepository warehouseRepository;
 
+	@Mock
+	private StockLevelRepository stockLevelRepository;
+
 	private WarehouseService warehouseService;
 
 	@BeforeEach
 	void setUp() {
-		warehouseService = new WarehouseService(warehouseRepository, new WarehouseMapper());
+		warehouseService = new WarehouseService(warehouseRepository, stockLevelRepository, new WarehouseMapper());
 	}
 
 	@Test
@@ -56,7 +60,7 @@ class WarehouseServiceTest {
 		Warehouse north = warehouse(2L, "WH-02", "North Hub", null);
 		when(warehouseRepository.findByCodeContainingIgnoreCaseOrNameContainingIgnoreCase("wh", "wh", pageable))
 				.thenReturn(new PageImpl<>(List.of(main, north), pageable, 2));
-		when(warehouseRepository.countSkus(List.of(1L, 2L))).thenReturn(List.of(skuCount(1L, 412)));
+		when(stockLevelRepository.countByWarehouseIds(List.of(1L, 2L))).thenReturn(List.of(skuCount(1L, 412)));
 
 		// when
 		PageResponse<WarehouseResponse> page = warehouseService.list(" wh  ", pageable);
@@ -77,7 +81,7 @@ class WarehouseServiceTest {
 		warehouseService.list(null, pageable);
 
 		// then: "IN ()" would be invalid SQL
-		verify(warehouseRepository, never()).countSkus(any());
+		verify(stockLevelRepository, never()).countByWarehouseIds(any());
 	}
 
 	@Test
@@ -127,7 +131,7 @@ class WarehouseServiceTest {
 		Warehouse main = warehouse(1L, "WH-01", "Main", "Old address");
 		when(warehouseRepository.findById(1L)).thenReturn(Optional.of(main));
 		when(warehouseRepository.existsByCodeAndIdNot("WH-10", 1L)).thenReturn(false);
-		when(warehouseRepository.countSkus(List.of(1L))).thenReturn(List.of(skuCount(1L, 5)));
+		when(stockLevelRepository.countByWarehouseIds(List.of(1L))).thenReturn(List.of(skuCount(1L, 5)));
 
 		// when
 		WarehouseResponse updated = warehouseService.update(1L, new WarehouseRequest("WH-10", "Main Warehouse", null));
@@ -156,7 +160,7 @@ class WarehouseServiceTest {
 		// given
 		Warehouse empty = warehouse(1L, "WH-01", "Main", null);
 		when(warehouseRepository.findById(1L)).thenReturn(Optional.of(empty));
-		when(warehouseRepository.countSkus(List.of(1L))).thenReturn(List.of());
+		when(stockLevelRepository.countByWarehouseIds(List.of(1L))).thenReturn(List.of());
 
 		// when
 		warehouseService.delete(1L);
@@ -169,7 +173,7 @@ class WarehouseServiceTest {
 	void delete_withStock_throwsInUse() {
 		// given
 		when(warehouseRepository.findById(1L)).thenReturn(Optional.of(warehouse(1L, "WH-01", "Main", null)));
-		when(warehouseRepository.countSkus(List.of(1L))).thenReturn(List.of(skuCount(1L, 3)));
+		when(stockLevelRepository.countByWarehouseIds(List.of(1L))).thenReturn(List.of(skuCount(1L, 3)));
 
 		// when / then
 		assertThatThrownBy(() -> warehouseService.delete(1L))

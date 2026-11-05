@@ -9,6 +9,7 @@ import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -73,6 +74,17 @@ public class DataExceptionHandler {
 							handler.message(CommonMessageKeys.RESOURCE_REFERENCE_MISSING), path);
 			default -> handler.handleUnexpected(ex, request);
 		};
+	}
+
+	/**
+	 * Optimistic locking: someone else changed the row ({@code @Version}) between our read and our write.
+	 * Nothing was saved; the client reloads and tries again.
+	 */
+	@ExceptionHandler(OptimisticLockingFailureException.class)
+	public ResponseEntity<ProblemDetail> handleConcurrentUpdate(OptimisticLockingFailureException ex,
+			HttpServletRequest request) {
+		return handler.response(ErrorCode.CONCURRENT_UPDATE,
+				handler.message(CommonMessageKeys.RESOURCE_CONCURRENT_UPDATE), request.getRequestURI());
 	}
 
 	/**

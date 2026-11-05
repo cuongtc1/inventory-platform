@@ -13,6 +13,10 @@ public final class MessageKeys {
 	public static final String WAREHOUSE_CODE_DUPLICATE = "warehouse.code.duplicate";
 	public static final String WAREHOUSE_DELETE_HAS_STOCK = "warehouse.delete.has-stock";
 
+	// stock
+	public static final String STOCK_ADJUST_ZERO = "stock.adjust.zero";
+	public static final String STOCK_INSUFFICIENT = "stock.insufficient";
+
 	private MessageKeys() {
 	}
 }

@@ -10,8 +10,9 @@ import com.stockline.inventory.dto.WarehouseRequest;
 import com.stockline.inventory.dto.WarehouseResponse;
 import com.stockline.inventory.entity.Warehouse;
 import com.stockline.inventory.mapper.WarehouseMapper;
+import com.stockline.inventory.repository.StockLevelRepository;
+import com.stockline.inventory.repository.StockLevelRepository.WarehouseSkuCount;
 import com.stockline.inventory.repository.WarehouseRepository;
-import com.stockline.inventory.repository.WarehouseRepository.WarehouseSkuCount;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -29,10 +30,13 @@ import java.util.stream.Collectors;
 public class WarehouseService {
 
 	private final WarehouseRepository warehouseRepository;
+	private final StockLevelRepository stockLevelRepository;
 	private final WarehouseMapper warehouseMapper;
 
-	public WarehouseService(WarehouseRepository warehouseRepository, WarehouseMapper warehouseMapper) {
+	public WarehouseService(WarehouseRepository warehouseRepository, StockLevelRepository stockLevelRepository,
+							WarehouseMapper warehouseMapper) {
 		this.warehouseRepository = warehouseRepository;
+		this.stockLevelRepository = stockLevelRepository;
 		this.warehouseMapper = warehouseMapper;
 	}
 
@@ -100,7 +104,7 @@ public class WarehouseService {
 			return Map.of();
 		}
 		List<Long> ids = warehouses.stream().map(Warehouse::getId).toList();
-		return warehouseRepository.countSkus(ids).stream()
+		return stockLevelRepository.countByWarehouseIds(ids).stream()
 				.collect(Collectors.toMap(WarehouseSkuCount::getWarehouseId, WarehouseSkuCount::getSkuCount));
 	}
 
