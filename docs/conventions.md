@@ -292,7 +292,8 @@ Ant Design's table counts pages from 1, so the frontend sends `page = current - 
 - Rows that can be changed by two users at once have `version BIGINT NOT NULL DEFAULT 0` (`@Version` in JPA).
 - Money is `DECIMAL(12,2)`. Quantities are `INT`, or `DECIMAL` if a product can be sold in fractions.
 - Enums are `VARCHAR(20)`.
-- Constraint names: `pk_<table>`, `fk_<table>_<referenced_table>`, `uk_<table>_<column>`, `idx_<table>_<column>`.
+- Constraint names: `pk_<table>`, `fk_<table>_<referenced_table>`, `uk_<table>_<column>`, `idx_<table>_<column>`, `ck_<table>_<column>`.
+- `CHECK` constraints are a last line of defence for rules that must never break (no negative stock). The service checks the rule first and throws its own error: Spring has no category for MySQL's CHECK error, so it wouldn't become a clean 409.
 - Foreign keys only **inside** one schema. A reference to another service's data is a plain column (`product_id BIGINT NOT NULL`) with an index, plus any snapshot values the service needs, e.g. `product_name` on an order item.
 - Flyway files are in `src/main/resources/db/migration`, named `V<number>__<description>.sql` with a double underscore: `V1__create_categories.sql`, `V2__create_suppliers.sql`.
 - A committed migration is never edited. To change a table, add a new migration.
@@ -543,6 +544,7 @@ Decided in T3.1 to T3.4; the frontend login (T3.5) builds on it.
 |---|---|---|---|
 | auth-service | Own account (`/api/auth/me`, password) | Same | Also `/api/users` |
 | product-service | Read products, categories, suppliers | Also create, change, delete them | Same as MANAGER |
+| inventory-service | Read (T4.2 to T4.4 refine this) | Also change | Same as MANAGER |
 - **Role checks on URLs, not with `@PreAuthorize`** for now: the library's `GlobalExceptionHandler` would turn the `AccessDeniedException` thrown inside a controller into a 500.
 - **Who changed a row:** with a token, `created_by` / `updated_by` are its `email` claim (`JwtAuditorAware` in stockline-common); without one, `system`. A service that changes an entity and returns it calls `flush()` first, so the response already has the new `updatedAt` / `updatedBy`.
 - **Users** are deactivated, never deleted. Deactivating doesn't end tokens already issued: they work until they expire.

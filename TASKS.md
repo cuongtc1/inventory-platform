@@ -94,7 +94,7 @@ Goal: learn the standard layered Spring Boot service (controller / service / rep
 
 | ID | Task | Acceptance criteria | Owner | Status |
 |---|---|---|---|---|
-| T4.1 | Scaffold and migrations | Service, Flyway for `warehouses`, `stock_levels` (with `version`), `stock_movements`, `stock_reservations`, `processed_events` | Claude | TODO |
+| T4.1 | Scaffold and migrations | Service, Flyway for `warehouses`, `stock_levels` (with `version`), `stock_movements`, `stock_reservations`, `processed_events` | Claude | REVIEW |
 | T4.2 | Warehouse CRUD | API plus tests | Claude | TODO |
 | T4.3 | Stock levels and adjustment | List stock (filters, low-stock only); adjust stock writes a movement record; `available = on_hand − reserved` | Claude | TODO |
 | T4.4 | Movements API | Filter by product, warehouse, type, date | Claude | TODO |

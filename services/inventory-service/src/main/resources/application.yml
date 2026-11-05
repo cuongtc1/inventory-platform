@@ -1,0 +1,65 @@
+# inventory-service configuration.
+# ${NAME:default} reads environment variable NAME, or uses the default (local Docker setup in infra/).
+
+server:
+  port: ${SERVER_PORT:8083}
+
+spring:
+  application:
+    name: inventory-service
+
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/inventory_db}
+    username: ${DB_USERNAME:stockline}
+    password: ${DB_PASSWORD:stockline}
+
+  jpa:
+    hibernate:
+      # Flyway creates the tables; Hibernate only checks that entities match them
+      ddl-auto: validate
+    # Don't keep the database session open while the JSON response is written
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    # SQL files in src/main/resources/db/migration, named V<n>__description.sql
+    locations: classpath:db/migration
+
+  data:
+    web:
+      pageable:
+        # ?size=1000 is lowered to 100 (docs/conventions.md section 4); the default size is 20
+        max-page-size: 100
+
+  messages:
+    # Every API, validation and log text. messages.properties (this service) first, then common-messages.properties
+    # from the stockline-common library; the first file that has a key wins.
+    basename: messages,common-messages
+    encoding: UTF-8
+    # Without a messages_<language>.properties, use messages.properties, not a file for the server's locale
+    fallback-to-system-locale: false
+
+stockline:
+  jwt:
+    # Must be the same value as in auth-service, which signs the tokens. The default is for local development only.
+    secret: ${JWT_SECRET:local-dev-only-stockline-jwt-secret-change-me}
+    issuer: stockline-auth
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      # Show each check (db, diskSpace, ...) in /actuator/health. Fine for local learning; use "when-authorized" in production
+      show-details: always
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html

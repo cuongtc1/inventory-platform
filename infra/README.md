@@ -72,6 +72,7 @@ A plain `docker compose down` doesn't stop containers of a profile that isn't na
 | auth-service | `stockline-auth-service` | `8081` (`AUTH_SERVICE_PORT`) | `auth_db` |
 | product-service | `stockline-product-service` | `8082` (`PRODUCT_SERVICE_PORT`) | `product_db` |
 | api-gateway | `stockline-api-gateway` | `8080` (`API_GATEWAY_PORT`) | none |
+| inventory-service | `stockline-inventory-service` | `8083` (`INVENTORY_SERVICE_PORT`) | `inventory_db` |
 
 auth-service also reads `JWT_SECRET`, `JWT_EXPIRATION`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` from `.env`, the api-gateway `JWT_SECRET` (the same value) and `CORS_ALLOWED_ORIGINS` (defaults in `.env.example`, for local development only). The gateway waits for auth-service and product-service to be healthy.
 
