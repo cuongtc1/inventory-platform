@@ -13,7 +13,7 @@ import java.util.Locale;
  */
 public final class StockLevelSpecifications {
 
-	private static final char LIKE_ESCAPE = '\\';
+	static final char LIKE_ESCAPE = '\\';
 
 	private StockLevelSpecifications() {
 	}
@@ -36,7 +36,7 @@ public final class StockLevelSpecifications {
 	}
 
 	static Specification<StockLevel> nameOrSkuContains(String text) {
-		String pattern = "%" + escapeLike(text.toLowerCase(Locale.ROOT)) + "%";
+		String pattern = containsPattern(text);
 		return (root, query, cb) -> cb.or(
 				cb.like(cb.lower(root.get("productName")), pattern, LIKE_ESCAPE),
 				cb.like(cb.lower(root.get("productSku")), pattern, LIKE_ESCAPE));
@@ -57,8 +57,9 @@ public final class StockLevelSpecifications {
 				root.<Integer>get("reorderLevel"));
 	}
 
-	/** {@code %} and {@code _} are LIKE wildcards; escape them so they are searched as text. */
-	private static String escapeLike(String text) {
-		return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+	/** A lower-case LIKE pattern for "contains". {@code %} and {@code _} are wildcards; escaped, they are plain text. */
+	static String containsPattern(String text) {
+		String lowerCase = text.toLowerCase(Locale.ROOT);
+		return "%" + lowerCase.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
 	}
 }

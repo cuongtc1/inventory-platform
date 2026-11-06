@@ -2,7 +2,7 @@
 
 Warehouses and stock for Stockline. Spring Boot 4.1, Java 21, port **8083**, database schema `inventory_db`. Built like [product-service](../product-service/README.md) (same layers, error format, tests and Docker setup); this README covers what is different.
 
-Warehouses and stock levels are done; the movements list comes with T4.4.
+Warehouses, stock levels and the movement history. The frontend pages come with T4.5.
 
 ## Run
 
@@ -80,6 +80,28 @@ Response: `{ "id", "warehouseId", "warehouseCode", "warehouseName", "productId",
 | Someone changed the same row at the same moment (`@Version`) | 409 | `CONCURRENT_UPDATE`: reload and try again |
 | product-service can't be reached | 503 | `SERVICE_UNAVAILABLE`; nothing is changed, and reading stock keeps working |
 
+### Stock movements: `/api/stock-movements`
+
+The history of stock, read-only: movements are written by the code that changes stock, in the same transaction, and never changed. `POST` gives 405.
+
+| Method and path | Result | Errors |
+|---|---|---|
+| `GET /api/stock-movements?search=&warehouseId=&productId=&movementType=&from=&to=&page=0&size=20&sort=createdAt,desc` | `200`, a page of movements, newest first. Filters are optional and combined with AND | `400`, see below |
+
+| Filter | Matches |
+|---|---|
+| `search` | Part of the product name or SKU, ignoring case. `%` and `_` are plain text |
+| `warehouseId`, `productId` | Exactly this one |
+| `movementType` | `IN`, `OUT`, `ADJUST`, `RESERVE` or `RELEASE` |
+| `from`, `to` | Vietnam dates (`YYYY-MM-DD`), both included. `to=2026-10-31` covers all of 31 October in Vietnam, which ends at 16:59:59 UTC |
+
+| Situation | Status | `code` |
+|---|---|---|
+| A date that isn't `YYYY-MM-DD`, or an unknown `movementType` | 400 | `VALIDATION_FAILED` |
+| `from` after `to`, or an unknown sort field | 400 | `BAD_REQUEST` |
+
+Response: `{ "id", "warehouseId", "warehouseCode", "productId", "productSku", "productName", "movementType", "quantity", "reference", "createdAt", "createdBy", "updatedAt", "updatedBy" }`. `quantity` is signed; `createdAt` and `createdBy` are the mockup's Time and By; the product name is as it was at that moment.
+
 ## Database
 
 Schema `inventory_db`, created by Flyway. Every table has `id` and the four audit columns.
@@ -101,15 +123,18 @@ Schema `inventory_db`, created by Flyway. Every table has `id` and the four audi
 
 ## Tests
 
-`./mvnw test`: 81 tests, Docker must be running.
+`./mvnw test`: 100 tests, Docker must be running.
 
 | Class | What it checks |
 |---|---|
 | `service/StockAdjusterTest`, `service/StockLevelServiceTest` | Unit tests: new row, copies refreshed, movement written, reserved stock protected, zero and unknown refused |
+| `service/StockMovementServiceTest` | Unit test: mapping, `from` after `to` refused |
 | `client/ProductClientTest` | The call to product-service, with `MockRestServiceServer`: token sent, 404, no signed-in user |
 | `controller/StockLevelControllerTest` | Web slice: filters, JSON, validation, `INSUFFICIENT_STOCK`, `CONCURRENT_UPDATE` |
+| `controller/StockMovementControllerTest` | Web slice: every filter bound, newest first by default, bad date and type, 405 |
+| `repository/StockMovementRepositoryTest` | MySQL: every filter, the Vietnam day boundary to the second, `created_at` stored in UTC |
 | `repository/StockLevelRepositoryTest` | MySQL: every filter, low stock at the exact limit, sort by warehouse, `version` rising, movement columns |
-| `StockIntegrationTest` | All layers on MySQL with product-service mocked: the adjustment lifecycle and refusals |
+| `StockIntegrationTest` | All layers on MySQL with product-service mocked: the adjustment lifecycle, refusals, and the resulting history |
 | `service/WarehouseServiceTest` | Unit test: trimming, duplicates, SKU counts, delete rule |
 | `controller/WarehouseControllerTest` | Web slice: URLs, JSON, validation, error format |
 | `repository/WarehouseRepositoryTest` | MySQL: search, unique code ignoring case, SKU count |
@@ -134,6 +159,7 @@ Schema `inventory_db`, created by Flyway. Every table has `id` and the four audi
 | Old | Now | Notes |
 |---|---|---|
 | MySQL parsed `CHECK` and ignored it | MySQL 8.0.16+ enforces `CHECK` constraints | So the database itself refuses negative stock |
+| `@DateTimeFormat` on a field with a setter | The same annotation on a `record` component | `LocalDate` query parameters; a wrong format is a normal validation error |
 | `RestTemplate` | `RestClient` (Spring 6.1), from `spring-boot-starter-restclient` | A fluent API; `.onStatus(...)` turns a 404 into our own exception. Boot 4 made the HTTP clients separate starters |
 | `MockRestServiceServer.createServer(restTemplate)` | `MockRestServiceServer.bindTo(builder)` | The same test tool for `RestClient` |
 | `@Transactional` on everything | `Propagation.NOT_SUPPORTED` plus a separate transactional bean | So no database connection is held while waiting for another service. `@Transactional` works through a proxy, so it only applies to calls from another bean |

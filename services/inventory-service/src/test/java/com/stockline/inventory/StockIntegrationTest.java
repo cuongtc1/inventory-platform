@@ -1,6 +1,7 @@
 package com.stockline.inventory;
 
 import com.jayway.jsonpath.JsonPath;
+import com.stockline.common.util.DateTimeUtils;
 import com.stockline.inventory.client.ProductClient;
 import com.stockline.inventory.dto.ProductSnapshot;
 import org.junit.jupiter.api.Test;
@@ -13,6 +14,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+
+import java.time.Clock;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
@@ -36,6 +39,9 @@ class StockIntegrationTest {
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
+
+	@Autowired
+	private Clock clock;
 
 	@MockitoBean
 	private ProductClient productClient;
@@ -88,6 +94,24 @@ class StockIntegrationTest {
 				.andExpect(jsonPath("$.totalElements").value(1))
 				.andExpect(jsonPath("$.content[0].reserved").value(30));
 		mockMvc.perform(get("/api/warehouses/{id}", warehouseId)).andExpect(jsonPath("$.skuCount").value(1));
+
+		// The history, newest first, with the product name as it was at each moment
+		mockMvc.perform(get("/api/stock-movements").param("productId", "101").param("movementType", "ADJUST"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalElements").value(3))
+				.andExpect(jsonPath("$.content[2].quantity").value(50))
+				.andExpect(jsonPath("$.content[2].productName").value("Stock Mouse"))
+				.andExpect(jsonPath("$.content[2].reference").value("Opening"))
+				.andExpect(jsonPath("$.content[2].warehouseCode").value("ST-01"))
+				.andExpect(jsonPath("$.content[0].productName").value("Stock Mouse 2"))
+				.andExpect(jsonPath("$.content[0].createdBy").value("system"));
+
+		// Today in Vietnam, from the same clock as the audit columns
+		String today = DateTimeUtils.today(clock).toString();
+		mockMvc.perform(get("/api/stock-movements").param("productId", "101").param("from", today).param("to", today))
+				.andExpect(jsonPath("$.totalElements").value(3));
+		mockMvc.perform(get("/api/stock-movements").param("productId", "101").param("to", "2020-01-01"))
+				.andExpect(jsonPath("$.totalElements").value(0));
 	}
 
 	@Test

@@ -49,6 +49,7 @@ class SecurityRulesTest {
 				.andExpect(jsonPath("$.code").value("FORBIDDEN"));
 		mockMvc.perform(get("/api/stock-levels").with(as(UserType.STAFF))).andExpect(status().isOk());
 		mockMvc.perform(post("/api/stock-levels/adjust").with(as(UserType.STAFF))).andExpect(status().isForbidden());
+		mockMvc.perform(get("/api/stock-movements").with(as(UserType.STAFF))).andExpect(status().isOk());
 	}
 
 	@Test

@@ -16,6 +16,7 @@ public final class MessageKeys {
 	// stock
 	public static final String STOCK_ADJUST_ZERO = "stock.adjust.zero";
 	public static final String STOCK_INSUFFICIENT = "stock.insufficient";
+	public static final String STOCK_MOVEMENT_DATE_RANGE = "stock.movement.date-range";
 
 	private MessageKeys() {
 	}
