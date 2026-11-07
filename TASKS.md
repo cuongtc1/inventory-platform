@@ -98,8 +98,8 @@ Goal: learn the standard layered Spring Boot service (controller / service / rep
 | T4.2 | Warehouse CRUD | API plus tests | Claude | DONE |
 | T4.3 | Stock levels and adjustment | List stock (filters, low-stock only); adjust stock writes a movement record; `available = on_hand − reserved` | Claude | DONE |
 | T4.4 | Movements API | Filter by product, warehouse, type, date | Claude | DONE |
-| T4.5 | Frontend pages | Warehouses, Stock Levels, Stock Movements, Low-Stock Alerts | Claude | REVIEW |
-| T4.6 | Tests and review | Unit tests; you review | Claude + You | TODO |
+| T4.5 | Frontend pages | Warehouses, Stock Levels, Stock Movements, Low-Stock Alerts | Claude | DONE |
+| T4.6 | Tests and review | Unit tests; you review | Claude + You | DONE |
 
 ## 8. Phase 5: order-service basics (about 3 days)
 
