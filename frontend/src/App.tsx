@@ -49,9 +49,18 @@ const routes: RouteObject[] = [
             path: ROUTES.products,
             lazy: { Component: () => import('./pages/products/ProductListPage').then(module => module.ProductListPage) },
           },
-          { path: ROUTES.stockLevels, element: comingSoon(texts.nav.items.stockLevels, 4) },
-          { path: ROUTES.stockMovements, element: comingSoon(texts.nav.items.stockMovements, 4) },
-          { path: ROUTES.lowStock, element: comingSoon(texts.nav.items.lowStock, 4) },
+          {
+            path: ROUTES.stockLevels,
+            lazy: { Component: () => import('./pages/stock/StockLevelListPage').then(module => module.StockLevelListPage) },
+          },
+          {
+            path: ROUTES.stockMovements,
+            lazy: { Component: () => import('./pages/stock/StockMovementListPage').then(module => module.StockMovementListPage) },
+          },
+          {
+            path: ROUTES.lowStock,
+            lazy: { Component: () => import('./pages/stock/LowStockListPage').then(module => module.LowStockListPage) },
+          },
           { path: ROUTES.customers, element: comingSoon(texts.nav.items.customers, 5) },
           { path: ROUTES.salesOrders, element: comingSoon(texts.nav.items.salesOrders, 5) },
           { path: ROUTES.salesOrderNew, element: comingSoon(texts.nav.items.salesOrders, 5) },
@@ -94,7 +103,22 @@ const routes: RouteObject[] = [
                 path: ROUTE_PATTERNS.supplierEdit,
                 lazy: { Component: () => import('./pages/suppliers/SupplierFormPage').then(module => module.SupplierFormPage) },
               },
-              { path: ROUTES.warehouses, element: comingSoon(texts.nav.items.warehouses, 4) },
+              {
+                path: ROUTES.warehouses,
+                lazy: { Component: () => import('./pages/warehouses/WarehouseListPage').then(module => module.WarehouseListPage) },
+              },
+              {
+                path: ROUTES.warehouseNew,
+                lazy: { Component: () => import('./pages/warehouses/WarehouseFormPage').then(module => module.WarehouseFormPage) },
+              },
+              {
+                path: ROUTE_PATTERNS.warehouseEdit,
+                lazy: { Component: () => import('./pages/warehouses/WarehouseFormPage').then(module => module.WarehouseFormPage) },
+              },
+              {
+                path: ROUTES.stockAdjust,
+                lazy: { Component: () => import('./pages/stock/StockAdjustPage').then(module => module.StockAdjustPage) },
+              },
               { path: ROUTES.purchaseOrders, element: comingSoon(texts.nav.items.purchaseOrders, 7) },
               { path: ROUTES.reports, element: comingSoon(texts.nav.items.reports, 9) },
             ],

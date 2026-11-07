@@ -406,7 +406,7 @@ The React app in `frontend/`. The same ideas as the backend apply: one place for
 - No TypeScript `enum`, `namespace` or constructor parameter properties: `tsconfig` uses `erasableSyntaxOnly` (only syntax that can simply be deleted to get JavaScript). Use union types (`'ACTIVE' | 'INACTIVE'`) and plain fields.
 - Colours come from `theme/theme.ts` (Ant Design tokens, badge tones), never written into a page.
 - **ESLint** from the Vite template; `npm run lint` and `npm run build` (type check + build) must pass before committing. Indentation and line endings come from `.editorconfig` (2 spaces, LF). No Prettier or other tools without asking first.
-- Nothing beyond the stack (no Redux, React Query, i18n or date libraries) without asking. State is `useState` / `useEffect` plus small custom hooks.
+- Nothing beyond the stack (no Redux, React Query, i18n or date libraries) without asking. State is `useState` / `useEffect` plus small custom hooks. One exception, agreed in T4.5: `dayjs`, which Ant Design already brings, because its date pickers only take dayjs values. Use it for those values only, converted in `utils/format.ts` (`parseApiDate`, `toApiDate`); moments are still shown with `formatDate` and `formatDateTime`.
 
 ### Folder structure
 
@@ -497,7 +497,8 @@ The shared files above exist since T2.0; use and extend them instead of writing 
 - `usePagedList(loader, defaultSort)` holds the list state **in the URL**: `?page=2&size=50&sort=salePrice,desc&status=ACTIVE` (`page` counts from 1 there, like the pager). Reload, Back, bookmarks and shared links show the same list. Default values (page 1, size 20, the default sort) are left out of the URL.
 - The loader is a function declared **outside** the component (`const loadProducts: PageLoader<ProductResponse> = ...`), turning URL filters into the API's filter parameters. Unknown values in the URL (`status=abc`, `categoryId=x`) are ignored, not sent.
 - Sorting happens in the backend: columns have `sorter: true` and `sortOrder={list.sortOrder(field)}`. The field is the `dataIndex`, or the column `key` when the backend sorts by a nested path (`category.name`). Tables use `sortDirections={['ascend', 'descend']}`.
-- Search is `Input.Search` (runs on Enter or the button, no request per key press). Select filters have `allowClear`, a placeholder like "All categories", and set their filter at once. Any filter change goes back to page 1; **Reset** appears when a filter is set.
+- Search is `Input.Search` (runs on Enter or the button, no request per key press). Select filters have `allowClear`, a placeholder like "All categories", and set their filter at once. Any filter change goes back to page 1; **Reset** appears when a filter is set. `useFilterWidth()` gives a filter its width: full on phones. Ready-made filters: `SearchFilter`, `WarehouseFilter`, `DateRangeFilter`.
+- A date range is `DateRangeFilter`: a picked day is sent as that calendar day, with no time zone conversion. Ant Design's range picker shows two months and doesn't fit a phone, so phones get two single pickers.
 - Row actions: `EditButton` and `DeleteButton` (`components/`): small buttons with icon and text, icon only on phones. `DeleteButton` asks first with a `Popconfirm`. After a delete: success message and `list.reload()`; an error shows `errorMessage(error)`.
 - Options of a Select that come from the API (categories, suppliers) are loaded with `useSelectOptions(getCategoryOptions)`. The `get...Options` functions live in the resource's `api/` file.
 - A load error shows an `Alert` above the table with a **Try again** button; the last page stays visible.

@@ -32,6 +32,8 @@ export const colors = {
   // Avatar circle in the top bar (mockup `.av`)
   avatarBackground: '#d6f3e1',
   avatarText: '#0f7a37',
+  // Empty part of the stock level bar (mockup `.pb`)
+  progressTrack: '#e5ede8',
 } as const
 
 /** Badge tones from the mockup (`.bd` + `.r` / `.y` / `.b`): light background, darker text. */

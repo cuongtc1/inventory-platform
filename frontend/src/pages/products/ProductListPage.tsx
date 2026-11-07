@@ -12,7 +12,7 @@ import { SearchFilter } from '../../components/SearchFilter'
 import { StatusBadge } from '../../components/StatusBadge'
 import { PRODUCT_STATUS, PRODUCT_STATUS_OPTIONS } from '../../constants/productStatus'
 import { ROUTES } from '../../constants/routes'
-import { useIsMobile } from '../../hooks/useIsMobile'
+import { useFilterWidth } from '../../hooks/useIsMobile'
 import { type PageLoader, usePagedList } from '../../hooks/usePagedList'
 import { useReturnState } from '../../hooks/useReturnTo'
 import { useSelectOptions } from '../../hooks/useSelectOptions'
@@ -21,6 +21,7 @@ import { texts } from '../../messages/texts'
 import type { ProductResponse, ProductStatus } from '../../types/product'
 import { errorMessage } from '../../utils/errors'
 import { EMPTY_VALUE, formatMoney } from '../../utils/format'
+import { toId } from '../../utils/table'
 
 const DEFAULT_SORT = 'name,asc'
 
@@ -46,7 +47,7 @@ const loadProducts: PageLoader<ProductResponse> = (query, filters, signal) =>
 export function ProductListPage() {
   const { message } = App.useApp()
   const navigate = useNavigate()
-  const isMobile = useIsMobile()
+  const filterWidth = useFilterWidth()
   const returnState = useReturnState()
   const canEdit = useHasRole('MANAGER')
   const list = usePagedList(loadProducts, DEFAULT_SORT)
@@ -126,9 +127,6 @@ export function ProductListPage() {
     })
   }
 
-  // Filters share the row on wide screens and take a full row each on phones
-  const filterWidth = (desktop: number) => ({ width: isMobile ? '100%' : desktop })
-
   return (
     <>
       <PageHeader
@@ -180,12 +178,6 @@ export function ProductListPage() {
       />
     </>
   )
-}
-
-/** "12" → 12; anything else (missing, "abc") → undefined, i.e. no filter. */
-function toId(value: string | null | undefined): number | undefined {
-  const id = Number(value)
-  return value && Number.isInteger(id) && id > 0 ? id : undefined
 }
 
 /** Only a status the frontend knows; anything else in the URL is ignored. */

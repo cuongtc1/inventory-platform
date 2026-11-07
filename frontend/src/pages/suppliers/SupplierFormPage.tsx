@@ -17,6 +17,7 @@ import {
 import { texts } from '../../messages/texts'
 import type { SupplierRequest, SupplierResponse } from '../../types/supplier'
 import { errorMessage, formFieldErrors } from '../../utils/errors'
+import { emptyToNull } from '../../utils/format'
 
 /** Create and edit a supplier: "/suppliers/new" and "/suppliers/:id/edit". */
 export function SupplierFormPage() {
@@ -106,10 +107,4 @@ function SupplierForm({ supplier, returnTo }: SupplierFormProps) {
       {supplier && <AuditInfo record={supplier} />}
     </Card>
   )
-}
-
-/** "" or "   " → null, so an emptied field clears the value instead of storing spaces. */
-function emptyToNull(value: string | null | undefined): string | null {
-  const trimmed = value?.trim()
-  return trimmed ? trimmed : null
 }

@@ -9,7 +9,7 @@ import { SearchFilter } from '../../components/SearchFilter'
 import { StatusBadge } from '../../components/StatusBadge'
 import { ROUTES } from '../../constants/routes'
 import { USER_STATUS, USER_STATUS_OPTIONS, USER_TYPE, USER_TYPE_OPTIONS } from '../../constants/userType'
-import { useIsMobile } from '../../hooks/useIsMobile'
+import { useFilterWidth, useIsMobile } from '../../hooks/useIsMobile'
 import { type PageLoader, usePagedList } from '../../hooks/usePagedList'
 import { useReturnState } from '../../hooks/useReturnTo'
 import { useSession } from '../../hooks/useSession'
@@ -39,6 +39,7 @@ export function UserListPage() {
   const { message } = App.useApp()
   const navigate = useNavigate()
   const isMobile = useIsMobile()
+  const filterWidth = useFilterWidth()
   const session = useSession()
   const returnState = useReturnState()
   const list = usePagedList(loadUsers, DEFAULT_SORT)
@@ -124,8 +125,6 @@ export function UserListPage() {
       ),
     },
   ]
-
-  const filterWidth = (desktop: number) => ({ width: isMobile ? '100%' : desktop })
 
   return (
     <>

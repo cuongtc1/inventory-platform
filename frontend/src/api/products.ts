@@ -1,5 +1,7 @@
+import { MAX_PAGE_SIZE } from '../constants/app'
 import type { PageQuery, PageResponse } from '../types/api'
 import type { ProductFilter, ProductRequest, ProductResponse } from '../types/product'
+import type { SelectOption } from '../types/ui'
 import { apiClient } from './client'
 
 /** Calls to /api/products (product-service). Pages use these functions, never Axios directly. */
@@ -34,4 +36,13 @@ export async function updateProduct(id: number, request: ProductRequest): Promis
 /** DELETE /api/products/{id} (hard delete). */
 export async function deleteProduct(id: number): Promise<void> {
   await apiClient.delete(`/api/products/${id}`)
+}
+
+/**
+ * Products as Select options, sorted by name. One page of MAX_PAGE_SIZE like getCategoryOptions, but a catalog can
+ * outgrow it: past 100 products this needs a search that asks the backend.
+ */
+export async function getProductOptions(signal?: AbortSignal): Promise<SelectOption[]> {
+  const page = await getProducts({ page: 0, size: MAX_PAGE_SIZE, sort: 'name,asc' }, signal)
+  return page.content.map(product => ({ value: product.id, label: `${product.sku} ${product.name}` }))
 }

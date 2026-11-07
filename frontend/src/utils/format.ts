@@ -1,3 +1,4 @@
+import dayjs, { type Dayjs } from 'dayjs'
 import { BUSINESS_TIME_ZONE, CURRENCY } from '../constants/app'
 
 /**
@@ -23,6 +24,15 @@ const dateParts = new Intl.DateTimeFormat('en-GB', {
 
 const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: CURRENCY })
 
+// signDisplay "exceptZero": 50 → "+50", -2 → "-2", 0 → "0"
+const quantityChange = new Intl.NumberFormat('en-US', { signDisplay: 'exceptZero' })
+
+/** What people see in a date picker; the same format as formatDate. */
+export const DISPLAY_DATE_FORMAT = 'DD/MM/YYYY'
+
+/** The backend's `from` / `to` parameters (docs/conventions.md section 4). */
+const API_DATE_FORMAT = 'YYYY-MM-DD'
+
 /** "2026-10-21T18:30:00Z" → "22/10/2026" (the date in Vietnam). */
 export function formatDate(iso: string | null | undefined): string {
   const parts = vietnamParts(iso)
@@ -40,14 +50,29 @@ export function formatMoney(amount: number | null | undefined): string {
   return amount === null || amount === undefined || Number.isNaN(amount) ? EMPTY_VALUE : money.format(amount)
 }
 
+/** 50 → "+50", -2 → "-2": a change of stock, not an amount. */
+export function formatQuantityChange(quantity: number): string {
+  return quantityChange.format(quantity)
+}
+
 /**
- * A date picked in the UI, for a date filter: Date → "YYYY-MM-DD" as that day in Vietnam (the backend's `from` /
- * `to` parameters, docs/conventions.md section 4). Ant Design's DatePicker gives a dayjs value: pass `.toDate()`.
+ * The day picked in a date picker → "2026-10-22". The calendar day as shown, with no time zone conversion: a date
+ * filter means that day in Vietnam (the backend reads it so), wherever the viewer's computer is.
  */
-export function toApiDate(date: Date): string {
-  const parts = dateParts.formatToParts(date)
-  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(p => p.type === type)?.value ?? ''
-  return `${part('year')}-${part('month')}-${part('day')}`
+export function toApiDate(date: Dayjs): string {
+  return date.format(API_DATE_FORMAT)
+}
+
+/** "2026-10-22" → the value for a date picker. Anything else (missing, "abc", "2026-13-45") → undefined. */
+export function parseApiDate(value: string | null | undefined): Dayjs | undefined {
+  const date = dayjs(value ?? null)
+  return date.isValid() && toApiDate(date) === value ? date : undefined
+}
+
+/** "" or "   " → null, so an emptied optional field clears the value instead of storing spaces. */
+export function emptyToNull(value: string | null | undefined): string | null {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : null
 }
 
 /**

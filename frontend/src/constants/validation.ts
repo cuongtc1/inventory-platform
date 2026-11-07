@@ -4,7 +4,7 @@
  * When a rule changes in the backend, it changes here in the same task.
  */
 
-/** A code people type and read (SKU, later warehouse codes): letters, digits, ".", "_" and "-", no spaces. */
+/** A code people type and read (SKU, warehouse code): letters, digits, ".", "_" and "-", no spaces. */
 export const CODE_PATTERN = /^[A-Za-z0-9._-]*$/
 export const CODE_MAX_LENGTH = 50
 
@@ -24,6 +24,13 @@ export const PRODUCT_NAME_MAX_LENGTH = 200
 
 /** `SupplierRequest.name`: VARCHAR(150). */
 export const SUPPLIER_NAME_MAX_LENGTH = 150
+
+/** `WarehouseRequest.address`: VARCHAR(255). */
+export const WAREHOUSE_ADDRESS_MAX_LENGTH = 255
+
+/** `AdjustStockRequest`: the change can be this big either way, which keeps a typo from reaching the INT limits. */
+export const STOCK_QUANTITY_MAX = 1_000_000
+export const STOCK_REFERENCE_MAX_LENGTH = 100
 
 /** Backend `PasswordPolicy`. BCrypt reads at most 72 bytes. */
 export const PASSWORD_MIN_LENGTH = 8

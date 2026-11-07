@@ -120,6 +120,9 @@ export const texts = {
     },
     filters: {
       allStatuses: 'All statuses',
+      allWarehouses: 'All warehouses',
+      fromDate: 'From',
+      toDate: 'To',
     },
     // Under a table: "21-40 of 57"
     pageRange: (from: number, to: number, total: number) => `${from}-${to} of ${total}`,
@@ -248,6 +251,78 @@ export const texts = {
       email: 'Email',
       phone: 'Phone',
     },
+  },
+
+  warehouse: {
+    title: 'Warehouses',
+    singular: 'Warehouse',
+    newButton: 'New Warehouse',
+    newTitle: 'New Warehouse',
+    editTitle: (id: string) => `Edit Warehouse #${id}`,
+    searchPlaceholder: 'Search by code or name…',
+    created: (code: string) => `Warehouse ${code} created`,
+    updated: (code: string) => `Warehouse ${code} saved`,
+    deleted: (code: string) => `Warehouse ${code} deleted`,
+    confirmDelete: (code: string) => `Delete "${code}"?`,
+    fields: {
+      code: 'Code',
+      name: 'Name',
+      address: 'Address',
+      skuCount: 'SKUs',
+    },
+  },
+
+  stockLevel: {
+    title: 'Stock Levels',
+    adjustButton: 'Adjust Stock',
+    adjustRow: 'Adjust',
+    searchPlaceholder: 'Search by product or SKU…',
+    selectProduct: 'Select a product',
+    selectWarehouse: 'Select a warehouse',
+    quantityHelp: 'The change, not the new total: 50 adds, -2 takes away.',
+    quantityNotZero: 'Enter a change other than 0',
+    referencePlaceholder: 'Why, e.g. Count',
+    adjusted: (product: string, warehouse: string, onHand: number) =>
+      `${product} in ${warehouse}: ${onHand} on hand`,
+    fields: {
+      product: 'Product',
+      warehouse: 'Warehouse',
+      onHand: 'On hand',
+      reserved: 'Reserved',
+      available: 'Available',
+      level: 'Level',
+      reorderLevel: 'Reorder level',
+      status: 'Status',
+      quantity: 'Quantity',
+      reference: 'Reference',
+    },
+  },
+
+  stockMovement: {
+    title: 'Stock Movements',
+    searchPlaceholder: 'Search by product or SKU…',
+    allTypes: 'All types',
+    fields: {
+      time: 'Time',
+      product: 'Product',
+      warehouse: 'Warehouse',
+      type: 'Type',
+      quantity: 'Qty',
+      reference: 'Reference',
+      by: 'By',
+    },
+    type: {
+      IN: 'In',
+      OUT: 'Out',
+      ADJUST: 'Adjust',
+      RESERVE: 'Reserve',
+      RELEASE: 'Release',
+    },
+  },
+
+  lowStock: {
+    title: 'Low-Stock Alerts',
+    status: 'Low',
   },
 
   product: {

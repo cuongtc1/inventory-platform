@@ -15,6 +15,12 @@ export function useIsMobile(): boolean {
   return useSyncExternalStore(subscribe, () => window.matchMedia(query).matches)
 }
 
+/** For a list's filters: they share the row on wide screens and take a full row each on phones. */
+export function useFilterWidth(): (desktop: number) => { width: number | string } {
+  const isMobile = useIsMobile()
+  return desktop => ({ width: isMobile ? '100%' : desktop })
+}
+
 function subscribe(onChange: () => void): () => void {
   const media = window.matchMedia(query)
   media.addEventListener('change', onChange)

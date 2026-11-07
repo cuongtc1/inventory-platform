@@ -10,6 +10,12 @@ import type { PageQuery } from '../types/api'
 /** The sorter argument of a Table's onChange, taken from Ant Design's own types instead of a deep import. */
 type TableSorter<T> = Parameters<NonNullable<TableProps<T>['onChange']>>[2]
 
+/** A filter from the URL: "12" → 12; anything else (missing, "abc") → undefined, i.e. no filter. */
+export function toId(value: string | null | undefined): number | undefined {
+  const id = Number(value)
+  return value && Number.isInteger(id) && id > 0 ? id : undefined
+}
+
 /**
  * Table state → API paging: `current` 3 becomes `page` 2. Without a sorted column, `defaultSort` (or the
  * backend's default) is used. A column's sort field is its `dataIndex` (nested: ["category", "name"] →

@@ -20,7 +20,12 @@ export const ROUTES = {
 
   // Inventory (Phase 4)
   warehouses: '/warehouses',
+  warehouseNew: '/warehouses/new',
+  warehouseEdit: (id: number | string) => `/warehouses/${id}/edit`,
   stockLevels: '/stock-levels',
+  stockAdjust: '/stock-levels/adjust',
+  stockAdjustFor: (productId: number, warehouseId: number) =>
+    `/stock-levels/adjust?productId=${productId}&warehouseId=${warehouseId}`,
   stockMovements: '/stock-movements',
   lowStock: '/low-stock',
 
@@ -44,6 +49,7 @@ export const ROUTE_PATTERNS = {
   productEdit: '/products/:id/edit',
   categoryEdit: '/categories/:id/edit',
   supplierEdit: '/suppliers/:id/edit',
+  warehouseEdit: '/warehouses/:id/edit',
   userEdit: '/users/:id/edit',
   salesOrderDetail: '/sales-orders/:id',
 } as const

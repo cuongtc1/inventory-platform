@@ -29,7 +29,7 @@ browser ──/api/products──▶ Vite dev server :5173 ──proxy──▶ 
 
 The browser only talks to `localhost:5173`, so there is no cross-origin request and the services need no CORS settings. The api-gateway handles CORS for deployments where the frontend has its own address.
 
-Start the backend first: `docker compose --profile services up -d --build` in `infra/`, or run api-gateway, auth-service and product-service yourself. Local logins: `admin@stockline.local` / `admin12345`; ADMINs create the others on Users & Roles.
+Start the backend first: `docker compose --profile services up -d --build` in `infra/`, or run api-gateway, auth-service, product-service and inventory-service yourself. Local logins: `admin@stockline.local` / `admin12345`; ADMINs create the others on Users & Roles.
 
 ## Folder structure
 
@@ -118,8 +118,18 @@ To try the phone layout on a computer: browser DevTools (F12) → device toolbar
 |---|---|---|---|
 | Menu | Dashboard, Products, Stock Levels, Stock Movements, Low-Stock Alerts, Sales Orders, Customers, Notifications | Also Categories, Suppliers, Warehouses, Purchase Orders, Reports | Also Users & Roles |
 | Products | Read only | New, Edit, Delete | Same as MANAGER |
+| Warehouses | Hidden | New, Edit, Delete | Same as MANAGER |
+| Stock Levels | Read only | Also Adjust Stock | Same as MANAGER |
+| Stock Movements, Low-Stock Alerts | Read only | Read only | Read only |
 
 Hiding is only for convenience: the backend enforces every rule again. The menu's roles are in `constants/navigation.ts` (the mockup's levels), the pages' guards in `App.tsx`. The mockup's "View as" switch isn't built: the menu follows the logged-in user.
+
+## Inventory pages
+
+- **Stock Levels:** one row per product and warehouse. The Level bar is full at twice the reorder level and red when stock is low, so halfway is where a product becomes low.
+- **Adjust Stock:** the quantity is the change, not the new total. Taking more than is available shows the backend's text under Quantity. The product list is the first 100 by name: a bigger catalog needs a search that asks the backend.
+- **Stock Movements:** the history, newest first, with quantities signed (`+50`, `-2`). Dates are Vietnam dates, both included. Wide screens get one range picker; phones get two single pickers, because the range picker's two months don't fit.
+- **Low-Stock Alerts:** the Stock Levels list with the low-stock filter always on. Unlike the mockup there is no Supplier column, because inventory-service doesn't know the supplier; a Warehouse column shows where stock is low.
 
 ## Routing
 
@@ -131,10 +141,15 @@ Hiding is only for convenience: the backend enforces every rule again. The menu'
 | `/products`, `/products/new`, `/products/:id/edit` | Product list and form |
 | `/categories`, `/categories/new`, `/categories/:id/edit` | Category list and form |
 | `/suppliers`, `/suppliers/new`, `/suppliers/:id/edit` | Supplier list and form |
+| `/warehouses`, `/warehouses/new`, `/warehouses/:id/edit` | Warehouse list and form (MANAGER) |
+| `/stock-levels` | Stock Levels |
+| `/stock-levels/adjust` | Adjust Stock (MANAGER). `?productId=&warehouseId=` chooses them in advance |
+| `/stock-movements` | Stock Movements |
+| `/low-stock` | Low-Stock Alerts |
 | `/login` | Login, outside the layout |
 | `/profile` | My profile |
 | `/users`, `/users/new`, `/users/:id/edit` | Users & Roles (ADMIN) |
-| `/warehouses`, `/stock-levels`, `/stock-movements`, `/low-stock`, `/customers`, `/sales-orders`, `/purchase-orders`, `/notifications`, `/reports` | "Coming soon" with the phase that builds them |
+| `/customers`, `/sales-orders`, `/purchase-orders`, `/notifications`, `/reports` | "Coming soon" with the phase that builds them |
 | anything else | 404 page |
 
 - **Lazy pages:** each Phase 2 page is downloaded only when it is first opened (`lazy: { Component: () => import(...) }`), so the first download stays small and every page is its own file in `dist/`. Libraries go into named files (`vendor-react`, `vendor-antd`, `vendor-icons`, `vendor`) that browsers can keep cached across our releases.
