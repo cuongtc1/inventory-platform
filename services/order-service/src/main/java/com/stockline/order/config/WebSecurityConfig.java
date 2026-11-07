@@ -11,9 +11,9 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
 /**
- * Who may do what with customers and orders (docs/conventions.md section 11). The same starting rule as the other
- * services: every signed-in user reads, changing takes a MANAGER (or an ADMIN, through the role hierarchy). The
- * endpoints come with T5.2 to T5.4, which refine this where a role needs something else.
+ * Who may do what with customers and orders (docs/conventions.md section 11). Every signed-in user reads. Staff also
+ * add and edit customers, because they take the orders; deleting and everything else takes a MANAGER (or an ADMIN,
+ * through the role hierarchy). The first matching rule wins, so the narrow rules come before "/api/**".
  */
 @Configuration(proxyBeanMethods = false)
 public class WebSecurityConfig {
@@ -25,6 +25,8 @@ public class WebSecurityConfig {
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers(JwtSecurity.OPEN_PATHS).permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/**").hasRole(UserType.STAFF.name())
+						.requestMatchers(HttpMethod.POST, "/api/customers").hasRole(UserType.STAFF.name())
+						.requestMatchers(HttpMethod.PUT, "/api/customers/*").hasRole(UserType.STAFF.name())
 						.requestMatchers("/api/**").hasRole(UserType.MANAGER.name())
 						.anyRequest().authenticated());
 		return http.build();

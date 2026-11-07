@@ -11,19 +11,24 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The rules of WebSecurityConfig with the real filters. There are no endpoints yet, so a request the rules let
- * through gets 404 from Spring MVC; one they stop gets 401 or 403.
+ * The rules of WebSecurityConfig with the real filters. POST and PUT without a body: a request the rules let through
+ * reaches the controller and gets 400; one they stop gets 401 or 403. DELETE of an id that doesn't exist: through the
+ * rules it gets 404.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 class SecurityRulesTest {
+
+	private static final long UNKNOWN_ID = 999_999;
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -42,17 +47,26 @@ class SecurityRulesTest {
 	}
 
 	@Test
-	void staff_getsPastReadsButNotChanges() throws Exception {
-		mockMvc.perform(get("/api/customers").with(as(UserType.STAFF))).andExpect(status().isNotFound());
-		mockMvc.perform(post("/api/customers").with(as(UserType.STAFF)))
+	void staff_readsAddsAndEditsCustomers() throws Exception {
+		mockMvc.perform(get("/api/customers").with(as(UserType.STAFF))).andExpect(status().isOk());
+		mockMvc.perform(post("/api/customers").with(as(UserType.STAFF))).andExpect(status().isBadRequest());
+		mockMvc.perform(put("/api/customers/1").with(as(UserType.STAFF))).andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void staff_doesntDeleteCustomers() throws Exception {
+		mockMvc.perform(delete("/api/customers/{id}", UNKNOWN_ID).with(as(UserType.STAFF)))
 				.andExpect(status().isForbidden())
 				.andExpect(jsonPath("$.code").value("FORBIDDEN"));
 	}
 
 	@Test
 	void managerAndAdmin_getThrough() throws Exception {
-		mockMvc.perform(post("/api/customers").with(as(UserType.MANAGER))).andExpect(status().isNotFound());
-		mockMvc.perform(post("/api/customers").with(as(UserType.ADMIN))).andExpect(status().isNotFound());
+		mockMvc.perform(post("/api/customers").with(as(UserType.MANAGER))).andExpect(status().isBadRequest());
+		mockMvc.perform(delete("/api/customers/{id}", UNKNOWN_ID).with(as(UserType.MANAGER)))
+				.andExpect(status().isNotFound());
+		mockMvc.perform(delete("/api/customers/{id}", UNKNOWN_ID).with(as(UserType.ADMIN)))
+				.andExpect(status().isNotFound());
 	}
 
 	/** A request with a valid token of this role; the filter chain sees the same authority a real token gives. */

@@ -106,7 +106,7 @@ Goal: learn the standard layered Spring Boot service (controller / service / rep
 | ID | Task | Acceptance criteria | Owner | Status |
 |---|---|---|---|---|
 | T5.1 | Scaffold and migrations | `customers`, `sales_orders`, `sales_order_items` (with product name snapshot), `order_status_history` | Claude | DONE |
-| T5.2 | Customer CRUD | API plus tests | Claude | TODO |
+| T5.2 | Customer CRUD | API plus tests | Claude | REVIEW |
 | T5.3 | Sales order creation | Create draft/PENDING order with items; fetches product name and price from product-service (REST); order number `SO-xxxx` | Claude | TODO |
 | T5.4 | State machine | Allowed transitions enforced in one place; invalid transition returns 409; every change recorded in history | Claude | TODO |
 | T5.5 | Frontend pages | Customers, Sales Order list, New Sales Order, Sales Order Detail with stepper and timeline | Claude | TODO |

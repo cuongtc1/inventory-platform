@@ -2,7 +2,7 @@
 
 Customers and sales orders for Stockline. Spring Boot 4.1, Java 21, port **8084**, database schema `order_db`. Built like [product-service](../product-service/README.md) (same layers, error format, tests and Docker setup); this README covers what is different.
 
-T5.1 is the scaffold: the service starts, Flyway creates the tables, and security is on. There are no endpoints yet; T5.2 to T5.4 add them.
+Customers are done. Sales orders come with T5.3 and T5.4, the frontend pages with T5.5.
 
 ## Run
 
@@ -16,13 +16,44 @@ Start the infrastructure first (from `infra/`): `docker compose up -d`. Install 
 | URL | What |
 |---|---|
 | http://localhost:8084/actuator/health | Health check |
-| http://localhost:8084/swagger-ui.html | Swagger UI (empty until T5.2) |
+| http://localhost:8084/swagger-ui.html | Swagger UI. Log in on auth-service, click **Authorize**, paste the `accessToken` |
 
 As a container (from `infra/`): `docker compose --profile services up -d --build order-service`.
 
 ## Who may call what
 
-Like the other services: every request needs a valid JWT, except health and the API docs. For now reading takes STAFF and changing takes MANAGER (ADMIN through the role hierarchy). T5.2 and T5.3 refine this. Rules: `config/WebSecurityConfig`.
+Like the other services: every request needs a valid JWT, except health and the API docs. Rules: `config/WebSecurityConfig`.
+
+| | STAFF | MANAGER, ADMIN |
+|---|---|---|
+| Read customers | Yes | Yes |
+| Add and edit customers | Yes: staff take the orders | Yes |
+| Delete customers | No | Yes |
+| Anything else that changes data | No, until a task says otherwise | Yes |
+
+## API
+
+Errors use the JSON format from [docs/conventions.md](../../docs/conventions.md#3-json-error-format).
+
+### Customers: `/api/customers`
+
+| Method and path | Result | Errors |
+|---|---|---|
+| `GET /api/customers?search=&page=0&size=20&sort=name,asc` | `200`, a page of customers. `search` matches part of the name or email, ignoring case. Default sort `name,asc`, max size 100 | `400` unknown sort field |
+| `GET /api/customers/{id}` | `200`, one customer | `404` |
+| `POST /api/customers` | `201`, `Location: /api/customers/{id}` | `400` validation, `409 DUPLICATE` name |
+| `PUT /api/customers/{id}` | `200`, the updated customer (every field is replaced) | `400`, `404`, `409 DUPLICATE` |
+| `DELETE /api/customers/{id}` | `204` | `403` for STAFF, `404`, `409 IN_USE` if it has orders |
+
+Request body: `{ "name": "ACME Ltd", "email": "buy@acme.com", "phone": "+84 28 3800 1122" }`.
+
+| Field | Rules |
+|---|---|
+| `name` | Required, max 150, trimmed; unique ignoring case |
+| `email` | Optional, max 150, a valid address; empty is stored as `null` |
+| `phone` | Optional, max 30, digits, spaces, `+`, `-`, `(` and `)`; empty is stored as `null` |
+
+Response: `{ "id", "name", "email", "phone", "orderCount", "createdAt", "createdBy", "updatedAt", "updatedBy" }`. `orderCount` is the mockup's Orders column. A list gets all counts of a page with one query. Sorting by it isn't offered: it isn't a column.
 
 ## Database
 
@@ -45,12 +76,17 @@ Schema `order_db`, created by Flyway. Every table has `id` and the four audit co
 
 ## Tests
 
-`./mvnw test`: 21 tests, Docker must be running.
+`./mvnw test`: 53 tests, Docker must be running.
 
 | Class | What it checks |
 |---|---|
-| `repository/MigrationsTest` | The migrations on real MySQL: every table exists, defaults, unique keys, foreign keys, CHECK constraints, no foreign key leaving the schema. Plain SQL, because there are no entities yet |
+| `service/CustomerServiceTest` | Unit test: trimming, blank contacts become `null`, duplicates, order counts, delete refused with orders |
+| `controller/CustomerControllerTest` | Web slice: URLs, status codes, JSON, validation, `DUPLICATE`, `IN_USE` |
+| `repository/CustomerRepositoryTest` | MySQL: search, a customer without email isn't lost, name unique ignoring case, order count query |
+| `repository/MigrationsTest` | The migrations on real MySQL: every table exists, defaults, unique keys, foreign keys, CHECK constraints, no foreign key leaving the schema. Plain SQL, for the tables without entities yet |
+| `constant/MessagesPropertiesTest` | `messages.properties` and the code stay in step |
 | `SecurityRulesTest` | Health and docs open, 401 without a token, what STAFF, MANAGER and ADMIN get through |
+| `CustomerIntegrationTest` | All layers on MySQL: the customer lifecycle, including delete refused with an order |
 | `OrderServiceApplicationTests` | The application starts |
 
 ## Configuration
