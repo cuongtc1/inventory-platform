@@ -444,6 +444,7 @@ The shared files above exist since T2.0; use and extend them instead of writing 
 - Backend enums are string union types in `types/`: `type ProductStatus = 'ACTIVE' | 'INACTIVE'`.
 - Timestamps stay ISO-8601 strings (`"2026-10-22T08:15:30Z"`) in types and state; they are turned into text only for display.
 - Money arrives as a JSON number. The frontend only **displays** and **sends** amounts; it never calculates totals with JavaScript numbers (binary floating point, like `double`). The backend does all money math with `BigDecimal` and returns the results.
+- One exception, agreed in T5.5: a form may show an **estimate** before saving (the New Sales Order total), calculated in whole cents with `utils/money.ts` (`toCents`, `lineTotalCents`): integers are exact. It is labelled as an estimate; what is saved and shown afterwards is the backend's amount.
 
 ### Calling the backend
 

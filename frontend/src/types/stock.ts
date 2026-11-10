@@ -22,6 +22,7 @@ export interface StockLevelResponse extends Audited {
 export interface StockLevelFilter {
   search?: string
   warehouseId?: number
+  productId?: number
   lowStock?: boolean
 }
 

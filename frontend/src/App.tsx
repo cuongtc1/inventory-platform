@@ -61,10 +61,31 @@ const routes: RouteObject[] = [
             path: ROUTES.lowStock,
             lazy: { Component: () => import('./pages/stock/LowStockListPage').then(module => module.LowStockListPage) },
           },
-          { path: ROUTES.customers, element: comingSoon(texts.nav.items.customers, 5) },
-          { path: ROUTES.salesOrders, element: comingSoon(texts.nav.items.salesOrders, 5) },
-          { path: ROUTES.salesOrderNew, element: comingSoon(texts.nav.items.salesOrders, 5) },
-          { path: ROUTE_PATTERNS.salesOrderDetail, element: comingSoon(texts.nav.items.salesOrders, 5) },
+          // Staff take orders, so they add and edit customers too; deleting is hidden for them on the list
+          {
+            path: ROUTES.customers,
+            lazy: { Component: () => import('./pages/customers/CustomerListPage').then(module => module.CustomerListPage) },
+          },
+          {
+            path: ROUTES.customerNew,
+            lazy: { Component: () => import('./pages/customers/CustomerFormPage').then(module => module.CustomerFormPage) },
+          },
+          {
+            path: ROUTE_PATTERNS.customerEdit,
+            lazy: { Component: () => import('./pages/customers/CustomerFormPage').then(module => module.CustomerFormPage) },
+          },
+          {
+            path: ROUTES.salesOrders,
+            lazy: { Component: () => import('./pages/salesOrders/SalesOrderListPage').then(module => module.SalesOrderListPage) },
+          },
+          {
+            path: ROUTES.salesOrderNew,
+            lazy: { Component: () => import('./pages/salesOrders/SalesOrderNewPage').then(module => module.SalesOrderNewPage) },
+          },
+          {
+            path: ROUTE_PATTERNS.salesOrderDetail,
+            lazy: { Component: () => import('./pages/salesOrders/SalesOrderDetailPage').then(module => module.SalesOrderDetailPage) },
+          },
           { path: ROUTES.notifications, element: comingSoon(texts.nav.items.notifications, 8) },
 
           // MANAGER and up, like the role of the same entries in constants/navigation.ts

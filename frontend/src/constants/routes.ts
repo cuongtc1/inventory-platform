@@ -35,6 +35,8 @@ export const ROUTES = {
   salesOrderNew: '/sales-orders/new',
   salesOrderDetail: (id: number | string) => `/sales-orders/${id}`,
   customers: '/customers',
+  customerNew: '/customers/new',
+  customerEdit: (id: number | string) => `/customers/${id}/edit`,
 
   // Insights and admin
   reports: '/reports',
@@ -52,4 +54,5 @@ export const ROUTE_PATTERNS = {
   warehouseEdit: '/warehouses/:id/edit',
   userEdit: '/users/:id/edit',
   salesOrderDetail: '/sales-orders/:id',
+  customerEdit: '/customers/:id/edit',
 } as const

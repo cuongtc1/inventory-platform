@@ -46,3 +46,12 @@ export async function getProductOptions(signal?: AbortSignal): Promise<SelectOpt
   const page = await getProducts({ page: 0, size: MAX_PAGE_SIZE, sort: 'name,asc' }, signal)
   return page.content.map(product => ({ value: product.id, label: `${product.sku} ${product.name}` }))
 }
+
+/**
+ * Products that can be sold (ACTIVE), sorted by name, with their price: the product choices of a new sales order.
+ * The same first-100 limit as getProductOptions.
+ */
+export async function getSellableProducts(signal?: AbortSignal): Promise<ProductResponse[]> {
+  const page = await getProducts({ page: 0, size: MAX_PAGE_SIZE, sort: 'name,asc', status: 'ACTIVE' }, signal)
+  return page.content
+}

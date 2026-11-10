@@ -25,6 +25,13 @@ export const PRODUCT_NAME_MAX_LENGTH = 200
 /** `SupplierRequest.name`: VARCHAR(150). */
 export const SUPPLIER_NAME_MAX_LENGTH = 150
 
+/** `CustomerRequest.name`: VARCHAR(150), like a supplier's. */
+export const CUSTOMER_NAME_MAX_LENGTH = 150
+
+/** `CreateSalesOrderRequest`: at most 50 lines, 1 to 1,000,000 of each product. */
+export const ORDER_MAX_ITEMS = 50
+export const ORDER_QUANTITY_MAX = 1_000_000
+
 /** `WarehouseRequest.address`: VARCHAR(255). */
 export const WAREHOUSE_ADDRESS_MAX_LENGTH = 255
 

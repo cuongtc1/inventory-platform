@@ -121,6 +121,8 @@ To try the phone layout on a computer: browser DevTools (F12) → device toolbar
 | Warehouses | Hidden | New, Edit, Delete | Same as MANAGER |
 | Stock Levels | Read only | Also Adjust Stock | Same as MANAGER |
 | Stock Movements, Low-Stock Alerts | Read only | Read only | Read only |
+| Customers | New, Edit | Also Delete | Same as MANAGER |
+| Sales Orders | New, Mark as paid / shipped / completed | Also Cancel order | Same as MANAGER |
 
 Hiding is only for convenience: the backend enforces every rule again. The menu's roles are in `constants/navigation.ts` (the mockup's levels), the pages' guards in `App.tsx`. The mockup's "View as" switch isn't built: the menu follows the logged-in user.
 
@@ -130,6 +132,13 @@ Hiding is only for convenience: the backend enforces every rule again. The menu'
 - **Adjust Stock:** the quantity is the change, not the new total. Taking more than is available shows the backend's text under Quantity. The product list is the first 100 by name: a bigger catalog needs a search that asks the backend.
 - **Stock Movements:** the history, newest first, with quantities signed (`+50`, `-2`). Dates are Vietnam dates, both included. Wide screens get one range picker; phones get two single pickers, because the range picker's two months don't fit.
 - **Low-Stock Alerts:** the Stock Levels list with the low-stock filter always on. Unlike the mockup there is no Supplier column, because inventory-service doesn't know the supplier; a Warehouse column shows where stock is low.
+
+## Order pages
+
+- **Customers:** like Suppliers, plus an Orders column. Staff add and edit customers because they take the orders; Delete shows for managers only, and a customer with orders can't be deleted.
+- **New Sales Order:** customer, warehouse and lines. Each line shows the product's **Available** stock in the chosen warehouse (red when the line asks for more; only a hint, stock is reserved in Phase 6), its price and line total. The **Estimated total** is calculated in whole cents (`utils/money.ts`), so it is exact; the saved order's amounts come from the backend. One button, **Place order**: there are no drafts. The product list is the first 100 active products by name.
+- **Sales Order detail:** number, status and who created it; the buttons the status allows (Mark as paid, shipped, completed; Cancel order for managers, with a confirmation); a stepper of the happy path, with the step where an order stopped in red; the lines with the backend's totals; and the status history. The buttons follow a copy of the state machine (`constants/orderStatus.ts`); the backend checks every change again.
+- **Until Phase 6** nothing moves an order to Reserved, so a new order stays Pending and can only be cancelled. The page says so.
 
 ## Routing
 
@@ -146,10 +155,14 @@ Hiding is only for convenience: the backend enforces every rule again. The menu'
 | `/stock-levels/adjust` | Adjust Stock (MANAGER). `?productId=&warehouseId=` chooses them in advance |
 | `/stock-movements` | Stock Movements |
 | `/low-stock` | Low-Stock Alerts |
+| `/customers`, `/customers/new`, `/customers/:id/edit` | Customer list and form |
+| `/sales-orders` | Sales Orders |
+| `/sales-orders/new` | New Sales Order |
+| `/sales-orders/:id` | Sales Order detail |
 | `/login` | Login, outside the layout |
 | `/profile` | My profile |
 | `/users`, `/users/new`, `/users/:id/edit` | Users & Roles (ADMIN) |
-| `/customers`, `/sales-orders`, `/purchase-orders`, `/notifications`, `/reports` | "Coming soon" with the phase that builds them |
+| `/purchase-orders`, `/notifications`, `/reports` | "Coming soon" with the phase that builds them |
 | anything else | 404 page |
 
 - **Lazy pages:** each Phase 2 page is downloaded only when it is first opened (`lazy: { Component: () => import(...) }`), so the first download stays small and every page is its own file in `dist/`. Libraries go into named files (`vendor-react`, `vendor-antd`, `vendor-icons`, `vendor`) that browsers can keep cached across our releases.
