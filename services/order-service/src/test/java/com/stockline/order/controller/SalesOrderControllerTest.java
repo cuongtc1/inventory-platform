@@ -2,12 +2,15 @@ package com.stockline.order.controller;
 
 import com.stockline.common.dto.PageResponse;
 import com.stockline.common.exception.InvalidRequestException;
+import com.stockline.common.exception.InvalidStatusTransitionException;
 import com.stockline.order.constant.MessageKeys;
 import com.stockline.order.constant.OrderStatus;
 import com.stockline.order.dto.CreateSalesOrderRequest;
+import com.stockline.order.dto.OrderStatusHistoryResponse;
 import com.stockline.order.dto.SalesOrderFilter;
 import com.stockline.order.dto.SalesOrderResponse;
 import com.stockline.order.dto.SalesOrderSummaryResponse;
+import com.stockline.order.service.OrderStatusService;
 import com.stockline.order.service.SalesOrderService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,6 +59,54 @@ class SalesOrderControllerTest {
 
 	@MockitoBean
 	private SalesOrderService salesOrderService;
+
+	@MockitoBean
+	private OrderStatusService orderStatusService;
+
+	@Test
+	void actions_askForTheirStatus() throws Exception {
+		// given
+		when(orderStatusService.changeStatus(eq(5L), any(), eq(null))).thenReturn(ORDER);
+
+		// when
+		for (String verb : List.of("pay", "ship", "complete", "cancel")) {
+			mockMvc.perform(post("/api/sales-orders/5/{verb}", verb)).andExpect(status().isOk());
+		}
+
+		// then
+		verify(orderStatusService).changeStatus(5L, OrderStatus.PAID, null);
+		verify(orderStatusService).changeStatus(5L, OrderStatus.SHIPPED, null);
+		verify(orderStatusService).changeStatus(5L, OrderStatus.COMPLETED, null);
+		verify(orderStatusService).changeStatus(5L, OrderStatus.CANCELLED, null);
+	}
+
+	@Test
+	void action_notAllowed_returns409WithTheText() throws Exception {
+		// given
+		when(orderStatusService.changeStatus(5L, OrderStatus.SHIPPED, null)).thenThrow(new InvalidStatusTransitionException(
+				MessageKeys.ORDER_STATUS_CHANGE_NOT_ALLOWED, "SO-1042", OrderStatus.PENDING, OrderStatus.SHIPPED));
+
+		// when / then
+		mockMvc.perform(post("/api/sales-orders/5/ship"))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("INVALID_STATUS_TRANSITION"))
+				.andExpect(jsonPath("$.detail").value("Order SO-1042 is PENDING, so it can not change to SHIPPED"));
+	}
+
+	@Test
+	void history_returnsTheTimeline() throws Exception {
+		// given
+		when(orderStatusService.history(5L)).thenReturn(List.of(
+				new OrderStatusHistoryResponse(1L, null, OrderStatus.PENDING, null, NOW, "staff@stockline.test"),
+				new OrderStatusHistoryResponse(2L, OrderStatus.PENDING, OrderStatus.CANCELLED, null, NOW, "manager@stockline.test")));
+
+		// when / then
+		mockMvc.perform(get("/api/sales-orders/5/history"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].fromStatus").doesNotExist())
+				.andExpect(jsonPath("$[0].toStatus").value("PENDING"))
+				.andExpect(jsonPath("$[1].createdBy").value("manager@stockline.test"));
+	}
 
 	@Test
 	void create_validRequest_returns201WithLocationAndLines() throws Exception {

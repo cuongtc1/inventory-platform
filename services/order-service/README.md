@@ -2,7 +2,7 @@
 
 Customers and sales orders for Stockline. Spring Boot 4.1, Java 21, port **8084**, database schema `order_db`. Built like [product-service](../product-service/README.md) (same layers, error format, tests and Docker setup); this README covers what is different.
 
-Customers, and creating and reading sales orders, are done. Status changes come with T5.4, the frontend pages with T5.5.
+Customers, and sales orders with their state machine, are done. The frontend pages come with T5.5, the Kafka saga and the stock effects of pay, ship and cancel with Phase 6.
 
 ## Run
 
@@ -29,8 +29,10 @@ Like the other services: every request needs a valid JWT, except health and the 
 | Read customers and sales orders | Yes | Yes |
 | Add and edit customers | Yes: staff take the orders | Yes |
 | Create sales orders | Yes | Yes |
+| Mark orders paid, shipped, completed | Yes | Yes |
+| Cancel orders | No | Yes |
 | Delete customers | No | Yes |
-| Anything else that changes data | No, until a task says otherwise (status changes: T5.4) | Yes |
+| Anything else that changes data | No, until a task says otherwise | Yes |
 
 ## API
 
@@ -92,6 +94,29 @@ How creating works:
 2. The warehouse and every product are read from their services, with the user's token (`client/ForwardUserToken`), outside any transaction: a slow service mustn't hold a database connection.
 3. `SalesOrderCreator` saves everything in one transaction: the order number, the order, its lines and the first history row (`→ PENDING`). Either all of it is saved or none.
 
+### Order status: the state machine
+
+```
+PENDING ──► RESERVED ──► PAID ──► SHIPPED ──► COMPLETED
+   │            │          │
+   ├──► REJECTED │          │
+   └────────────┴──────────┴──► CANCELLED      (only before shipping)
+```
+
+| Method and path | Change | Who |
+|---|---|---|
+| `POST /api/sales-orders/{id}/pay` | RESERVED → PAID (a fake payment) | STAFF and up |
+| `POST /api/sales-orders/{id}/ship` | PAID → SHIPPED | STAFF and up |
+| `POST /api/sales-orders/{id}/complete` | SHIPPED → COMPLETED, once the customer has the goods | STAFF and up |
+| `POST /api/sales-orders/{id}/cancel` | PENDING, RESERVED or PAID → CANCELLED | MANAGER and up |
+| `GET /api/sales-orders/{id}/history` | The timeline, oldest first: `[ { "id", "fromStatus", "toStatus", "note", "createdAt", "createdBy" } ]` | STAFF and up |
+
+No body; each action answers `200` with the whole order. Errors: `404` unknown order, `409 INVALID_STATUS_TRANSITION` when the current status doesn't allow it ("Order SO-1001 is PENDING, so it can not change to PAID"; nothing is saved), `409 CONCURRENT_UPDATE` when someone else changed the order at the same moment (`@Version`).
+
+- **One place decides:** `OrderStatus.nextStatuses()` holds the table above. `SalesOrder.changeStatus` asks it and refuses, and `OrderStatusService.changeStatus` is the only caller, so every change is checked and gets a history row in the same transaction.
+- **RESERVED and REJECTED** are set by the saga in Phase 6 (T6.2), through the same `OrderStatusService.changeStatus`, with `system` as the author. Until then a real order stays PENDING: it can be cancelled, but not paid.
+- **Stock:** these actions only change the status for now. T6.6 adds what they do to stock: shipping confirms the reservation and lowers `on_hand`, cancelling releases it.
+
 **Order numbers** come from the `number_sequences` table, starting at `SO-1001`. Taking a number locks its row (`SELECT ... FOR UPDATE`) until the order is saved, so two orders at the same moment can't get the same number, and a refused order gives its number back (no gaps).
 
 ## Database
@@ -116,22 +141,27 @@ Schema `order_db`, created by Flyway. Every table has `id` and the four audit co
 
 ## Tests
 
-`./mvnw test`: 84 tests, Docker must be running.
+`./mvnw test`: 113 tests, Docker must be running.
 
 | Class | What it checks |
 |---|---|
+| `constant/OrderStatusTest` | The state machine as a table: all 49 pairs of statuses, cancel only before shipping, the final statuses |
+| `entity/SalesOrderTest` | `changeStatus` returns the old status, refuses without changing anything, the happy path ends COMPLETED |
+| `service/OrderStatusServiceTest` | Unit test: a history row with from, to and note; nothing recorded when refused; 404 |
 | `service/CustomerServiceTest` | Unit test: trimming, blank contacts become `null`, duplicates, order counts, delete refused with orders |
 | `service/SalesOrderServiceTest` | Unit test: what reaches the creator; a product twice, an unknown customer, an inactive product and a too-large total are refused before saving |
 | `service/OrderNumberGeneratorTest` | MySQL, 8 threads at once: 40 numbers, no duplicates, none skipped; refuses to run outside a transaction. Fails with duplicates if the row lock is removed |
 | `client/ClientsTest` | Both REST clients with `MockRestServiceServer`: token forwarded, fields read, 404, no signed-in user |
 | `controller/CustomerControllerTest` | Web slice: URLs, status codes, JSON, validation, `DUPLICATE`, `IN_USE` |
-| `controller/SalesOrderControllerTest` | Web slice: 201 and JSON, errors naming the line (`items[1].quantity`), filters, newest first |
+| `controller/SalesOrderControllerTest` | Web slice: 201 and JSON, errors naming the line (`items[1].quantity`), filters, newest first, each action asks for its status, 409 text, history JSON |
 | `repository/CustomerRepositoryTest` | MySQL: search, a customer without email isn't lost, name unique ignoring case |
 | `repository/SalesOrderRepositoryTest` | MySQL: lines saved with the order, total, filters, `%` as plain text, history order, order count per customer |
+| `repository/SalesOrderVersionTest` | MySQL: a change based on an old reading is refused (`@Version`); fails if `@Version` is removed |
 | `repository/MigrationsTest` | The migrations on real MySQL: every table exists, defaults, unique keys, foreign keys, CHECK constraints, no foreign key leaving the schema |
 | `constant/MessagesPropertiesTest` | `messages.properties` and the code stay in step |
 | `SecurityRulesTest` | Health and docs open, 401 without a token, what STAFF, MANAGER and ADMIN get through |
 | `CustomerIntegrationTest` | All layers on MySQL: the customer lifecycle, including delete refused with an order |
+| `OrderLifecycleIntegrationTest` | All layers on MySQL: PENDING to COMPLETED with five history rows, wrong order 409 with nothing recorded, cancel once and only before shipping, 404 |
 | `SalesOrderIntegrationTest` | All layers on MySQL with the other services mocked: copies kept after a product change, first history row, consecutive numbers, a refused order saves nothing and uses no number |
 | `OrderServiceApplicationTests` | The application starts |
 
@@ -154,4 +184,6 @@ Schema `order_db`, created by Flyway. Every table has `id` and the four audit co
 | `@Transactional` with the default propagation | `Propagation.MANDATORY` | The number generator refuses to run without the caller's transaction |
 | `List<Item>` checked with a custom validator | `List<@Valid @NotNull Item>` | Type-use annotations (Bean Validation 2.0); errors name the line |
 | `ExecutorService` closed with `shutdown()` in `finally` | `try (ExecutorService pool = ...)` | Java 19+: `ExecutorService` is `AutoCloseable` and waits for its tasks |
+| `switch` statement with `case X: ... break;` | `switch` expression: `case PENDING -> Set.of(...)` | Returns a value, no fall-through; over an enum it must cover every value or it doesn't compile (`OrderStatus.nextStatuses`) |
+| One test method per value | `@ParameterizedTest @EnumSource(OrderStatus.class)` | JUnit 5 runs the test once for each status |
 | Interceptors on `RestTemplate` | `RestClient.Builder.requestInterceptor(...)` | `ForwardUserToken` adds the user's token to every call |

@@ -1,7 +1,9 @@
 package com.stockline.order.entity;
 
 import com.stockline.common.entity.BaseEntity;
+import com.stockline.common.exception.InvalidStatusTransitionException;
 import com.stockline.common.util.MoneyUtils;
+import com.stockline.order.constant.MessageKeys;
 import com.stockline.order.constant.OrderStatus;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -23,8 +25,8 @@ import java.util.List;
 
 /**
  * A sales order with its lines. The lines are added when the order is created and never change afterwards, so
- * {@code totalAmount} (stored for the list) can't disagree with them. There is no setter for the status: T5.4 adds the
- * one place that changes it.
+ * {@code totalAmount} (stored for the list) can't disagree with them. There is no setter for the status: it changes only
+ * through {@link #changeStatus}, which asks {@link OrderStatus#canChangeTo} first.
  */
 @Entity
 @Table(name = "sales_orders")
@@ -80,6 +82,22 @@ public class SalesOrder extends BaseEntity {
 	public void addItem(Long productId, String productSku, String productName, int quantity, BigDecimal unitPrice) {
 		items.add(new SalesOrderItem(this, productId, productSku, productName, quantity, unitPrice));
 		totalAmount = MoneyUtils.sum(items.stream().map(SalesOrderItem::getLineTotal).toList());
+	}
+
+	/**
+	 * Moves the order to {@code next} if its current status allows it; otherwise nothing changes.
+	 *
+	 * @return the status before the change, for the history
+	 * @throws InvalidStatusTransitionException 409, e.g. shipping an order that isn't paid
+	 */
+	public OrderStatus changeStatus(OrderStatus next) {
+		if (!status.canChangeTo(next)) {
+			throw new InvalidStatusTransitionException(MessageKeys.ORDER_STATUS_CHANGE_NOT_ALLOWED, orderNumber, status,
+					next);
+		}
+		OrderStatus previous = status;
+		status = next;
+		return previous;
 	}
 
 	public String getOrderNumber() {

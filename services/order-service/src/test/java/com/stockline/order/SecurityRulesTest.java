@@ -60,6 +60,19 @@ class SecurityRulesTest {
 	}
 
 	@Test
+	void staff_paysShipsAndCompletes_butDoesntCancel() throws Exception {
+		// Through the rules, an order that doesn't exist is 404
+		for (String verb : new String[] {"pay", "ship", "complete"}) {
+			mockMvc.perform(post("/api/sales-orders/{id}/{verb}", UNKNOWN_ID, verb).with(as(UserType.STAFF)))
+					.andExpect(status().isNotFound());
+		}
+		mockMvc.perform(post("/api/sales-orders/{id}/cancel", UNKNOWN_ID).with(as(UserType.STAFF)))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(post("/api/sales-orders/{id}/cancel", UNKNOWN_ID).with(as(UserType.MANAGER)))
+				.andExpect(status().isNotFound());
+	}
+
+	@Test
 	void staff_doesntDeleteCustomers() throws Exception {
 		mockMvc.perform(delete("/api/customers/{id}", UNKNOWN_ID).with(as(UserType.STAFF)))
 				.andExpect(status().isForbidden())
