@@ -217,6 +217,8 @@ services:
     restart: unless-stopped
     environment:
       SERVER_PORT: 8084
+      PRODUCT_SERVICE_URL: http://product-service:8082
+      INVENTORY_SERVICE_URL: http://inventory-service:8083
       DB_URL: jdbc:mysql://mysql:3306/order_db
       DB_USERNAME: stockline
       DB_PASSWORD: ${MYSQL_PASSWORD:-stockline}

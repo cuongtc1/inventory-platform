@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Runs the Flyway migrations on real MySQL and checks the rules the tables promise. There are no entities yet
- * (T5.2 to T5.4 add them), so the rows are written with plain SQL. Each test rolls back.
+ * for every table), so the rows are written with plain SQL. Each test rolls back.
  */
 @DataJpaTest
 @Import(TestcontainersConfiguration.class)
@@ -39,7 +39,19 @@ class MigrationsTest {
 	void allTablesExist() {
 		assertThat(jdbcTemplate.queryForList(
 				"SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE()", String.class))
-				.contains("customers", "sales_orders", "sales_order_items", "order_status_history");
+				.contains("customers", "sales_orders", "sales_order_items", "order_status_history", "number_sequences");
+	}
+
+	@Test
+	void salesOrderNumbers_startAt1001() {
+		assertThat(jdbcTemplate.queryForObject("SELECT next_value FROM number_sequences WHERE name = 'sales_order'",
+				Long.class)).isEqualTo(1001L);
+	}
+
+	@Test
+	void numberSequence_nameIsUnique() {
+		assertRejected(() -> jdbcTemplate.update("INSERT INTO number_sequences (name, next_value, " + AUDIT_COLUMNS
+				+ ") VALUES ('sales_order', 1, " + AUDIT_VALUES + ")"), "uk_number_sequences_name");
 	}
 
 	@Test

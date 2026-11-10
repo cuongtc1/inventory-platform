@@ -11,7 +11,8 @@ import com.stockline.order.dto.CustomerResponse;
 import com.stockline.order.entity.Customer;
 import com.stockline.order.mapper.CustomerMapper;
 import com.stockline.order.repository.CustomerRepository;
-import com.stockline.order.repository.CustomerRepository.CustomerOrderCount;
+import com.stockline.order.repository.SalesOrderRepository;
+import com.stockline.order.repository.SalesOrderRepository.CustomerOrderCount;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -29,10 +30,13 @@ import java.util.stream.Collectors;
 public class CustomerService {
 
 	private final CustomerRepository customerRepository;
+	private final SalesOrderRepository salesOrderRepository;
 	private final CustomerMapper customerMapper;
 
-	public CustomerService(CustomerRepository customerRepository, CustomerMapper customerMapper) {
+	public CustomerService(CustomerRepository customerRepository, SalesOrderRepository salesOrderRepository,
+						   CustomerMapper customerMapper) {
 		this.customerRepository = customerRepository;
+		this.salesOrderRepository = salesOrderRepository;
 		this.customerMapper = customerMapper;
 	}
 
@@ -97,7 +101,7 @@ public class CustomerService {
 			return Map.of();
 		}
 		List<Long> ids = customers.stream().map(Customer::getId).toList();
-		return customerRepository.countOrdersByCustomerIds(ids).stream()
+		return salesOrderRepository.countByCustomerIds(ids).stream()
 				.collect(Collectors.toMap(CustomerOrderCount::getCustomerId, CustomerOrderCount::getOrderCount));
 	}
 

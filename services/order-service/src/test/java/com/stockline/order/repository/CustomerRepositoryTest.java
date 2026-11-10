@@ -2,7 +2,6 @@ package com.stockline.order.repository;
 
 import com.stockline.order.TestcontainersConfiguration;
 import com.stockline.order.entity.Customer;
-import com.stockline.order.repository.CustomerRepository.CustomerOrderCount;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +10,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
 
@@ -20,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Checks the entity against the table, the derived queries and the order count on MySQL.
+ * Checks the entity against the table and the derived queries on MySQL. The order count is in SalesOrderRepositoryTest.
  */
 @DataJpaTest
 @Import(TestcontainersConfiguration.class)
@@ -28,9 +26,6 @@ class CustomerRepositoryTest {
 
 	@Autowired
 	private CustomerRepository customerRepository;
-
-	@Autowired
-	private JdbcTemplate jdbcTemplate;
 
 	private Customer acme;
 	private Customer nova;
@@ -77,33 +72,9 @@ class CustomerRepositoryTest {
 				.hasMessageContaining("uk_customers_name");
 	}
 
-	@Test
-	void countOrdersByCustomerIds_countsPerCustomer_withoutRowsForCustomersWithoutOrders() {
-		// given
-		insertOrder("SO-1001", acme.getId());
-		insertOrder("SO-1002", acme.getId());
-
-		// when
-		List<CustomerOrderCount> counts = customerRepository.countOrdersByCustomerIds(List.of(acme.getId(), nova.getId()));
-
-		// then
-		assertThat(counts).singleElement().satisfies(count -> {
-			assertThat(count.getCustomerId()).isEqualTo(acme.getId());
-			assertThat(count.getOrderCount()).isEqualTo(2);
-		});
-	}
-
 	private List<String> search(String text) {
 		return customerRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(
 						text, text, PageRequest.of(0, 20, Sort.by("name")))
 				.map(Customer::getName).getContent();
-	}
-
-	private void insertOrder(String orderNumber, long customerId) {
-		jdbcTemplate.update("""
-				INSERT INTO sales_orders (order_number, customer_id, warehouse_id, warehouse_code, status, total_amount,
-				                          created_at, updated_at, created_by, updated_by)
-				VALUES (?, ?, 1, 'WH-01', 'PENDING', 60.00, NOW(6), NOW(6), 'test', 'test')
-				""", orderNumber, customerId);
 	}
 }

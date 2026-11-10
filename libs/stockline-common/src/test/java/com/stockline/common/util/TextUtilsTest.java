@@ -20,4 +20,14 @@ class TextUtilsTest {
 		assertThat(TextUtils.strip(" Cables ")).isEqualTo("Cables");
 		assertThat(TextUtils.strip(null)).isNull();
 	}
+
+	@Test
+	void containsPattern_lowerCasesAndEscapesWildcards() {
+		assertThat(TextUtils.containsPattern("Mouse")).isEqualTo("%mouse%");
+		// In Java source "\\" is one backslash: the pattern is %100\%%
+		assertThat(TextUtils.containsPattern("100%")).isEqualTo("%100\\%%");
+		assertThat(TextUtils.containsPattern("SO_1")).isEqualTo("%so\\_1%");
+		// A backslash typed by the user is escaped too: a\b becomes %a\\b%
+		assertThat(TextUtils.containsPattern("a\\b")).isEqualTo("%a\\\\b%");
+	}
 }

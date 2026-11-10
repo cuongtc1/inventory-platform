@@ -54,6 +54,12 @@ class SecurityRulesTest {
 	}
 
 	@Test
+	void staff_createsSalesOrders() throws Exception {
+		mockMvc.perform(get("/api/sales-orders").with(as(UserType.STAFF))).andExpect(status().isOk());
+		mockMvc.perform(post("/api/sales-orders").with(as(UserType.STAFF))).andExpect(status().isBadRequest());
+	}
+
+	@Test
 	void staff_doesntDeleteCustomers() throws Exception {
 		mockMvc.perform(delete("/api/customers/{id}", UNKNOWN_ID).with(as(UserType.STAFF)))
 				.andExpect(status().isForbidden())

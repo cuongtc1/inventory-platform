@@ -12,8 +12,9 @@ import org.springframework.web.servlet.HandlerExceptionResolver;
 
 /**
  * Who may do what with customers and orders (docs/conventions.md section 11). Every signed-in user reads. Staff also
- * add and edit customers, because they take the orders; deleting and everything else takes a MANAGER (or an ADMIN,
- * through the role hierarchy). The first matching rule wins, so the narrow rules come before "/api/**".
+ * create sales orders, and add and edit customers, because they take the orders. Deleting and everything else takes a
+ * MANAGER (or an ADMIN, through the role hierarchy). The first matching rule wins, so the narrow rules come before
+ * "/api/**". Status changes of an order come with T5.4.
  */
 @Configuration(proxyBeanMethods = false)
 public class WebSecurityConfig {
@@ -27,6 +28,7 @@ public class WebSecurityConfig {
 						.requestMatchers(HttpMethod.GET, "/api/**").hasRole(UserType.STAFF.name())
 						.requestMatchers(HttpMethod.POST, "/api/customers").hasRole(UserType.STAFF.name())
 						.requestMatchers(HttpMethod.PUT, "/api/customers/*").hasRole(UserType.STAFF.name())
+						.requestMatchers(HttpMethod.POST, "/api/sales-orders").hasRole(UserType.STAFF.name())
 						.requestMatchers("/api/**").hasRole(UserType.MANAGER.name())
 						.anyRequest().authenticated());
 		return http.build();

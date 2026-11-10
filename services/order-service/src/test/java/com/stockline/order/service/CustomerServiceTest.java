@@ -10,7 +10,8 @@ import com.stockline.order.dto.CustomerResponse;
 import com.stockline.order.entity.Customer;
 import com.stockline.order.mapper.CustomerMapper;
 import com.stockline.order.repository.CustomerRepository;
-import com.stockline.order.repository.CustomerRepository.CustomerOrderCount;
+import com.stockline.order.repository.SalesOrderRepository;
+import com.stockline.order.repository.SalesOrderRepository.CustomerOrderCount;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,11 +42,14 @@ class CustomerServiceTest {
 	@Mock
 	private CustomerRepository customerRepository;
 
+	@Mock
+	private SalesOrderRepository salesOrderRepository;
+
 	private CustomerService customerService;
 
 	@BeforeEach
 	void setUp() {
-		customerService = new CustomerService(customerRepository, new CustomerMapper());
+		customerService = new CustomerService(customerRepository, salesOrderRepository, new CustomerMapper());
 	}
 
 	@Test
@@ -56,7 +60,7 @@ class CustomerServiceTest {
 		Customer nova = customer(2L, "Nova Retail", null, null);
 		when(customerRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase("ltd", "ltd", pageable))
 				.thenReturn(new PageImpl<>(List.of(acme, nova), pageable, 2));
-		when(customerRepository.countOrdersByCustomerIds(List.of(1L, 2L))).thenReturn(List.of(orderCount(1L, 18)));
+		when(salesOrderRepository.countByCustomerIds(List.of(1L, 2L))).thenReturn(List.of(orderCount(1L, 18)));
 
 		// when
 		PageResponse<CustomerResponse> page = customerService.list(" ltd  ", pageable);
@@ -77,7 +81,7 @@ class CustomerServiceTest {
 		customerService.list(null, pageable);
 
 		// then: "IN ()" would be invalid SQL
-		verify(customerRepository, never()).countOrdersByCustomerIds(any());
+		verify(salesOrderRepository, never()).countByCustomerIds(any());
 	}
 
 	@Test
@@ -127,7 +131,7 @@ class CustomerServiceTest {
 		Customer acme = customer(1L, "ACME", "old@acme.com", "+84 1");
 		when(customerRepository.findById(1L)).thenReturn(Optional.of(acme));
 		when(customerRepository.existsByNameAndIdNot("ACME Ltd", 1L)).thenReturn(false);
-		when(customerRepository.countOrdersByCustomerIds(List.of(1L))).thenReturn(List.of(orderCount(1L, 5)));
+		when(salesOrderRepository.countByCustomerIds(List.of(1L))).thenReturn(List.of(orderCount(1L, 5)));
 
 		// when
 		CustomerResponse updated = customerService.update(1L, new CustomerRequest("ACME Ltd", "buy@acme.com", null));
@@ -156,7 +160,7 @@ class CustomerServiceTest {
 		// given
 		Customer acme = customer(1L, "ACME", null, null);
 		when(customerRepository.findById(1L)).thenReturn(Optional.of(acme));
-		when(customerRepository.countOrdersByCustomerIds(List.of(1L))).thenReturn(List.of());
+		when(salesOrderRepository.countByCustomerIds(List.of(1L))).thenReturn(List.of());
 
 		// when
 		customerService.delete(1L);
@@ -169,7 +173,7 @@ class CustomerServiceTest {
 	void delete_withOrders_throwsInUse() {
 		// given
 		when(customerRepository.findById(1L)).thenReturn(Optional.of(customer(1L, "ACME", null, null)));
-		when(customerRepository.countOrdersByCustomerIds(List.of(1L))).thenReturn(List.of(orderCount(1L, 3)));
+		when(salesOrderRepository.countByCustomerIds(List.of(1L))).thenReturn(List.of(orderCount(1L, 3)));
 
 		// when / then
 		assertThatThrownBy(() -> customerService.delete(1L))

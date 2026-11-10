@@ -13,6 +13,11 @@ public final class MessageKeys {
 	public static final String CUSTOMER_NAME_DUPLICATE = "customer.name.duplicate";
 	public static final String CUSTOMER_DELETE_HAS_ORDERS = "customer.delete.has-orders";
 
+	// order
+	public static final String ORDER_PRODUCT_TWICE = "order.product.twice";
+	public static final String ORDER_PRODUCT_INACTIVE = "order.product.inactive";
+	public static final String ORDER_TOTAL_TOO_LARGE = "order.total.too-large";
+
 	private MessageKeys() {
 	}
 }

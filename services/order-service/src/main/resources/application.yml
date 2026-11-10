@@ -34,6 +34,12 @@ spring:
         # ?size=1000 is lowered to 100 (docs/conventions.md section 4); the default size is 20
         max-page-size: 100
 
+  http:
+    clients:
+      # Calls to other services. Too slow or unreachable gives 503 SERVICE_UNAVAILABLE
+      connect-timeout: 2s
+      read-timeout: 5s
+
   messages:
     # Every API, validation and log text. messages.properties (this service) first, then common-messages.properties
     # from the stockline-common library; the first file that has a key wins.
@@ -43,6 +49,10 @@ spring:
     fallback-to-system-locale: false
 
 stockline:
+  services:
+    # Creating an order reads products and the warehouse from here (SalesOrderService). Directly, not through the gateway
+    product-url: ${PRODUCT_SERVICE_URL:http://localhost:8082}
+    inventory-url: ${INVENTORY_SERVICE_URL:http://localhost:8083}
   jwt:
     # Must be the same value as in auth-service, which signs the tokens. The default is for local development only.
     secret: ${JWT_SECRET:local-dev-only-stockline-jwt-secret-change-me}

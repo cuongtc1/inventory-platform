@@ -2,7 +2,7 @@
 
 Customers and sales orders for Stockline. Spring Boot 4.1, Java 21, port **8084**, database schema `order_db`. Built like [product-service](../product-service/README.md) (same layers, error format, tests and Docker setup); this README covers what is different.
 
-Customers are done. Sales orders come with T5.3 and T5.4, the frontend pages with T5.5.
+Customers, and creating and reading sales orders, are done. Status changes come with T5.4, the frontend pages with T5.5.
 
 ## Run
 
@@ -26,10 +26,11 @@ Like the other services: every request needs a valid JWT, except health and the 
 
 | | STAFF | MANAGER, ADMIN |
 |---|---|---|
-| Read customers | Yes | Yes |
+| Read customers and sales orders | Yes | Yes |
 | Add and edit customers | Yes: staff take the orders | Yes |
+| Create sales orders | Yes | Yes |
 | Delete customers | No | Yes |
-| Anything else that changes data | No, until a task says otherwise | Yes |
+| Anything else that changes data | No, until a task says otherwise (status changes: T5.4) | Yes |
 
 ## API
 
@@ -55,6 +56,44 @@ Request body: `{ "name": "ACME Ltd", "email": "buy@acme.com", "phone": "+84 28 3
 
 Response: `{ "id", "name", "email", "phone", "orderCount", "createdAt", "createdBy", "updatedAt", "updatedBy" }`. `orderCount` is the mockup's Orders column. A list gets all counts of a page with one query. Sorting by it isn't offered: it isn't a column.
 
+### Sales orders: `/api/sales-orders`
+
+| Method and path | Result | Errors |
+|---|---|---|
+| `GET /api/sales-orders?search=&customerId=&status=&page=0&size=20&sort=createdAt,desc` | `200`, a page of orders without their lines, newest first. `search` matches part of the order number or the customer's name | `400` unknown sort field or status |
+| `GET /api/sales-orders/{id}` | `200`, one order with its lines | `404` |
+| `POST /api/sales-orders` | `201`, `Location: /api/sales-orders/{id}`, the new order as `PENDING` | See below |
+
+Request body: only ids and quantities. SKU, name and price come from product-service and the warehouse code from inventory-service, so a client can't set its own price.
+
+```json
+{ "customerId": 1, "warehouseId": 2, "items": [ { "productId": 6, "quantity": 5 }, { "productId": 7, "quantity": 2 } ] }
+```
+
+| Field | Rules |
+|---|---|
+| `customerId`, `warehouseId` | Required, must exist |
+| `items` | 1 to 50 lines; each product at most once |
+| `items[].productId` | Required, must exist and be `ACTIVE` |
+| `items[].quantity` | 1 to 1,000,000 |
+
+| Situation | Status | `code` |
+|---|---|---|
+| A missing or wrong field; the error names the line, e.g. `items[1].quantity` | 400 | `VALIDATION_FAILED` |
+| A product twice, an inactive product, or a total above $9,999,999,999.99 | 400 | `BAD_REQUEST` |
+| Unknown customer, warehouse or product | 404 | `NOT_FOUND` |
+| product-service or inventory-service can't be reached | 503 | `SERVICE_UNAVAILABLE` |
+
+Order response: `{ "id", "orderNumber", "customerId", "customerName", "warehouseId", "warehouseCode", "status", "totalAmount", "items": [ { "id", "productId", "productSku", "productName", "quantity", "unitPrice", "lineTotal" } ], "createdAt", "createdBy", "updatedAt", "updatedBy" }`. A list row has no `items`.
+
+How creating works:
+
+1. Cheap checks first, so a bad request costs no calls: each product only once, and the customer exists.
+2. The warehouse and every product are read from their services, with the user's token (`client/ForwardUserToken`), outside any transaction: a slow service mustn't hold a database connection.
+3. `SalesOrderCreator` saves everything in one transaction: the order number, the order, its lines and the first history row (`→ PENDING`). Either all of it is saved or none.
+
+**Order numbers** come from the `number_sequences` table, starting at `SO-1001`. Taking a number locks its row (`SELECT ... FOR UPDATE`) until the order is saved, so two orders at the same moment can't get the same number, and a refused order gives its number back (no gaps).
+
 ## Database
 
 Schema `order_db`, created by Flyway. Every table has `id` and the four audit columns.
@@ -65,28 +104,35 @@ Schema `order_db`, created by Flyway. Every table has `id` and the four audit co
 | `V2__create_sales_orders.sql` | `sales_orders` | `order_number`, `customer_id`, `warehouse_id`, `warehouse_code`, `status`, `total_amount`, `version` | `order_number` unique; `total_amount` ≥ 0; a customer with orders can't be deleted |
 | `V3__create_sales_order_items.sql` | `sales_order_items` | `sales_order_id`, `product_id`, `product_sku`, `product_name`, `quantity`, `unit_price` | One line per product on an order; `quantity` > 0; `unit_price` ≥ 0 |
 | `V4__create_order_status_history.sql` | `order_status_history` | `sales_order_id`, `from_status`, `to_status`, `note` | One row per status change; `from_status` is empty on the first; never updated or deleted |
+| `V5__create_number_sequences.sql` | `number_sequences` | `name`, `next_value` | One row per counter, `name` unique; `sales_order` starts at 1001 |
 
 - **Snapshots:** `product_sku`, `product_name` and `unit_price` are copied when the order is created, so renaming a product or changing its price never rewrites an order already placed.
 - **No foreign key across schemas:** `product_id` and `warehouse_id` are plain columns, because those rows live in other services. `warehouse_code` is a copy of what lists show.
 - **Line totals** are `quantity × unit_price`: calculated, never stored. `total_amount` on the order is stored, because the list shows and sorts by it, and an order's lines never change after it is created.
 - **Who and when:** an order's creator, and the author of each status change, are the audit columns. A change made by a Kafka event has `system` there.
 - **`version`** is for optimistic locking (`@Version`): a user and a Kafka event changing the status at once can't overwrite each other.
-- **`status`:** `PENDING`, `RESERVED`, `PAID`, `SHIPPED`, `COMPLETED`, `REJECTED`, `CANCELLED`. The enum comes with the code that uses it (T5.4).
+- **`status`:** `PENDING`, `RESERVED`, `PAID`, `SHIPPED`, `COMPLETED`, `REJECTED`, `CANCELLED` (`constant/OrderStatus`). Orders start as `PENDING`; there are no drafts. Which change is allowed comes with T5.4.
 - **Phase 6** adds `outbox_events` and `processed_events` for the saga, with the tasks that use them.
 
 ## Tests
 
-`./mvnw test`: 53 tests, Docker must be running.
+`./mvnw test`: 84 tests, Docker must be running.
 
 | Class | What it checks |
 |---|---|
 | `service/CustomerServiceTest` | Unit test: trimming, blank contacts become `null`, duplicates, order counts, delete refused with orders |
+| `service/SalesOrderServiceTest` | Unit test: what reaches the creator; a product twice, an unknown customer, an inactive product and a too-large total are refused before saving |
+| `service/OrderNumberGeneratorTest` | MySQL, 8 threads at once: 40 numbers, no duplicates, none skipped; refuses to run outside a transaction. Fails with duplicates if the row lock is removed |
+| `client/ClientsTest` | Both REST clients with `MockRestServiceServer`: token forwarded, fields read, 404, no signed-in user |
 | `controller/CustomerControllerTest` | Web slice: URLs, status codes, JSON, validation, `DUPLICATE`, `IN_USE` |
-| `repository/CustomerRepositoryTest` | MySQL: search, a customer without email isn't lost, name unique ignoring case, order count query |
-| `repository/MigrationsTest` | The migrations on real MySQL: every table exists, defaults, unique keys, foreign keys, CHECK constraints, no foreign key leaving the schema. Plain SQL, for the tables without entities yet |
+| `controller/SalesOrderControllerTest` | Web slice: 201 and JSON, errors naming the line (`items[1].quantity`), filters, newest first |
+| `repository/CustomerRepositoryTest` | MySQL: search, a customer without email isn't lost, name unique ignoring case |
+| `repository/SalesOrderRepositoryTest` | MySQL: lines saved with the order, total, filters, `%` as plain text, history order, order count per customer |
+| `repository/MigrationsTest` | The migrations on real MySQL: every table exists, defaults, unique keys, foreign keys, CHECK constraints, no foreign key leaving the schema |
 | `constant/MessagesPropertiesTest` | `messages.properties` and the code stay in step |
 | `SecurityRulesTest` | Health and docs open, 401 without a token, what STAFF, MANAGER and ADMIN get through |
 | `CustomerIntegrationTest` | All layers on MySQL: the customer lifecycle, including delete refused with an order |
+| `SalesOrderIntegrationTest` | All layers on MySQL with the other services mocked: copies kept after a product change, first history row, consecutive numbers, a refused order saves nothing and uses no number |
 | `OrderServiceApplicationTests` | The application starts |
 
 ## Configuration
@@ -97,3 +143,15 @@ Schema `order_db`, created by Flyway. Every table has `id` and the four audit co
 | `DB_URL` | `jdbc:mysql://localhost:3306/order_db` |
 | `DB_USERNAME` / `DB_PASSWORD` | `stockline` / `stockline` |
 | `JWT_SECRET` | `local-dev-only-stockline-jwt-secret-change-me`; must equal auth-service's |
+| `PRODUCT_SERVICE_URL` | `http://localhost:8082` |
+| `INVENTORY_SERVICE_URL` | `http://localhost:8083` |
+
+## New compared to Spring Boot 2.x / Java 8–11
+
+| Old | Now | Notes |
+|---|---|---|
+| `@Lock` known from JPA, rarely needed | `@Lock(LockModeType.PESSIMISTIC_WRITE)` on a Spring Data query method | `SELECT ... FOR UPDATE` for the order number counter |
+| `@Transactional` with the default propagation | `Propagation.MANDATORY` | The number generator refuses to run without the caller's transaction |
+| `List<Item>` checked with a custom validator | `List<@Valid @NotNull Item>` | Type-use annotations (Bean Validation 2.0); errors name the line |
+| `ExecutorService` closed with `shutdown()` in `finally` | `try (ExecutorService pool = ...)` | Java 19+: `ExecutorService` is `AutoCloseable` and waits for its tasks |
+| Interceptors on `RestTemplate` | `RestClient.Builder.requestInterceptor(...)` | `ForwardUserToken` adds the user's token to every call |

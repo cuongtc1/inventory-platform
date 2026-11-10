@@ -40,7 +40,7 @@ spring:
 | `security` | `JwtSecurity`, `JwtCheckProperties`, `JwtAuditorAware` | What checking a JWT has in common everywhere: key, `JwtDecoder`, `role` claim, role hierarchy, shared `HttpSecurity` settings, 401/403 answers, the auditor from the token (docs/conventions.md section 11). Needs the resource-server starter in the service |
 | `entity` | `BaseEntity` | `id` and the four audit columns; services' entities extend it |
 | `dto` | `PageResponse` | The list format (docs/conventions.md section 4) |
-| `util` | `DateTimeUtils`, `MoneyUtils`, `CommonValidationUtils`, `TextUtils` | Asia/Ho_Chi_Minh date ranges, USD with 2 decimals, shared validation rules, text cleanup |
+| `util` | `DateTimeUtils`, `MoneyUtils`, `CommonValidationUtils`, `TextUtils` | Asia/Ho_Chi_Minh date ranges, USD with 2 decimals, shared validation rules, text cleanup, LIKE patterns for search (`containsPattern`) |
 | `autoconfigure` | `CommonTimeAutoConfiguration`, `CommonJpaAutoConfiguration`, `CommonWebAutoConfiguration` | Create the beans below in every service automatically |
 | resources | `common-messages.properties` | Shared texts: validation, request and resource errors, server errors, log texts |
 

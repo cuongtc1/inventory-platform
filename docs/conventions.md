@@ -115,7 +115,7 @@ Messages:
 - IDs go in the path: `/api/products/{id}`.
 - Nest a resource only when it can't exist without its parent: `/api/sales-orders/{id}/items`, `/api/sales-orders/{id}/history`.
 - Actions that are not plain create, read, update or delete use `POST` with a verb at the end:
-  `POST /api/sales-orders/{id}/place`, `/pay`, `/ship`, `/cancel`, and `POST /api/purchase-orders/{id}/receive`.
+  `POST /api/sales-orders/{id}/pay`, `/ship`, `/cancel`, and `POST /api/purchase-orders/{id}/receive`. (No `/place`: orders are created as `PENDING`, without drafts; decided in T5.3.)
 
 | Service | Base paths |
 |---|---|
@@ -266,6 +266,7 @@ GET /api/products?search=keyboard&categoryId=3&status=ACTIVE&page=0&size=20&sort
 ```
 
 - `search` is a free-text filter. Each endpoint documents which fields it searches; products search `name` and `sku`, case-insensitive, "contains".
+- In a Specification, build the LIKE pattern with `TextUtils.containsPattern(text)` and pass `TextUtils.LIKE_ESCAPE` to `cb.like(...)`, so `%` and `_` are searched as plain text. Spring Data's derived queries (`findByNameContaining`) escape by themselves.
 - Date ranges use `from` and `to` (inclusive, ISO date): `?from=2026-10-01&to=2026-10-31`.
 - Unknown sort fields return `400`.
 
@@ -546,7 +547,7 @@ Decided in T3.1 to T3.4; the frontend login (T3.5) builds on it.
 | auth-service | Own account (`/api/auth/me`, password) | Same | Also `/api/users` |
 | product-service | Read products, categories, suppliers | Also create, change, delete them | Same as MANAGER |
 | inventory-service | Read warehouses, stock and movements | Also change warehouses and adjust stock | Same as MANAGER |
-| order-service | Read customers and orders; add and edit customers | Also delete customers; orders refined in T5.3 | Same as MANAGER |
+| order-service | Read customers and orders; add and edit customers; create sales orders | Also delete customers; status changes come with T5.4 | Same as MANAGER |
 - **Role checks on URLs, not with `@PreAuthorize`** for now: the library's `GlobalExceptionHandler` would turn the `AccessDeniedException` thrown inside a controller into a 500.
 - **Who changed a row:** with a token, `created_by` / `updated_by` are its `email` claim (`JwtAuditorAware` in stockline-common); without one, `system`. A service that changes an entity and returns it calls `flush()` first, so the response already has the new `updatedAt` / `updatedBy`.
 - **Calling another service:** REST with `RestClient` in a `client/` class, to `<SERVICE>_URL` directly, not through the gateway. The call carries the user's token, because every service checks tokens. A 404 becomes our own `ResourceNotFoundException`; an unreachable service becomes 503 by itself. No transaction stays open during such a call: read first, then write in a separate `@Transactional` bean (`StockAdjuster`).
