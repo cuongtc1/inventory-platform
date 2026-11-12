@@ -182,6 +182,7 @@ services:
     restart: unless-stopped
     environment:
       SERVER_PORT: 8083
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       PRODUCT_SERVICE_URL: http://product-service:8082
       DB_URL: jdbc:mysql://mysql:3306/inventory_db
       DB_USERNAME: stockline
@@ -193,6 +194,8 @@ services:
       - "${INVENTORY_SERVICE_PORT:-8083}:8083"
     depends_on:
       mysql:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
     healthcheck:
       # Same check as product-service (comments there); 8083 must match SERVER_PORT above
@@ -217,6 +220,7 @@ services:
     restart: unless-stopped
     environment:
       SERVER_PORT: 8084
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       PRODUCT_SERVICE_URL: http://product-service:8082
       INVENTORY_SERVICE_URL: http://inventory-service:8083
       DB_URL: jdbc:mysql://mysql:3306/order_db
@@ -229,6 +233,8 @@ services:
       - "${ORDER_SERVICE_PORT:-8084}:8084"
     depends_on:
       mysql:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
     healthcheck:
       # Same check as product-service (comments there); 8084 must match SERVER_PORT above

@@ -41,11 +41,15 @@ Kafka needs two addresses because a client first asks the broker where to connec
 
 Kafka UI (with `--profile tools`): http://localhost:8090
 
+Topics are created by order-service and inventory-service when they start (3 partitions each), not here: see docs/conventions.md section 6.
+
 Useful commands:
 
 ```bash
 docker exec stockline-kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+docker exec stockline-kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic order.created
 docker exec stockline-kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic order.created --from-beginning
+docker exec stockline-kafka /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --all-groups
 ```
 
 In Git Bash, put `MSYS_NO_PATHCONV=1` in front of these commands, or Git Bash rewrites `/opt/...` into a Windows path. PowerShell and cmd don't have this problem.

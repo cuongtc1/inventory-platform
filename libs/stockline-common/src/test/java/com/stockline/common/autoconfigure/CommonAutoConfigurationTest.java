@@ -1,10 +1,19 @@
 package com.stockline.common.autoconfigure;
 
+import com.stockline.common.event.EventCodec;
+import com.stockline.common.event.EventPublisher;
+import com.stockline.common.event.KafkaTopics;
 import com.stockline.common.exception.GlobalExceptionHandler;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
+import org.springframework.boot.kafka.autoconfigure.KafkaAutoConfiguration;
+import org.springframework.boot.test.context.FilteredClassLoader;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
+import org.springframework.kafka.core.KafkaAdmin;
+import org.springframework.kafka.core.KafkaTemplate;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -43,5 +52,32 @@ class CommonAutoConfigurationTest {
 	void exceptionHandler_onlyInAServletWebApplication() {
 		webContext.run(context -> assertThat(context).hasSingleBean(GlobalExceptionHandler.class));
 		plainContext.run(context -> assertThat(context).doesNotHaveBean(GlobalExceptionHandler.class));
+	}
+
+	private final ApplicationContextRunner kafkaContext = new ApplicationContextRunner()
+			.withConfiguration(AutoConfigurations.of(CommonTimeAutoConfiguration.class, JacksonAutoConfiguration.class,
+					KafkaAutoConfiguration.class, CommonKafkaAutoConfiguration.class));
+
+	@Test
+	void kafka_publisherCodecAndEveryTopic() {
+		kafkaContext.run(context -> assertThat(context)
+				.hasSingleBean(EventPublisher.class)
+				.hasSingleBean(EventCodec.class)
+				.hasSingleBean(KafkaAdmin.NewTopics.class));
+		assertThat(CommonKafkaAutoConfiguration.topics())
+				.extracting(NewTopic::name)
+				.containsExactlyInAnyOrderElementsOf(KafkaTopics.ALL);
+		assertThat(CommonKafkaAutoConfiguration.topics())
+				.allSatisfy(topic -> assertThat(topic.numPartitions()).isEqualTo(KafkaTopics.PARTITIONS));
+	}
+
+	@Test
+	void kafka_nothingInAServiceWithoutSpringKafka() {
+		// The gateway, auth-service and product-service don't have Spring Kafka
+		kafkaContext.withClassLoader(new FilteredClassLoader(KafkaTemplate.class))
+				.run(context -> assertThat(context)
+						.doesNotHaveBean(EventPublisher.class)
+						.doesNotHaveBean(EventCodec.class)
+						.doesNotHaveBean(KafkaAdmin.NewTopics.class));
 	}
 }

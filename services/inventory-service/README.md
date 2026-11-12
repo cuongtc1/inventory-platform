@@ -6,7 +6,7 @@ Warehouses, stock levels and the movement history. The frontend pages come with 
 
 ## Run
 
-Start the infrastructure first (from `infra/`): `docker compose up -d`. Install the shared library once: `cd libs/stockline-common` then `./mvnw install`.
+Start the infrastructure first (from `infra/`): `docker compose up -d` (MySQL and Kafka). At startup the service creates any missing Kafka topic. Install the shared library once: `cd libs/stockline-common` then `./mvnw install`.
 
 ```bash
 ./mvnw spring-boot:run      # Windows cmd/PowerShell: mvnw.cmd spring-boot:run
@@ -123,7 +123,7 @@ Schema `inventory_db`, created by Flyway. Every table has `id` and the four audi
 
 ## Tests
 
-`./mvnw test`: 100 tests, Docker must be running.
+`./mvnw test`: 102 tests, Docker must be running (Testcontainers starts MySQL and one Kafka).
 
 | Class | What it checks |
 |---|---|
@@ -142,6 +142,7 @@ Schema `inventory_db`, created by Flyway. Every table has `id` and the four audi
 | `constant/MessagesPropertiesTest` | messages.properties and `MessageKeys` in step |
 | `repository/MigrationsTest` | The migrations on real MySQL: every table exists, defaults, unique keys, foreign keys, CHECK constraints, no foreign key on `product_id`. Plain SQL, for tables without an entity yet |
 | `SecurityRulesTest` | Health and docs open, 401 without a token, what STAFF, MANAGER and ADMIN get through |
+| `KafkaListenerTest` | Real Kafka (Testcontainers): the service's consumer group is its name; two `@KafkaListener`s in two groups each get the same event once, as a typed payload |
 | `InventoryServiceApplicationTests` | The application starts |
 
 ## Configuration
@@ -152,6 +153,7 @@ Schema `inventory_db`, created by Flyway. Every table has `id` and the four audi
 | `DB_URL` | `jdbc:mysql://localhost:3306/inventory_db` |
 | `DB_USERNAME` / `DB_PASSWORD` | `stockline` / `stockline` |
 | `JWT_SECRET` | `local-dev-only-stockline-jwt-secret-change-me`; must equal auth-service's |
+| `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092`; `kafka:29092` in a container |
 | `PRODUCT_SERVICE_URL` | `http://localhost:8082`; product-service directly, not through the gateway |
 
 ## New compared to Spring Boot 2.x / Java 8â€“11

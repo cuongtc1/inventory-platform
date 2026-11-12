@@ -6,7 +6,7 @@ Customers, and sales orders with their state machine, are done. The frontend pag
 
 ## Run
 
-Start the infrastructure first (from `infra/`): `docker compose up -d`. Install the shared library once: `cd libs/stockline-common` then `./mvnw install`.
+Start the infrastructure first (from `infra/`): `docker compose up -d` (MySQL and Kafka). At startup the service creates any missing Kafka topic. Install the shared library once: `cd libs/stockline-common` then `./mvnw install`.
 
 ```bash
 ./mvnw spring-boot:run      # Windows cmd/PowerShell: mvnw.cmd spring-boot:run
@@ -141,7 +141,7 @@ Schema `order_db`, created by Flyway. Every table has `id` and the four audit co
 
 ## Tests
 
-`./mvnw test`: 113 tests, Docker must be running.
+`./mvnw test`: 116 tests, Docker must be running (Testcontainers starts MySQL and one Kafka).
 
 | Class | What it checks |
 |---|---|
@@ -163,6 +163,7 @@ Schema `order_db`, created by Flyway. Every table has `id` and the four audit co
 | `CustomerIntegrationTest` | All layers on MySQL: the customer lifecycle, including delete refused with an order |
 | `OrderLifecycleIntegrationTest` | All layers on MySQL: PENDING to COMPLETED with five history rows, wrong order 409 with nothing recorded, cancel once and only before shipping, 404 |
 | `SalesOrderIntegrationTest` | All layers on MySQL with the other services mocked: copies kept after a product change, first history row, consecutive numbers, a refused order saves nothing and uses no number |
+| `KafkaRoundTripTest` | Real Kafka (Testcontainers): every topic exists after startup with 3 partitions; an event comes back with its key and envelope; the same key always lands in the same partition, in order |
 | `OrderServiceApplicationTests` | The application starts |
 
 ## Configuration
@@ -173,6 +174,7 @@ Schema `order_db`, created by Flyway. Every table has `id` and the four audit co
 | `DB_URL` | `jdbc:mysql://localhost:3306/order_db` |
 | `DB_USERNAME` / `DB_PASSWORD` | `stockline` / `stockline` |
 | `JWT_SECRET` | `local-dev-only-stockline-jwt-secret-change-me`; must equal auth-service's |
+| `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092`; `kafka:29092` in a container |
 | `PRODUCT_SERVICE_URL` | `http://localhost:8082` |
 | `INVENTORY_SERVICE_URL` | `http://localhost:8083` |
 

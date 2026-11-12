@@ -28,6 +28,18 @@ spring:
     # SQL files in src/main/resources/db/migration, named V<n>__description.sql
     locations: classpath:db/migration
 
+  kafka:
+    # The local Kafka from infra/ (docker compose up -d). A container uses kafka:29092 (set in docker-compose.yml)
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      # One consumer group per service (docs/conventions.md section 6): every service gets each event once
+      group-id: ${spring.application.name}
+      # A group that has never read a topic starts at its oldest message, so nothing sent before the first start is
+      # missed. Afterwards Kafka remembers where the group stopped (its committed offset)
+      auto-offset-reset: earliest
+    # Keys and values are text: the JSON envelope of stockline-common's EventCodec. (StringSerializer and
+    # StringDeserializer are Spring Boot's defaults, so they aren't set here)
+
   data:
     web:
       pageable:

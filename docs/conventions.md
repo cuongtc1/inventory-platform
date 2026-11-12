@@ -302,6 +302,17 @@ Ant Design's table counts pages from 1, so the frontend sends `page = current - 
 
 ## 6. Kafka events
 
+### How Kafka works, in short
+
+- A **topic** is a named stream of messages, like `order.created`. Kafka keeps messages for days whether or not anyone has read them; reading doesn't remove them.
+- A topic is split into **partitions**. Each partition is an ordered log: every message gets the next number there, its **offset**. Order is kept inside a partition, not across partitions.
+- A message has a **key**. Messages with the same key always go to the same partition, so they stay in order. We use the order id as the key: one order's events are read in the order they happened.
+- A **consumer group** is a set of consumers sharing the work on a topic. Each partition is read by one consumer of the group, so every message reaches **one consumer per group**. Two groups each get every message: order-service and notification-service can both react to `stock.reserved`.
+- Kafka remembers, per group and partition, the offset the group has finished (the **committed offset**). A service that restarts continues where it stopped; a message is only "done" once its offset is committed, so after a crash the last ones may come again. That is why consumers must be idempotent (T6.4).
+- 3 partitions means at most 3 consumers of one group can work in parallel. Locally there is one broker, so each partition has 1 copy (replica); a real cluster keeps 3.
+
+### Rules
+
 - Topic names are the ones in `TASKS.md`: `order.created`, `stock.reserved`, `stock.failed`, `order.cancelled`, `stock.low`. Format: `<entity>.<past-tense-verb>`.
 - The message **key** is the ID of the main entity (for order events, the order ID). Kafka keeps messages with the same key in order.
 - The message **value** is JSON with a common envelope:
@@ -319,7 +330,11 @@ Ant Design's table counts pages from 1, so the frontend sends `page = current - 
 ```
 
 - `eventId` is a UUID. Consumers store it in `processed_events` and skip any event they have already processed, which makes them idempotent.
-- The consumer group ID is the service name, e.g. `inventory-service`.
+- The consumer group ID is the service name, e.g. `inventory-service` (`spring.kafka.consumer.group-id: ${spring.application.name}`). A group that has never read a topic starts at its oldest message (`auto-offset-reset: earliest`).
+- **Shared code** in `stockline-common` (`com.stockline.common.event`, agreed in T6.1): `KafkaTopics` (names, 3 partitions), `EventEnvelope`, `EventCodec` (envelope ↔ JSON text) and `EventPublisher` (wraps a payload in a new envelope and sends it with its key). Payload records belong to each service: the publisher declares what it sends, each consumer what it reads.
+- Messages are **JSON text** (String keys and values), not Spring Kafka's JSON serializer, which puts Java class names in message headers. Jackson 3 ignores fields a record doesn't declare, so a publisher may add fields; renaming or removing one is a breaking change.
+- **Topics** are created by the services at startup: `CommonKafkaAutoConfiguration` declares all of them as `NewTopic` beans in every service with Spring Kafka, and Spring's `KafkaAdmin` creates the missing ones. No service has to start first.
+- **Tests** use one Kafka container per test run (Testcontainers, the same `apache/kafka` image as docker-compose), declared as a static field in `TestcontainersConfiguration`. Tests share its topics, so each test reads only messages it sent (its own key or content).
 - Events are facts that already happened. Name and treat them as such; one service never tells another what to do through an event.
 
 ## 7. Configuration
