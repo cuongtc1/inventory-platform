@@ -102,6 +102,24 @@ The history of stock, read-only: movements are written by the code that changes 
 
 Response: `{ "id", "warehouseId", "warehouseCode", "productId", "productSku", "productName", "movementType", "quantity", "reference", "createdAt", "createdBy", "updatedAt", "updatedBy" }`. `quantity` is signed; `createdAt` and `createdBy` are the mockup's Time and By; the product name is as it was at that moment.
 
+## Events (Kafka)
+
+inventory-service's part of the order saga, docs/conventions.md section 6. Every message is keyed by the order id.
+
+| Topic | Direction | Payload | What happens |
+|---|---|---|---|
+| `order.created` | Consumed (`event/OrderEventsListener`) | `orderId`, `orderNumber`, `warehouseId`, `items` (`productId`, `productName`, `quantity`) | `StockReserver` reserves the stock of every line, or of none |
+| `stock.reserved` | Published | `orderId` | order-service moves the order to RESERVED |
+| `stock.failed` | Published | `orderId`, `reason` ("Not enough stock of 'USB-C Cable' in WH-01: only 4 available") | order-service rejects the order |
+
+Reserving, in one transaction, only when every line fits:
+
+- `stock_levels.reserved` goes up by the line's quantity; `on_hand` stays (the goods are still in the warehouse), so `available` goes down.
+- A `stock_reservations` row per line, `RESERVED`.
+- A `RESERVE` movement per line, with the order number as its reference and `system` as its author.
+
+A product the warehouse has never stocked counts as 0 available. A version conflict with a manual adjustment rolls the reservation back, and Kafka delivers the message again. The answer is sent after the commit; a failed send is logged and the order stays PENDING until the outbox (T6.5). Consumer group: `inventory-service`.
+
 ## Database
 
 Schema `inventory_db`, created by Flyway. Every table has `id` and the four audit columns.
@@ -119,11 +137,11 @@ Schema `inventory_db`, created by Flyway. Every table has `id` and the four audi
 - `product_sku`, `product_name` and `reorder_level` are copies from product-service. A query here can't join `product_db`, lists show them, the low-stock filter compares with `reorder_level` in SQL, and movements stay readable after a product is renamed or deleted. They are refreshed at each adjustment, so after a product changes, the old values show until the next adjustment; T6.9 makes this immediate with a `product.updated` event.
 - `version` is for optimistic locking (`@Version`, T6.3): an `UPDATE` only succeeds if nobody changed the row since it was read.
 - **CHECK constraints** are the last line of defence against negative stock and overselling. Code must check these rules first and throw its own error: Spring has no category for MySQL's CHECK error (3819), so it wouldn't become a clean 409 by itself.
-- `movement_type`: `IN`, `OUT`, `ADJUST`, `RESERVE`, `RELEASE`. Reservation `status`: `RESERVED`, `CONFIRMED`, `RELEASED`. The enums come with the code that uses them.
+- `movement_type`: `IN`, `OUT`, `ADJUST`, `RESERVE`, `RELEASE`. Reservation `status` (`constant/ReservationStatus`): `RESERVED` (T6.2), `CONFIRMED` and `RELEASED` (T6.6).
 
 ## Tests
 
-`./mvnw test`: 102 tests, Docker must be running (Testcontainers starts MySQL and one Kafka).
+`./mvnw test`: 109 tests, Docker must be running (Testcontainers starts MySQL and one Kafka).
 
 | Class | What it checks |
 |---|---|
@@ -143,6 +161,8 @@ Schema `inventory_db`, created by Flyway. Every table has `id` and the four audi
 | `repository/MigrationsTest` | The migrations on real MySQL: every table exists, defaults, unique keys, foreign keys, CHECK constraints, no foreign key on `product_id`. Plain SQL, for tables without an entity yet |
 | `SecurityRulesTest` | Health and docs open, 401 without a token, what STAFF, MANAGER and ADMIN get through |
 | `KafkaListenerTest` | Real Kafka (Testcontainers): the service's consumer group is its name; two `@KafkaListener`s in two groups each get the same event once, as a typed payload |
+| `service/StockReserverTest` | Unit test with the real message texts: all lines fit, one line short reserves nothing, reserved stock isn't available again, a product never stocked, an unknown warehouse |
+| `StockReservationSagaTest` | Real Kafka and MySQL, the test plays order-service: `order.created` → stock reserved, reservations and RESERVE movements, answer on `stock.reserved`; a short line → nothing reserved, answer on `stock.failed` with the reason |
 | `InventoryServiceApplicationTests` | The application starts |
 
 ## Configuration

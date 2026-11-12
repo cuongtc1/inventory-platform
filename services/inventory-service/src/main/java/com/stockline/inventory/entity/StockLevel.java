@@ -94,6 +94,18 @@ public class StockLevel extends BaseEntity {
 		return reorderLevel;
 	}
 
+	/**
+	 * Sets stock aside for an order: it stays on hand, but is no longer available. The caller checks
+	 * {@link #getAvailable()} first and turns a shortage into a stock.failed event; this check only guards against a
+	 * bug, like the CHECK constraint behind it.
+	 */
+	public void reserve(int quantity) {
+		if (quantity <= 0 || quantity > getAvailable()) {
+			throw new IllegalArgumentException("Can't reserve " + quantity + " with " + getAvailable() + " available");
+		}
+		reserved += quantity;
+	}
+
 	public int getOnHand() {
 		return onHand;
 	}

@@ -114,10 +114,24 @@ PENDING ──► RESERVED ──► PAID ──► SHIPPED ──► COMPLETED
 No body; each action answers `200` with the whole order. Errors: `404` unknown order, `409 INVALID_STATUS_TRANSITION` when the current status doesn't allow it ("Order SO-1001 is PENDING, so it can not change to PAID"; nothing is saved), `409 CONCURRENT_UPDATE` when someone else changed the order at the same moment (`@Version`).
 
 - **One place decides:** `OrderStatus.nextStatuses()` holds the table above. `SalesOrder.changeStatus` asks it and refuses, and `OrderStatusService.changeStatus` is the only caller, so every change is checked and gets a history row in the same transaction.
-- **RESERVED and REJECTED** are set by the saga in Phase 6 (T6.2), through the same `OrderStatusService.changeStatus`, with `system` as the author. Until then a real order stays PENDING: it can be cancelled, but not paid.
+- **RESERVED and REJECTED** are set by the saga (see "Events" below), through the same `OrderStatusService.changeStatus`, with `system` as the author.
 - **Stock:** these actions only change the status for now. T6.6 adds what they do to stock: shipping confirms the reservation and lowers `on_hand`, cancelling releases it.
 
 **Order numbers** come from the `number_sequences` table, starting at `SO-1001`. Taking a number locks its row (`SELECT ... FOR UPDATE`) until the order is saved, so two orders at the same moment can't get the same number, and a refused order gives its number back (no gaps).
+
+## Events (Kafka)
+
+The order saga, docs/conventions.md section 6. Every message is keyed by the order id.
+
+| Topic | Direction | Payload | What happens |
+|---|---|---|---|
+| `order.created` | Published after an order is saved (`event/OrderEventPublisher`) | `OrderCreatedEvent`: `orderId`, `orderNumber`, `warehouseId`, `items` (`productId`, `productSku`, `productName`, `quantity`) | inventory-service reserves the stock |
+| `stock.reserved` | Consumed (`event/StockEventsListener`) | `orderId` | PENDING → RESERVED |
+| `stock.failed` | Consumed | `orderId`, `reason` | PENDING → REJECTED, the reason as the history note |
+
+- Publishing happens after the order's transaction has committed, without making the HTTP request wait. A failed send is logged; the order then stays PENDING until the outbox (T6.5).
+- A stock event for an order that is no longer PENDING (cancelled meanwhile) or doesn't exist is logged and skipped.
+- Consumer group: `order-service`.
 
 ## Database
 
@@ -141,7 +155,7 @@ Schema `order_db`, created by Flyway. Every table has `id` and the four audit co
 
 ## Tests
 
-`./mvnw test`: 116 tests, Docker must be running (Testcontainers starts MySQL and one Kafka).
+`./mvnw test`: 123 tests, Docker must be running (Testcontainers starts MySQL and one Kafka).
 
 | Class | What it checks |
 |---|---|
@@ -164,6 +178,8 @@ Schema `order_db`, created by Flyway. Every table has `id` and the four audit co
 | `OrderLifecycleIntegrationTest` | All layers on MySQL: PENDING to COMPLETED with five history rows, wrong order 409 with nothing recorded, cancel once and only before shipping, 404 |
 | `SalesOrderIntegrationTest` | All layers on MySQL with the other services mocked: copies kept after a product change, first history row, consecutive numbers, a refused order saves nothing and uses no number |
 | `KafkaRoundTripTest` | Real Kafka (Testcontainers): every topic exists after startup with 3 partitions; an event comes back with its key and envelope; the same key always lands in the same partition, in order |
+| `event/StockEventsListenerTest` | Unit test: stock.reserved → RESERVED, stock.failed → REJECTED with the reason, an order cancelled meanwhile or unknown is skipped, not retried |
+| `OrderSagaTest` | Real Kafka and MySQL, the test plays inventory-service: creating an order publishes `order.created` with its lines; `stock.reserved` and `stock.failed` move the order, by `system` |
 | `OrderServiceApplicationTests` | The application starts |
 
 ## Configuration

@@ -18,6 +18,9 @@ public final class MessageKeys {
 	public static final String ORDER_PRODUCT_INACTIVE = "order.product.inactive";
 	public static final String ORDER_TOTAL_TOO_LARGE = "order.total.too-large";
 	public static final String ORDER_STATUS_CHANGE_NOT_ALLOWED = "order.status.change-not-allowed";
+	// order: log texts only
+	public static final String ORDER_EVENT_PUBLISH_FAILED = "order.event.publish-failed";
+	public static final String ORDER_EVENT_SKIPPED = "order.event.skipped";
 
 	private MessageKeys() {
 	}

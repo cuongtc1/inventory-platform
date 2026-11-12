@@ -88,12 +88,14 @@ class KafkaListenerTest {
 			this.eventCodec = eventCodec;
 		}
 
-		@KafkaListener(topics = KafkaTopics.STOCK_LOW, groupId = "kafka-listener-test-a")
+		// autoStartup: listeners are off in tests by default (src/test/resources/config/application.yml); only these two
+		// start here, not the service's own, which belong to the saga test
+		@KafkaListener(topics = KafkaTopics.STOCK_LOW, groupId = "kafka-listener-test-a", autoStartup = "true")
 		void onStockLowA(String json) {
 			groupA.add(eventCodec.read(json, Ping.class));
 		}
 
-		@KafkaListener(topics = KafkaTopics.STOCK_LOW, groupId = "kafka-listener-test-b")
+		@KafkaListener(topics = KafkaTopics.STOCK_LOW, groupId = "kafka-listener-test-b", autoStartup = "true")
 		void onStockLowB(String json) {
 			groupB.add(eventCodec.read(json, Ping.class));
 		}

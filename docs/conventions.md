@@ -335,6 +335,22 @@ Ant Design's table counts pages from 1, so the frontend sends `page = current - 
 - Messages are **JSON text** (String keys and values), not Spring Kafka's JSON serializer, which puts Java class names in message headers. Jackson 3 ignores fields a record doesn't declare, so a publisher may add fields; renaming or removing one is a breaking change.
 - **Topics** are created by the services at startup: `CommonKafkaAutoConfiguration` declares all of them as `NewTopic` beans in every service with Spring Kafka, and Spring's `KafkaAdmin` creates the missing ones. No service has to start first.
 - **Tests** use one Kafka container per test run (Testcontainers, the same `apache/kafka` image as docker-compose), declared as a static field in `TestcontainersConfiguration`. Tests share its topics, so each test reads only messages it sent (its own key or content).
+- **Listeners in tests** are off by default (`src/test/resources/config/application.yml`: `spring.kafka.listener.auto-startup: false`). Every test context shares the broker and the service's consumer group, so a listener in one context could take an event another context sent and answer it from the wrong database. The saga tests switch them on with `@SpringBootTest(properties = "spring.kafka.listener.auto-startup=true")`; a test-only listener can use `autoStartup = "true"` on its annotation. Each context has its own MySQL, so ids repeat: a test reads only messages sent after it started listening, or with keys only it uses.
+
+### The order saga (T6.2)
+
+```
+order-service                         Kafka                        inventory-service
+POST /api/sales-orders
+  order saved as PENDING ──► order.created {orderId, orderNumber, warehouseId, items}
+                                                 ──► all lines fit? reserve them, else nothing
+              RESERVED ◄──── stock.reserved {orderId}       ◄──┤
+  or REJECTED (note) ◄──── stock.failed {orderId, reason}   ◄──┘
+```
+
+- Every message is keyed by the **order id**. An event is published **after** the transaction that caused it has committed, so no event describes something that was rolled back.
+- Status changes from events go through `OrderStatusService` like a user's, with `system` as the author. An event that no longer fits (the order was cancelled meanwhile, or doesn't exist) is logged and skipped, not retried.
+- Known gaps, closed by later tasks: if Kafka is down when an event is sent, it is lost and the order stays PENDING (outbox, T6.5); a message delivered twice should be refused by the unique key of `stock_reservations` (one row per order line), which rolls the second reservation back; that is not tested yet, and the clean fix is idempotency (T6.4).
 - Events are facts that already happened. Name and treat them as such; one service never tells another what to do through an event.
 
 ## 7. Configuration

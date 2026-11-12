@@ -1,0 +1,9 @@
+# Test-only settings, loaded on top of src/main/resources/application.yml (Spring Boot reads both
+# classpath:/application.yml and classpath:/config/application.yml; this one wins).
+spring:
+  kafka:
+    listener:
+      # Off in tests by default. All test contexts share one Kafka broker and the service's consumer group, so a
+      # listener in one context could take an event another context's test sent, and answer it from the wrong
+      # database. Tests of the saga switch them on: @SpringBootTest(properties = "spring.kafka.listener.auto-startup=true")
+      auto-startup: false
