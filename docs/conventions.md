@@ -291,6 +291,7 @@ Ant Design's table counts pages from 1, so the frontend sends `page = current - 
 - Every table has the audit columns `created_at`, `updated_at` (`DATETIME(6)`, UTC) and `created_by`, `updated_by` (`VARCHAR(100)`, the user's login from the JWT, `system` before Phase 3 or for jobs). Entities extend `BaseEntity`; Spring Data JPA auditing fills all four, services never set them.
 - Deletes are **hard deletes** (`DELETE FROM ...`), the rule for every resource. A row other rows still use can't be deleted (409 `IN_USE`). Services that keep a reference to another service's data also keep a copy of what they show (e.g. `product_name` on an order line), so history stays readable after the original is deleted.
 - Rows that can be changed by two users at once have `version BIGINT NOT NULL DEFAULT 0` (`@Version` in JPA).
+- Where conflicts are expected (stock levels, T6.3), retry the whole unit of work on `ConcurrencyFailureException` (version conflict or deadlock) with `@Retryable`, and give each attempt its own transaction: retry outside, transaction inside (`TransactionOperations.execute`). Elsewhere a conflict answers 409 `CONCURRENT_UPDATE`.
 - Money is `DECIMAL(12,2)`. Quantities are `INT`, or `DECIMAL` if a product can be sold in fractions.
 - Enums are `VARCHAR(20)`.
 - Constraint names: `pk_<table>`, `fk_<table>_<referenced_table>`, `uk_<table>_<column>`, `idx_<table>_<column>`, `ck_<table>_<column>`.

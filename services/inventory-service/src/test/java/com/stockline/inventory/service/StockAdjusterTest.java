@@ -18,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionOperations;
 
 import java.util.Optional;
 
@@ -54,7 +55,9 @@ class StockAdjusterTest {
 
 	@BeforeEach
 	void setUp() {
-		adjuster = new StockAdjuster(stockLevelRepository, stockMovementRepository, warehouseRepository);
+		// No transaction in a unit test: the callback just runs
+		adjuster = new StockAdjuster(stockLevelRepository, stockMovementRepository, warehouseRepository,
+				TransactionOperations.withoutTransaction());
 		lenient().when(warehouseRepository.findById(WAREHOUSE_ID)).thenReturn(Optional.of(main));
 		lenient().when(stockLevelRepository.save(any(StockLevel.class)))
 				.thenAnswer(invocation -> invocation.getArgument(0));

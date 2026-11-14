@@ -31,6 +31,11 @@ spring:
   kafka:
     # The local Kafka from infra/ (docker compose up -d). A container uses kafka:29092 (set in docker-compose.yml)
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    listener:
+      # One consumer thread per partition (KafkaTopics.PARTITIONS): orders are reserved in parallel, while one order's
+      # events (same key, same partition) still come one after the other. Parallel orders for the same stock are
+      # what optimistic locking with retry is for (StockReserver)
+      concurrency: 3
     consumer:
       # One consumer group per service (docs/conventions.md section 6): every service gets each event once
       group-id: ${spring.application.name}

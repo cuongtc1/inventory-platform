@@ -77,7 +77,7 @@ Response: `{ "id", "warehouseId", "warehouseCode", "warehouseName", "productId",
 | `quantity` is 0 | 400 | `BAD_REQUEST` |
 | Unknown product or warehouse | 404 | `NOT_FOUND` |
 | It would take more than `available`: reserved stock can't be adjusted away | 409 | `INSUFFICIENT_STOCK` |
-| Someone changed the same row at the same moment (`@Version`) | 409 | `CONCURRENT_UPDATE`: reload and try again |
+| Someone changed the same row at the same moment (`@Version`), still after 5 automatic retries | 409 | `CONCURRENT_UPDATE`: reload and try again |
 | product-service can't be reached | 503 | `SERVICE_UNAVAILABLE`; nothing is changed, and reading stock keeps working |
 
 ### Stock movements: `/api/stock-movements`
@@ -118,7 +118,17 @@ Reserving, in one transaction, only when every line fits:
 - A `stock_reservations` row per line, `RESERVED`.
 - A `RESERVE` movement per line, with the order number as its reference and `system` as its author.
 
-A product the warehouse has never stocked counts as 0 available. A version conflict with a manual adjustment rolls the reservation back, and Kafka delivers the message again. The answer is sent after the commit; a failed send is logged and the order stays PENDING until the outbox (T6.5). Consumer group: `inventory-service`.
+A product the warehouse has never stocked counts as 0 available. The listener runs 3 consumer threads, one per partition: orders are reserved in parallel, one order's events still in order. The answer is sent after the commit; a failed send is logged and the order stays PENDING until the outbox (T6.5). Consumer group: `inventory-service`.
+
+## Concurrency: optimistic locking with retry (T6.3)
+
+Two changes to the same stock level at the same moment (two orders for the last items, an order and a manual adjustment, two managers) both read the same `version`. The first to save wins; the other's `UPDATE ... WHERE version = ?` finds no row, and Hibernate throws a version conflict. A MySQL deadlock between two orders with several lines is the same kind of failure. Both are `ConcurrencyFailureException`s.
+
+`StockReserver.reserve` and `StockAdjuster.apply` then try again, with Spring Framework 7's `@Retryable` (`config/ResilienceConfig`, settings in `service/StockRetry`): up to 5 retries, waiting 20, 40, 80 ms ... (at most 500 ms) plus a little random jitter.
+
+- **Retry outside, transaction inside.** Each attempt runs in a new transaction (`TransactionOperations.execute`), so it reads the winner's numbers and checks the rules again: a retried order reserves what is left, or fails with "only 2 available". A retry inside the failed transaction would see the old numbers.
+- **Never oversold.** Even without the retry, the version check refuses the stale write; the retry only turns the loser's error into a fair answer. Behind both, the CHECK constraint `reserved <= on_hand`.
+- **After all retries** an adjustment answers 409 `CONCURRENT_UPDATE`, and a reservation's exception makes Kafka deliver the order again.
 
 ## Database
 
@@ -141,7 +151,7 @@ Schema `inventory_db`, created by Flyway. Every table has `id` and the four audi
 
 ## Tests
 
-`./mvnw test`: 109 tests, Docker must be running (Testcontainers starts MySQL and one Kafka).
+`./mvnw test`: 112 tests, Docker must be running (Testcontainers starts MySQL and one Kafka).
 
 | Class | What it checks |
 |---|---|
@@ -162,6 +172,7 @@ Schema `inventory_db`, created by Flyway. Every table has `id` and the four audi
 | `SecurityRulesTest` | Health and docs open, 401 without a token, what STAFF, MANAGER and ADMIN get through |
 | `KafkaListenerTest` | Real Kafka (Testcontainers): the service's consumer group is its name; two `@KafkaListener`s in two groups each get the same event once, as a typed payload |
 | `service/StockReserverTest` | Unit test with the real message texts: all lines fit, one line short reserves nothing, reserved stock isn't available again, a product never stocked, an unknown warehouse |
+| `StockConcurrencyTest` | MySQL, threads released together by a barrier: two orders for the last 5 items (one gets 3, the other "only 2 available"); ten orders of 1 for 5 items (exactly 5 reserved, retries observed); ten adjustments of +1 (10, no lost update, no 409). All three fail if `@Retryable` is removed |
 | `StockReservationSagaTest` | Real Kafka and MySQL, the test plays order-service: `order.created` → stock reserved, reservations and RESERVE movements, answer on `stock.reserved`; a short line → nothing reserved, answer on `stock.failed` with the reason |
 | `InventoryServiceApplicationTests` | The application starts |
 
@@ -176,10 +187,12 @@ Schema `inventory_db`, created by Flyway. Every table has `id` and the four audi
 | `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092`; `kafka:29092` in a container |
 | `PRODUCT_SERVICE_URL` | `http://localhost:8082`; product-service directly, not through the gateway |
 
-## New compared to Spring Boot 2.x / Java 8â€“11
+## New compared to Spring Boot 2.x / Java 8–11
 
 | Old | Now | Notes |
 |---|---|---|
+| Spring Retry (an extra library) with `@EnableRetry` | `@Retryable` and `@EnableResilientMethods` from spring-context (Spring Framework 7) | Retries a method on the listed exceptions, with delay, multiplier and jitter; publishes a `MethodRetryEvent` per retry |
+| `@Transactional` on the method | `TransactionOperations.execute(status -> ...)` (programmatic) | One transaction per retry attempt, visibly inside the retry; `TransactionOperations.withoutTransaction()` in unit tests |
 | MySQL parsed `CHECK` and ignored it | MySQL 8.0.16+ enforces `CHECK` constraints | So the database itself refuses negative stock |
 | `@DateTimeFormat` on a field with a setter | The same annotation on a `record` component | `LocalDate` query parameters; a wrong format is a normal validation error |
 | `RestTemplate` | `RestClient` (Spring 6.1), from `spring-boot-starter-restclient` | A fluent API; `.onStatus(...)` turns a 404 into our own exception. Boot 4 made the HTTP clients separate starters |

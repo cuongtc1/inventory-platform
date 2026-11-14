@@ -17,6 +17,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.support.ResourceBundleMessageSource;
+import org.springframework.transaction.support.TransactionOperations;
 
 import java.util.List;
 import java.util.Optional;
@@ -57,7 +58,7 @@ class StockReserverTest {
 		messages.setDefaultEncoding("UTF-8");
 		messages.setFallbackToSystemLocale(false);
 		reserver = new StockReserver(stockLevelRepository, stockMovementRepository, stockReservationRepository,
-				warehouseRepository, messages);
+				warehouseRepository, messages, TransactionOperations.withoutTransaction());
 	}
 
 	@Test
