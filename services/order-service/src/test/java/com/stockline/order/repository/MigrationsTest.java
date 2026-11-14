@@ -40,7 +40,7 @@ class MigrationsTest {
 		assertThat(jdbcTemplate.queryForList(
 				"SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE()", String.class))
 				.contains("customers", "sales_orders", "sales_order_items", "order_status_history", "number_sequences",
-						"processed_events");
+						"processed_events", "outbox_events");
 	}
 
 	@Test

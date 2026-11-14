@@ -3,6 +3,8 @@ package com.stockline.common.autoconfigure;
 import com.stockline.common.event.EventCodec;
 import com.stockline.common.event.EventPublisher;
 import com.stockline.common.event.KafkaTopics;
+import com.stockline.common.event.Outbox;
+import com.stockline.common.event.OutboxPublisher;
 import com.stockline.common.event.ProcessedEvents;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.springframework.beans.factory.ObjectProvider;
@@ -17,6 +19,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Clock;
@@ -59,18 +62,35 @@ public class CommonKafkaAutoConfiguration {
 	}
 
 	/**
-	 * Idempotent consumers ({@link ProcessedEvents}), in services that also have a database. A nested class, so its
-	 * condition on JdbcTemplate is checked only when Spring JDBC is on the classpath.
+	 * What needs the service's database: idempotent consumers ({@link ProcessedEvents}) and the outbox ({@link Outbox},
+	 * {@link OutboxPublisher}). A nested class, so its condition on JdbcTemplate is checked only when Spring JDBC is on
+	 * the classpath. {@code @EnableScheduling} switches on {@code @Scheduled}, which runs the outbox publisher.
 	 */
 	@Configuration(proxyBeanMethods = false)
 	@ConditionalOnClass(JdbcTemplate.class)
-	static class ProcessedEventsConfiguration {
+	@EnableScheduling
+	static class DatabaseEventsConfiguration {
 
 		@Bean
 		@ConditionalOnMissingBean
 		@ConditionalOnBean(JdbcTemplate.class)
 		ProcessedEvents processedEvents(JdbcTemplate jdbcTemplate, Clock clock, MessageSource messageSource) {
 			return new ProcessedEvents(jdbcTemplate, clock, messageSource);
+		}
+
+		@Bean
+		@ConditionalOnMissingBean
+		@ConditionalOnBean(JdbcTemplate.class)
+		Outbox outbox(JdbcTemplate jdbcTemplate, EventCodec eventCodec, Clock clock) {
+			return new Outbox(jdbcTemplate, eventCodec, clock);
+		}
+
+		@Bean
+		@ConditionalOnMissingBean
+		@ConditionalOnBean({JdbcTemplate.class, KafkaTemplate.class})
+		OutboxPublisher outboxPublisher(JdbcTemplate jdbcTemplate, KafkaTemplate<String, String> kafkaTemplate, Clock clock,
+										MessageSource messageSource) {
+			return new OutboxPublisher(jdbcTemplate, kafkaTemplate, clock, messageSource);
 		}
 	}
 

@@ -2,6 +2,8 @@ package com.stockline.inventory.service;
 
 import com.stockline.common.constant.CommonMessageKeys;
 import com.stockline.common.event.EventEnvelope;
+import com.stockline.common.event.KafkaTopics;
+import com.stockline.common.event.Outbox;
 import com.stockline.common.event.ProcessedEvents;
 import com.stockline.inventory.constant.MessageKeys;
 import com.stockline.inventory.constant.MovementType;
@@ -10,6 +12,8 @@ import com.stockline.inventory.entity.StockMovement;
 import com.stockline.inventory.entity.StockReservation;
 import com.stockline.inventory.entity.Warehouse;
 import com.stockline.inventory.event.OrderCreatedEvent;
+import com.stockline.inventory.event.StockFailedEvent;
+import com.stockline.inventory.event.StockReservedEvent;
 import com.stockline.inventory.repository.StockLevelRepository;
 import com.stockline.inventory.repository.StockMovementRepository;
 import com.stockline.inventory.repository.StockReservationRepository;
@@ -62,10 +66,12 @@ public class StockReserver {
 	private final MessageSource messageSource;
 	private final TransactionOperations transaction;
 	private final ProcessedEvents processedEvents;
+	private final Outbox outbox;
 
 	public StockReserver(StockLevelRepository stockLevelRepository, StockMovementRepository stockMovementRepository,
 						 StockReservationRepository stockReservationRepository, WarehouseRepository warehouseRepository,
-						 MessageSource messageSource, TransactionOperations transaction, ProcessedEvents processedEvents) {
+						 MessageSource messageSource, TransactionOperations transaction, ProcessedEvents processedEvents,
+						 Outbox outbox) {
 		this.stockLevelRepository = stockLevelRepository;
 		this.stockMovementRepository = stockMovementRepository;
 		this.stockReservationRepository = stockReservationRepository;
@@ -73,6 +79,7 @@ public class StockReserver {
 		this.messageSource = messageSource;
 		this.transaction = transaction;
 		this.processedEvents = processedEvents;
+		this.outbox = outbox;
 	}
 
 	/**
@@ -86,6 +93,10 @@ public class StockReserver {
 	 * <p>Idempotent (T6.4): the event is claimed in {@code processed_events} in the same transaction, so a redelivery is
 	 * answered with AlreadyProcessed and changes nothing. That holds for failed orders too: a replay after new stock
 	 * arrived must not reserve stock for an order that was already rejected.
+	 *
+	 * <p>The answer for order-service goes into the outbox (T6.5) in the same transaction: the reservation and its
+	 * stock.reserved, or the refusal and its stock.failed, are stored together or not at all. A replay stores no answer:
+	 * the first one is already on its way.
 	 */
 	@Retryable(includes = ConcurrencyFailureException.class, maxRetries = StockRetry.MAX_RETRIES,
 			delay = StockRetry.DELAY_MS, jitter = StockRetry.JITTER_MS, multiplier = StockRetry.MULTIPLIER,
@@ -99,7 +110,24 @@ public class StockReserver {
 		if (!processedEvents.claim(event)) {
 			return new AlreadyProcessed(order.orderId());
 		}
+		Result result = reserveLines(order);
+		announce(result);
+		return result;
+	}
 
+	/** The answer for order-service, keyed by the order id; sent later by the outbox publisher. */
+	private void announce(Result result) {
+		switch (result) {
+			case Reserved(long orderId) ->
+					outbox.add(KafkaTopics.STOCK_RESERVED, String.valueOf(orderId), new StockReservedEvent(orderId));
+			case Failed(long orderId, String reason) ->
+					outbox.add(KafkaTopics.STOCK_FAILED, String.valueOf(orderId), new StockFailedEvent(orderId, reason));
+			case AlreadyProcessed alreadyProcessed -> {
+			}
+		}
+	}
+
+	private Result reserveLines(OrderCreatedEvent order) {
 		Optional<Warehouse> warehouse = warehouseRepository.findById(order.warehouseId());
 		if (warehouse.isEmpty()) {
 			return new Failed(order.orderId(), text(CommonMessageKeys.RESOURCE_NOT_FOUND, "Warehouse", order.warehouseId()));

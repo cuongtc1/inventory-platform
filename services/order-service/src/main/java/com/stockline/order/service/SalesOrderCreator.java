@@ -8,6 +8,7 @@ import com.stockline.order.dto.WarehouseSnapshot;
 import com.stockline.order.entity.Customer;
 import com.stockline.order.entity.OrderStatusHistory;
 import com.stockline.order.entity.SalesOrder;
+import com.stockline.order.event.OrderEvents;
 import com.stockline.order.repository.CustomerRepository;
 import com.stockline.order.repository.OrderStatusHistoryRepository;
 import com.stockline.order.repository.SalesOrderRepository;
@@ -17,10 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Map;
 
 /**
- * The database part of creating an order, in one transaction: number, order, lines and the first history row are
- * saved together or not at all. A separate bean from {@link SalesOrderService}, because {@code @Transactional} only
- * works on calls from another bean, and the calls to the other services must stay outside the transaction (the same
- * split as inventory-service's StockAdjuster).
+ * The database part of creating an order, in one transaction: number, order, lines, the first history row and the
+ * order.created event (outbox) are saved together or not at all. A separate bean from {@link SalesOrderService},
+ * because {@code @Transactional} only works on calls from another bean, and the calls to the other services must stay
+ * outside the transaction (the same split as inventory-service's StockAdjuster).
  */
 @Component
 public class SalesOrderCreator {
@@ -29,13 +30,16 @@ public class SalesOrderCreator {
 	private final SalesOrderRepository salesOrderRepository;
 	private final OrderStatusHistoryRepository historyRepository;
 	private final OrderNumberGenerator orderNumberGenerator;
+	private final OrderEvents orderEvents;
 
 	public SalesOrderCreator(CustomerRepository customerRepository, SalesOrderRepository salesOrderRepository,
-							 OrderStatusHistoryRepository historyRepository, OrderNumberGenerator orderNumberGenerator) {
+							 OrderStatusHistoryRepository historyRepository, OrderNumberGenerator orderNumberGenerator,
+							 OrderEvents orderEvents) {
 		this.customerRepository = customerRepository;
 		this.salesOrderRepository = salesOrderRepository;
 		this.historyRepository = historyRepository;
 		this.orderNumberGenerator = orderNumberGenerator;
+		this.orderEvents = orderEvents;
 	}
 
 	/**
@@ -59,6 +63,8 @@ public class SalesOrderCreator {
 
 		SalesOrder saved = salesOrderRepository.save(order);
 		historyRepository.save(new OrderStatusHistory(saved, null, OrderStatus.PENDING, null));
+		// order.created into the outbox, in this transaction: saved with the order or not at all (T6.5)
+		orderEvents.orderCreated(saved);
 		// Run the SQL now, so auditing fills createdAt / createdBy before the response is built
 		salesOrderRepository.flush();
 		return saved;

@@ -118,7 +118,7 @@ Reserving, in one transaction, only when every line fits:
 - A `stock_reservations` row per line, `RESERVED`.
 - A `RESERVE` movement per line, with the order number as its reference and `system` as its author.
 
-A product the warehouse has never stocked counts as 0 available. The listener runs 3 consumer threads, one per partition: orders are reserved in parallel, one order's events still in order. The answer is sent after the commit; a failed send is logged and the order stays PENDING until the outbox (T6.5). Consumer group: `inventory-service`.
+A product the warehouse has never stocked counts as 0 available. The listener runs 3 consumer threads, one per partition: orders are reserved in parallel, one order's events still in order. The answer for order-service is stored in the outbox in the reservation's transaction (T6.5) and sent by the outbox publisher: the reservation and its `stock.reserved`, or the refusal and its `stock.failed`, are saved together or not at all. Consumer group: `inventory-service`.
 
 **Idempotent** (T6.4): the first thing `StockReserver` does in its transaction is `ProcessedEvents.claim`. A redelivered `order.created` returns `AlreadyProcessed`: nothing is reserved and no answer is sent again. That matters most for a rejected order: replayed after new stock arrived, it would otherwise reserve stock for an order order-service has already rejected. The claim is part of each retry attempt's transaction, so a rolled-back attempt leaves no claim.
 
@@ -143,6 +143,7 @@ Schema `inventory_db`, created by Flyway. Every table has `id` and the four audi
 | `V3__create_stock_movements.sql` | `stock_movements` | `warehouse_id`, `product_id`, `product_sku`, `product_name`, `movement_type`, `quantity` (signed), `reference` | Never updated or deleted |
 | `V4__create_stock_reservations.sql` | `stock_reservations` | `order_id`, `warehouse_id`, `product_id`, `quantity`, `status` | One per order line; `quantity` > 0 |
 | `V5__create_processed_events.sql` | `processed_events` | `event_id`, `event_type` | `event_id` unique: Kafka events already applied (T6.4, `ProcessedEvents` in stockline-common) |
+| `V6__create_outbox_events.sql` | `outbox_events` | `event_id`, `topic`, `message_key`, `message` (the envelope JSON), `published_at` | `event_id` unique; unsent rows have no `published_at` (T6.5) |
 
 - `available` = `on_hand` âˆ’ `reserved`. It is calculated, never stored, so the numbers can't disagree.
 - `product_id` and `order_id` have no foreign key: those rows live in other services' schemas. `warehouse_id` does, so a warehouse with stock can't be deleted.
@@ -153,7 +154,7 @@ Schema `inventory_db`, created by Flyway. Every table has `id` and the four audi
 
 ## Tests
 
-`./mvnw test`: 116 tests, Docker must be running (Testcontainers starts MySQL and one Kafka).
+`./mvnw test`: 119 tests, Docker must be running (Testcontainers starts MySQL and one Kafka).
 
 | Class | What it checks |
 |---|---|
@@ -173,10 +174,11 @@ Schema `inventory_db`, created by Flyway. Every table has `id` and the four audi
 | `repository/MigrationsTest` | The migrations on real MySQL: every table exists, defaults, unique keys, foreign keys, CHECK constraints, no foreign key on `product_id`. Plain SQL, for tables without an entity yet |
 | `SecurityRulesTest` | Health and docs open, 401 without a token, what STAFF, MANAGER and ADMIN get through |
 | `KafkaListenerTest` | Real Kafka (Testcontainers): the service's consumer group is its name; two `@KafkaListener`s in two groups each get the same event once, as a typed payload |
-| `service/StockReserverTest` | Unit test with the real message texts: all lines fit, one line short reserves nothing, reserved stock isn't available again, a product never stocked, an unknown warehouse, an event seen before changes nothing |
+| `service/StockReserverTest` | Unit test with the real message texts: all lines fit, one line short reserves nothing, reserved stock isn't available again, a product never stocked, an unknown warehouse, an event seen before changes nothing; the answer goes into the outbox |
 | `StockConcurrencyTest` | MySQL, threads released together by a barrier: two orders for the last 5 items (one gets 3, the other "only 2 available"); ten orders of 1 for 5 items (exactly 5 reserved, retries observed); ten adjustments of +1 (10, no lost update, no 409). All three fail if `@Retryable` is removed |
 | `StockReservationSagaTest` | Real Kafka and MySQL, the test plays order-service: `order.created` → stock reserved, reservations and RESERVE movements, answer on `stock.reserved`; a short line → nothing reserved, answer on `stock.failed` with the reason. Replays (same event id): a reserved order changes nothing and isn't answered again; a rejected order replayed after new stock arrived still reserves nothing. Both fail without the claim |
 | `repository/ProcessedEventsMySqlTest` | The real `INSERT IGNORE`: the same event claimed once, stored once, time in UTC |
+| `repository/OutboxMySqlTest` | stockline-common's outbox on MySQL with committed transactions: a rolled-back change leaves no event; rows go out oldest first, as stored, marked once; with Kafka down nothing is marked, and later everything goes out in order |
 | `InventoryServiceApplicationTests` | The application starts |
 
 ## Configuration

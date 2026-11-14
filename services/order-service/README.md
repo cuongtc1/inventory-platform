@@ -125,11 +125,11 @@ The order saga, docs/conventions.md section 6. Every message is keyed by the ord
 
 | Topic | Direction | Payload | What happens |
 |---|---|---|---|
-| `order.created` | Published after an order is saved (`event/OrderEventPublisher`) | `OrderCreatedEvent`: `orderId`, `orderNumber`, `warehouseId`, `items` (`productId`, `productSku`, `productName`, `quantity`) | inventory-service reserves the stock |
+| `order.created` | Stored in the outbox with the order (`event/OrderEvents`, called by `SalesOrderCreator`), then sent by the outbox publisher | `OrderCreatedEvent`: `orderId`, `orderNumber`, `warehouseId`, `items` (`productId`, `productSku`, `productName`, `quantity`) | inventory-service reserves the stock |
 | `stock.reserved` | Consumed (`event/StockEventsListener`) | `orderId` | PENDING → RESERVED |
 | `stock.failed` | Consumed | `orderId`, `reason` | PENDING → REJECTED, the reason as the history note |
 
-- Publishing happens after the order's transaction has committed, without making the HTTP request wait. A failed send is logged; the order then stays PENDING until the outbox (T6.5).
+- **Outbox** (T6.5): `order.created` is stored in `outbox_events` in the transaction that saves the order, and stockline-common's `OutboxPublisher` sends it within a second. If Kafka is down, the order is still saved and the event waits in the table until Kafka is back. The HTTP request never waits for Kafka.
 - A stock event for an order that is no longer PENDING (cancelled meanwhile) or doesn't exist is logged and skipped.
 - **Idempotent** (T6.4): `event/StockEventHandler` claims the event id in `processed_events` and changes the status in one transaction; a redelivery is skipped. (The state machine alone would also refuse a second RESERVED, but with a warning; the claim makes it a clean skip, and the rule the same for every consumer.)
 - Consumer group: `order-service`.
@@ -146,6 +146,7 @@ Schema `order_db`, created by Flyway. Every table has `id` and the four audit co
 | `V4__create_order_status_history.sql` | `order_status_history` | `sales_order_id`, `from_status`, `to_status`, `note` | One row per status change; `from_status` is empty on the first; never updated or deleted |
 | `V5__create_number_sequences.sql` | `number_sequences` | `name`, `next_value` | One row per counter, `name` unique; `sales_order` starts at 1001 |
 | `V6__create_processed_events.sql` | `processed_events` | `event_id`, `event_type` | `event_id` unique: Kafka events already applied (T6.4) |
+| `V7__create_outbox_events.sql` | `outbox_events` | `event_id`, `topic`, `message_key`, `message` (the envelope JSON), `published_at` | `event_id` unique; unsent rows have no `published_at` (T6.5) |
 
 - **Snapshots:** `product_sku`, `product_name` and `unit_price` are copied when the order is created, so renaming a product or changing its price never rewrites an order already placed.
 - **No foreign key across schemas:** `product_id` and `warehouse_id` are plain columns, because those rows live in other services. `warehouse_code` is a copy of what lists show.
@@ -153,7 +154,6 @@ Schema `order_db`, created by Flyway. Every table has `id` and the four audit co
 - **Who and when:** an order's creator, and the author of each status change, are the audit columns. A change made by a Kafka event has `system` there.
 - **`version`** is for optimistic locking (`@Version`): a user and a Kafka event changing the status at once can't overwrite each other.
 - **`status`:** `PENDING`, `RESERVED`, `PAID`, `SHIPPED`, `COMPLETED`, `REJECTED`, `CANCELLED` (`constant/OrderStatus`). Orders start as `PENDING`; there are no drafts. Which change is allowed comes with T5.4.
-- **Phase 6** adds `outbox_events` for the outbox (T6.5).
 
 ## Tests
 
@@ -181,7 +181,7 @@ Schema `order_db`, created by Flyway. Every table has `id` and the four audit co
 | `SalesOrderIntegrationTest` | All layers on MySQL with the other services mocked: copies kept after a product change, first history row, consecutive numbers, a refused order saves nothing and uses no number |
 | `KafkaRoundTripTest` | Real Kafka (Testcontainers): every topic exists after startup with 3 partitions; an event comes back with its key and envelope; the same key always lands in the same partition, in order |
 | `event/StockEventsListenerTest` | Unit test through the real handler: stock.reserved → RESERVED, stock.failed → REJECTED with the reason, an event seen before isn't applied, an order cancelled meanwhile or unknown is skipped, not retried |
-| `OrderSagaTest` | Real Kafka and MySQL, the test plays inventory-service: creating an order publishes `order.created` with its lines; `stock.reserved` and `stock.failed` move the order, by `system`; a replayed stock.failed (same event id) adds no second history row |
+| `OrderSagaTest` | Real Kafka and MySQL, the test plays inventory-service: creating an order publishes `order.created` with its lines, through the outbox (the outbox row has the same `eventId` and is marked published); `stock.reserved` and `stock.failed` move the order, by `system`; a replayed stock.failed (same event id) adds no second history row |
 | `OrderServiceApplicationTests` | The application starts |
 
 ## Configuration

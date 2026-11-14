@@ -3,6 +3,8 @@ package com.stockline.common.autoconfigure;
 import com.stockline.common.event.EventCodec;
 import com.stockline.common.event.EventPublisher;
 import com.stockline.common.event.KafkaTopics;
+import com.stockline.common.event.Outbox;
+import com.stockline.common.event.OutboxPublisher;
 import com.stockline.common.event.ProcessedEvents;
 import com.stockline.common.exception.GlobalExceptionHandler;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -75,11 +77,19 @@ class CommonAutoConfigurationTest {
 	}
 
 	@Test
-	void kafka_processedEvents_onlyWithADatabase() {
-		// A DataSource that is never connected to: the bean only has to exist
+	void kafka_processedEventsAndOutbox_onlyWithADatabase() {
+		// A DataSource that is never connected to: the beans only have to exist. A long interval, so the outbox
+		// publisher doesn't run during the test and try to reach it
 		kafkaContext.withBean(JdbcTemplate.class, () -> new JdbcTemplate(new DriverManagerDataSource()))
-				.run(context -> assertThat(context).hasSingleBean(ProcessedEvents.class));
-		kafkaContext.run(context -> assertThat(context).doesNotHaveBean(ProcessedEvents.class));
+				.withPropertyValues("stockline.outbox.publish-interval=3600000")
+				.run(context -> assertThat(context)
+						.hasSingleBean(ProcessedEvents.class)
+						.hasSingleBean(Outbox.class)
+						.hasSingleBean(OutboxPublisher.class));
+		kafkaContext.run(context -> assertThat(context)
+				.doesNotHaveBean(ProcessedEvents.class)
+				.doesNotHaveBean(Outbox.class)
+				.doesNotHaveBean(OutboxPublisher.class));
 	}
 
 	@Test

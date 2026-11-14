@@ -11,7 +11,6 @@ import com.stockline.order.dto.ProductSnapshot;
 import com.stockline.order.dto.SalesOrderResponse;
 import com.stockline.order.dto.WarehouseSnapshot;
 import com.stockline.order.entity.SalesOrder;
-import com.stockline.order.event.OrderEventPublisher;
 import com.stockline.order.mapper.SalesOrderMapper;
 import com.stockline.order.repository.CustomerRepository;
 import com.stockline.order.repository.SalesOrderRepository;
@@ -62,15 +61,13 @@ class SalesOrderServiceTest {
 	@Mock
 	private SalesOrderCreator salesOrderCreator;
 
-	@Mock
-	private OrderEventPublisher orderEventPublisher;
 
 	private SalesOrderService service;
 
 	@BeforeEach
 	void setUp() {
 		service = new SalesOrderService(salesOrderRepository, customerRepository, new SalesOrderMapper(), productClient,
-				warehouseClient, salesOrderCreator, orderEventPublisher);
+				warehouseClient, salesOrderCreator);
 	}
 
 	@Test
@@ -97,8 +94,6 @@ class SalesOrderServiceTest {
 		ArgumentCaptor<Map<Long, ProductSnapshot>> products = ArgumentCaptor.forClass(Map.class);
 		verify(salesOrderCreator).create(eq(request), eq(WH_01), products.capture());
 		assertThat(products.getValue()).containsOnlyKeys(6L, 7L);
-		// and inventory-service hears about it, after the save
-		verify(orderEventPublisher).orderCreated(saved);
 	}
 
 	@Test
@@ -109,7 +104,7 @@ class SalesOrderServiceTest {
 					assertThat(ex.getMessageKey()).isEqualTo(MessageKeys.ORDER_PRODUCT_TWICE);
 					assertThat(ex.getMessageArgs()).containsExactly(6L);
 				});
-		verifyNoInteractions(customerRepository, warehouseClient, productClient, salesOrderCreator, orderEventPublisher);
+		verifyNoInteractions(customerRepository, warehouseClient, productClient, salesOrderCreator);
 	}
 
 	@Test
@@ -120,7 +115,7 @@ class SalesOrderServiceTest {
 		// when / then
 		assertThatThrownBy(() -> service.create(request(new Item(6L, 5))))
 				.isInstanceOf(ResourceNotFoundException.class);
-		verifyNoInteractions(warehouseClient, productClient, salesOrderCreator, orderEventPublisher);
+		verifyNoInteractions(warehouseClient, productClient, salesOrderCreator);
 	}
 
 	@Test

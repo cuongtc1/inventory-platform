@@ -2,6 +2,7 @@ package com.stockline.inventory.service;
 
 import com.stockline.common.event.EventEnvelope;
 import com.stockline.common.event.KafkaTopics;
+import com.stockline.common.event.Outbox;
 import com.stockline.common.event.ProcessedEvents;
 import com.stockline.inventory.constant.MovementType;
 import com.stockline.inventory.entity.StockLevel;
@@ -9,6 +10,8 @@ import com.stockline.inventory.entity.StockMovement;
 import com.stockline.inventory.entity.StockReservation;
 import com.stockline.inventory.entity.Warehouse;
 import com.stockline.inventory.event.OrderCreatedEvent;
+import com.stockline.inventory.event.StockFailedEvent;
+import com.stockline.inventory.event.StockReservedEvent;
 import com.stockline.inventory.repository.StockLevelRepository;
 import com.stockline.inventory.repository.StockMovementRepository;
 import com.stockline.inventory.repository.StockReservationRepository;
@@ -57,6 +60,9 @@ class StockReserverTest {
 	@Mock
 	private ProcessedEvents processedEvents;
 
+	@Mock
+	private Outbox outbox;
+
 	private StockReserver reserver;
 
 	@BeforeEach
@@ -66,7 +72,8 @@ class StockReserverTest {
 		messages.setDefaultEncoding("UTF-8");
 		messages.setFallbackToSystemLocale(false);
 		reserver = new StockReserver(stockLevelRepository, stockMovementRepository, stockReservationRepository,
-				warehouseRepository, messages, TransactionOperations.withoutTransaction(), processedEvents);
+				warehouseRepository, messages, TransactionOperations.withoutTransaction(), processedEvents,
+				outbox);
 		// Every event is new unless a test says otherwise
 		when(processedEvents.claim(any())).thenReturn(true);
 	}
@@ -81,7 +88,8 @@ class StockReserverTest {
 
 		// then: not even the stock was read
 		assertThat(result).isEqualTo(new StockReserver.AlreadyProcessed(1042));
-		verifyNoInteractions(warehouseRepository, stockLevelRepository, stockReservationRepository, stockMovementRepository);
+		verifyNoInteractions(warehouseRepository, stockLevelRepository, stockReservationRepository, stockMovementRepository,
+				outbox);
 	}
 
 	@Test
@@ -109,6 +117,8 @@ class StockReserverTest {
 		});
 		verify(stockReservationRepository, org.mockito.Mockito.times(2)).save(any(StockReservation.class));
 		verify(stockLevelRepository).flush();
+		// the answer goes into the outbox, in the same transaction
+		verify(outbox).add(KafkaTopics.STOCK_RESERVED, "1042", new StockReservedEvent(1042));
 	}
 
 	@Test
@@ -128,6 +138,8 @@ class StockReserverTest {
 		assertThat(mouse.getReserved()).isZero();
 		verify(stockReservationRepository, never()).save(any());
 		verify(stockMovementRepository, never()).save(any());
+		verify(outbox).add(KafkaTopics.STOCK_FAILED, "1042",
+				new StockFailedEvent(1042, "Not enough stock of 'USB-C Cable' in WH-01: only 4 available"));
 	}
 
 	@Test

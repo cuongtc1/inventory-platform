@@ -109,12 +109,18 @@ class OrderSagaTest {
 			long id = createOrder("Saga Announce Ltd", 3);
 
 			// then: inventory gets what it needs to reserve, keyed by the order id
-			OrderCreatedEvent event = eventCodec.read(next(consumer, KafkaTopics.ORDER_CREATED, String.valueOf(id)),
-					OrderCreatedEvent.class).payload();
+			EventEnvelope<OrderCreatedEvent> envelope = eventCodec.read(
+					next(consumer, KafkaTopics.ORDER_CREATED, String.valueOf(id)), OrderCreatedEvent.class);
+			OrderCreatedEvent event = envelope.payload();
 			assertThat(event.orderId()).isEqualTo(id);
 			assertThat(event.orderNumber()).startsWith("SO-");
 			assertThat(event.warehouseId()).isEqualTo(2L);
 			assertThat(event.items()).containsExactly(new OrderCreatedEvent.Item(6L, "A01", "Wireless Mouse", 3));
+
+			// It came through the outbox (T6.5): stored with the order, sent by the publisher, marked as published
+			assertThat(jdbcTemplate.queryForObject(
+					"SELECT published_at IS NOT NULL FROM outbox_events WHERE event_id = ? AND message_key = ?",
+					Boolean.class, envelope.eventId().toString(), String.valueOf(id))).isTrue();
 		}
 	}
 

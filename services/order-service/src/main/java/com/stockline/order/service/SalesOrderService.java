@@ -15,7 +15,6 @@ import com.stockline.order.dto.SalesOrderSummaryResponse;
 import com.stockline.order.dto.WarehouseSnapshot;
 import com.stockline.order.entity.Customer;
 import com.stockline.order.entity.SalesOrder;
-import com.stockline.order.event.OrderEventPublisher;
 import com.stockline.order.mapper.SalesOrderMapper;
 import com.stockline.order.repository.CustomerRepository;
 import com.stockline.order.repository.SalesOrderRepository;
@@ -44,19 +43,16 @@ public class SalesOrderService {
 	private final ProductClient productClient;
 	private final WarehouseClient warehouseClient;
 	private final SalesOrderCreator salesOrderCreator;
-	private final OrderEventPublisher orderEventPublisher;
 
 	public SalesOrderService(SalesOrderRepository salesOrderRepository, CustomerRepository customerRepository,
 							 SalesOrderMapper salesOrderMapper, ProductClient productClient,
-							 WarehouseClient warehouseClient, SalesOrderCreator salesOrderCreator,
-							 OrderEventPublisher orderEventPublisher) {
+							 WarehouseClient warehouseClient, SalesOrderCreator salesOrderCreator) {
 		this.salesOrderRepository = salesOrderRepository;
 		this.customerRepository = customerRepository;
 		this.salesOrderMapper = salesOrderMapper;
 		this.productClient = productClient;
 		this.warehouseClient = warehouseClient;
 		this.salesOrderCreator = salesOrderCreator;
-		this.orderEventPublisher = orderEventPublisher;
 	}
 
 	public PageResponse<SalesOrderSummaryResponse> list(SalesOrderFilter filter, Pageable pageable) {
@@ -95,10 +91,8 @@ public class SalesOrderService {
 		}
 		checkTotalFits(request, products);
 
-		SalesOrder order = salesOrderCreator.create(request, warehouse, products);
-		// After the commit: inventory-service now reserves the stock and answers with stock.reserved or stock.failed
-		orderEventPublisher.orderCreated(order);
-		return salesOrderMapper.toResponse(order);
+		// The order and its order.created event are saved together (outbox); inventory-service then reserves the stock
+		return salesOrderMapper.toResponse(salesOrderCreator.create(request, warehouse, products));
 	}
 
 	/** One line per product, like the table's unique key and a stock reservation; the client adds up quantities. */

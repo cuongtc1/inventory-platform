@@ -119,7 +119,7 @@ Goal: learn the standard layered Spring Boot service (controller / service / rep
 | T6.2 | Place order flow | "Place order" publishes `order.created`; inventory-service reserves stock and publishes `stock.reserved` or `stock.failed`; order moves to RESERVED or REJECTED | Claude | DONE |
 | T6.3 | Concurrency safety | Optimistic locking with retry on `stock_levels`; test with two orders competing for the last items; no overselling | Claude | DONE |
 | T6.4 | Idempotency | `processed_events` stops duplicate messages from being applied twice; test by replaying an event | Claude | DONE |
-| T6.5 | Outbox pattern | Order is saved and the event stored in `outbox_events` in one transaction; a scheduled publisher sends it to Kafka | Claude | TODO |
+| T6.5 | Outbox pattern | Order is saved and the event stored in `outbox_events` in one transaction; a scheduled publisher sends it to Kafka | Claude | REVIEW |
 | T6.6 | Paid, ship, cancel | Fake "Mark as paid"; ship confirms the reservation and reduces `on_hand`; cancel publishes `order.cancelled` and releases stock | Claude | TODO |
 | T6.7 | Frontend | Order detail shows live status (polling is enough); error and rejected states are clear | Claude | TODO |
 | T6.8 | Tests and review | Unit tests for saga logic; one end-to-end run through Docker; you test the happy path and the failure path | Claude + You | TODO |

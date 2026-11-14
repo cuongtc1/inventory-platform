@@ -37,6 +37,7 @@ public final class CommonMessageKeys {
 	// System (log only, never sent to the client)
 	public static final String SYSTEM_ERROR_UNEXPECTED = "system.error.unexpected";
 	public static final String SYSTEM_EVENT_DUPLICATE = "system.event.duplicate";
+	public static final String SYSTEM_OUTBOX_PUBLISH_FAILED = "system.outbox.publish-failed";
 
 	/**
 	 * Prefix for the message of a database constraint: a service adds {@code constraint.uk_products_sku=...} to its
