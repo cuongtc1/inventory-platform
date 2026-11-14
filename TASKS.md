@@ -116,7 +116,7 @@ Goal: learn the standard layered Spring Boot service (controller / service / rep
 | ID | Task | Acceptance criteria | Owner | Status |
 |---|---|---|---|---|
 | T6.1 | Kafka basics | Topics created; Spring Kafka configured in order-service and inventory-service; simple producer/consumer test; Claude explains topics, partitions, consumer groups | Claude | DONE |
-| T6.2 | Place order flow | "Place order" publishes `order.created`; inventory-service reserves stock and publishes `stock.reserved` or `stock.failed`; order moves to RESERVED or REJECTED | Claude | REVIEW |
+| T6.2 | Place order flow | "Place order" publishes `order.created`; inventory-service reserves stock and publishes `stock.reserved` or `stock.failed`; order moves to RESERVED or REJECTED | Claude | DONE |
 | T6.3 | Concurrency safety | Optimistic locking with retry on `stock_levels`; test with two orders competing for the last items; no overselling | Claude | TODO |
 | T6.4 | Idempotency | `processed_events` stops duplicate messages from being applied twice; test by replaying an event | Claude | TODO |
 | T6.5 | Outbox pattern | Order is saved and the event stored in `outbox_events` in one transaction; a scheduled publisher sends it to Kafka | Claude | TODO |
