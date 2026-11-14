@@ -330,7 +330,7 @@ Ant Design's table counts pages from 1, so the frontend sends `page = current - 
 }
 ```
 
-- `eventId` is a UUID. Consumers store it in `processed_events` and skip any event they have already processed, which makes them idempotent.
+- `eventId` is a UUID. Consumers are **idempotent** (T6.4): in the transaction that applies an event, they first call `ProcessedEvents.claim(envelope)` from `stockline-common`. It runs `INSERT IGNORE INTO processed_events ...` and returns false for an event id the table already has, so the consumer skips it. The claim commits or rolls back with the work. A failed attempt (also a refused status change) leaves no claim, so the next delivery tries again. Every consuming service has its own `processed_events` table (unique `event_id`).
 - The consumer group ID is the service name, e.g. `inventory-service` (`spring.kafka.consumer.group-id: ${spring.application.name}`). A group that has never read a topic starts at its oldest message (`auto-offset-reset: earliest`).
 - **Shared code** in `stockline-common` (`com.stockline.common.event`, agreed in T6.1): `KafkaTopics` (names, 3 partitions), `EventEnvelope`, `EventCodec` (envelope ↔ JSON text) and `EventPublisher` (wraps a payload in a new envelope and sends it with its key). Payload records belong to each service: the publisher declares what it sends, each consumer what it reads.
 - Messages are **JSON text** (String keys and values), not Spring Kafka's JSON serializer, which puts Java class names in message headers. Jackson 3 ignores fields a record doesn't declare, so a publisher may add fields; renaming or removing one is a breaking change.
@@ -351,7 +351,7 @@ POST /api/sales-orders
 
 - Every message is keyed by the **order id**. An event is published **after** the transaction that caused it has committed, so no event describes something that was rolled back.
 - Status changes from events go through `OrderStatusService` like a user's, with `system` as the author. An event that no longer fits (the order was cancelled meanwhile, or doesn't exist) is logged and skipped, not retried.
-- Known gaps, closed by later tasks: if Kafka is down when an event is sent, it is lost and the order stays PENDING (outbox, T6.5); a message delivered twice should be refused by the unique key of `stock_reservations` (one row per order line), which rolls the second reservation back; that is not tested yet, and the clean fix is idempotency (T6.4).
+- Known gap, closed by a later task: if Kafka is down when an event is sent, it is lost and the order stays PENDING (outbox, T6.5). A message delivered twice is skipped by its `eventId` (T6.4).
 - Events are facts that already happened. Name and treat them as such; one service never tells another what to do through an event.
 
 ## 7. Configuration

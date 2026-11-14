@@ -2,6 +2,7 @@ package com.stockline.order;
 
 import com.jayway.jsonpath.JsonPath;
 import com.stockline.common.event.EventCodec;
+import com.stockline.common.event.EventEnvelope;
 import com.stockline.common.event.EventPublisher;
 import com.stockline.common.event.KafkaTopics;
 import com.stockline.order.client.ProductClient;
@@ -17,8 +18,11 @@ import com.stockline.order.event.StockReservedEvent;
 import com.stockline.order.repository.CustomerRepository;
 import com.stockline.order.repository.SalesOrderRepository;
 import com.stockline.order.service.OrderStatusService;
+import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,12 +30,16 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.KafkaAdmin;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
@@ -72,6 +80,15 @@ class OrderSagaTest {
 
 	@Autowired
 	private OrderStatusService orderStatusService;
+
+	@Autowired
+	private JdbcTemplate jdbcTemplate;
+
+	@Autowired
+	private KafkaAdmin kafkaAdmin;
+
+	@Autowired
+	private Clock clock;
 
 	@MockitoBean
 	private ProductClient productClient;
@@ -129,6 +146,43 @@ class OrderSagaTest {
 		awaitStatus(id, OrderStatus.REJECTED);
 		assertThat(orderStatusService.history(id).getLast().note())
 				.isEqualTo("Not enough stock of 'Wireless Mouse' in WH-01: only 0 available");
+	}
+
+	@Test
+	void replayOfStockFailed_isAppliedOnce() throws Exception {
+		// given: an order rejected once
+		long id = createOrder("Saga Replay Ltd", 1);
+		EventEnvelope<StockFailedEvent> event = EventEnvelope.of(KafkaTopics.STOCK_FAILED,
+				new StockFailedEvent(id, "Not enough stock of 'Wireless Mouse' in WH-01: only 0 available"), clock);
+		eventPublisher.publish(KafkaTopics.STOCK_FAILED, String.valueOf(id), event).get();
+		awaitStatus(id, OrderStatus.REJECTED);
+
+		// when: Kafka delivers the same event again, and the service has handled it
+		awaitConsumed(eventPublisher.publish(KafkaTopics.STOCK_FAILED, String.valueOf(id), event).get());
+
+		// then: one REJECTED row, and the event is remembered once
+		assertThat(orderStatusService.history(id)).extracting(OrderStatusHistoryResponse::toStatus)
+				.containsExactly(OrderStatus.PENDING, OrderStatus.REJECTED);
+		assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM processed_events WHERE event_id = ?", Long.class,
+				event.eventId().toString())).isEqualTo(1);
+	}
+
+	/** Waits until the service's consumer group has committed past this message: then the listener has handled it. */
+	private void awaitConsumed(SendResult<String, String> sent) throws Exception {
+		TopicPartition partition = new TopicPartition(sent.getRecordMetadata().topic(), sent.getRecordMetadata().partition());
+		long after = sent.getRecordMetadata().offset() + 1;
+		try (AdminClient admin = AdminClient.create(kafkaAdmin.getConfigurationProperties())) {
+			long deadline = System.currentTimeMillis() + 30_000;
+			while (System.currentTimeMillis() < deadline) {
+				OffsetAndMetadata committed = admin.listConsumerGroupOffsets("order-service")
+						.partitionsToOffsetAndMetadata().get().get(partition);
+				if (committed != null && committed.offset() >= after) {
+					return;
+				}
+				Thread.sleep(200);
+			}
+		}
+		throw new AssertionError("order-service did not consume offset " + (after - 1) + " of " + partition);
 	}
 
 	private long createOrder(String customerName, int quantity) throws Exception {

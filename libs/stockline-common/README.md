@@ -41,7 +41,7 @@ spring:
 | `entity` | `BaseEntity` | `id` and the four audit columns; services' entities extend it |
 | `dto` | `PageResponse` | The list format (docs/conventions.md section 4) |
 | `util` | `DateTimeUtils`, `MoneyUtils`, `CommonValidationUtils`, `TextUtils` | Asia/Ho_Chi_Minh date ranges, USD with 2 decimals, shared validation rules, text cleanup, LIKE patterns for search (`containsPattern`) |
-| `event` | `KafkaTopics`, `EventEnvelope`, `EventCodec`, `EventPublisher` | Kafka events: topic names, the envelope of every message, JSON text in and out, sending with a key (docs/conventions.md section 6) |
+| `event` | `KafkaTopics`, `EventEnvelope`, `EventCodec`, `EventPublisher`, `ProcessedEvents` | Kafka events: topic names, the envelope of every message, JSON text in and out, sending with a key, idempotent consumers (docs/conventions.md section 6) |
 | `autoconfigure` | `CommonTimeAutoConfiguration`, `CommonJpaAutoConfiguration`, `CommonWebAutoConfiguration`, `CommonSecurityAutoConfiguration`, `CommonKafkaAutoConfiguration` | Create the beans below in every service automatically |
 | resources | `common-messages.properties` | Shared texts: validation, request and resource errors, server errors, log texts |
 
@@ -55,6 +55,7 @@ spring:
 | `GlobalExceptionHandler` | servlet web application | a `GlobalExceptionHandler` bean |
 | `DataExceptionHandler` | servlet web application with Hibernate and Spring Data | a `DataExceptionHandler` bean |
 | `EventCodec`, `EventPublisher`, and a `NewTopic` for every topic in `KafkaTopics` | Spring Kafka on the classpath (`spring-boot-starter-kafka`) | an `EventCodec` or `EventPublisher` bean |
+| `ProcessedEvents` (needs a `processed_events` table in the service's schema) | Spring Kafka and a `JdbcTemplate` | a `ProcessedEvents` bean |
 
 ## How auto-configuration works
 
@@ -83,4 +84,4 @@ This is exactly how Spring Boot's own starters work.
 
 ## Tests
 
-`./mvnw test` (no Docker needed): utils, `common-messages.properties` checks, the event envelope and publisher (`EventCodecTest`, and `EventPublisherTest` with Kafka's `MockProducer` instead of a broker), and `CommonAutoConfigurationTest`, which uses `ApplicationContextRunner` to check which beans each auto-configuration creates. The handler and auditing are also tested with real controllers and MySQL in product-service.
+`./mvnw test` (no Docker needed): utils, `common-messages.properties` checks, the events package (`EventCodecTest`; `EventPublisherTest` with Kafka's `MockProducer` instead of a broker; `ProcessedEventsTest` with a fake `JdbcTemplate`, while the real `INSERT IGNORE` is tested in inventory-service), and `CommonAutoConfigurationTest`, which uses `ApplicationContextRunner` to check which beans each auto-configuration creates. The handler and auditing are also tested with real controllers and MySQL in product-service.

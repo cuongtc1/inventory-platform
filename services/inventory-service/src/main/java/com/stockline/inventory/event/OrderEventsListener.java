@@ -1,6 +1,7 @@
 package com.stockline.inventory.event;
 
 import com.stockline.common.event.EventCodec;
+import com.stockline.common.event.EventEnvelope;
 import com.stockline.common.event.EventPublisher;
 import com.stockline.common.event.KafkaTopics;
 import com.stockline.inventory.constant.MessageKeys;
@@ -18,8 +19,8 @@ import java.util.Locale;
  * the answer as {@code stock.reserved} or {@code stock.failed}, keyed by the order id.
  *
  * <p>The answer is sent after the reservation's transaction has committed. If sending fails, the error is only
- * logged: throwing would make Kafka deliver the order again and reserve its stock a second time. The order then stays
- * PENDING; the outbox (T6.5) closes that gap, and idempotency (T6.4) makes redelivery safe.
+ * logged: the order then stays PENDING until the outbox (T6.5). A redelivered order is recognized by its event id
+ * (T6.4) and changes nothing.
  */
 @Component
 public class OrderEventsListener {
@@ -41,14 +42,18 @@ public class OrderEventsListener {
 
 	@KafkaListener(topics = KafkaTopics.ORDER_CREATED)
 	public void onOrderCreated(String json) {
-		OrderCreatedEvent order = eventCodec.read(json, OrderCreatedEvent.class).payload();
+		EventEnvelope<OrderCreatedEvent> event = eventCodec.read(json, OrderCreatedEvent.class);
+		OrderCreatedEvent order = event.payload();
 
 		// A switch over a sealed type (Java 21): record patterns take the fields apart, and no default is needed
-		switch (stockReserver.reserve(order)) {
+		switch (stockReserver.reserve(event)) {
 			case StockReserver.Reserved(long orderId) ->
 					send(KafkaTopics.STOCK_RESERVED, orderId, new StockReservedEvent(orderId), order.orderNumber());
 			case StockReserver.Failed(long orderId, String reason) ->
 					send(KafkaTopics.STOCK_FAILED, orderId, new StockFailedEvent(orderId, reason), order.orderNumber());
+			// Seen before (T6.4): the answer went out the first time; sending it again would be a duplicate too
+			case StockReserver.AlreadyProcessed alreadyProcessed -> {
+			}
 		}
 	}
 

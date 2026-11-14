@@ -3,6 +3,7 @@ package com.stockline.common.autoconfigure;
 import com.stockline.common.event.EventCodec;
 import com.stockline.common.event.EventPublisher;
 import com.stockline.common.event.KafkaTopics;
+import com.stockline.common.event.ProcessedEvents;
 import com.stockline.common.exception.GlobalExceptionHandler;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.junit.jupiter.api.Test;
@@ -12,6 +13,8 @@ import org.springframework.boot.kafka.autoconfigure.KafkaAutoConfiguration;
 import org.springframework.boot.test.context.FilteredClassLoader;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
 
@@ -69,6 +72,14 @@ class CommonAutoConfigurationTest {
 				.containsExactlyInAnyOrderElementsOf(KafkaTopics.ALL);
 		assertThat(CommonKafkaAutoConfiguration.topics())
 				.allSatisfy(topic -> assertThat(topic.numPartitions()).isEqualTo(KafkaTopics.PARTITIONS));
+	}
+
+	@Test
+	void kafka_processedEvents_onlyWithADatabase() {
+		// A DataSource that is never connected to: the bean only has to exist
+		kafkaContext.withBean(JdbcTemplate.class, () -> new JdbcTemplate(new DriverManagerDataSource()))
+				.run(context -> assertThat(context).hasSingleBean(ProcessedEvents.class));
+		kafkaContext.run(context -> assertThat(context).doesNotHaveBean(ProcessedEvents.class));
 	}
 
 	@Test

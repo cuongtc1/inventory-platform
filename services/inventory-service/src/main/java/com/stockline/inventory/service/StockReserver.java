@@ -1,6 +1,8 @@
 package com.stockline.inventory.service;
 
 import com.stockline.common.constant.CommonMessageKeys;
+import com.stockline.common.event.EventEnvelope;
+import com.stockline.common.event.ProcessedEvents;
 import com.stockline.inventory.constant.MessageKeys;
 import com.stockline.inventory.constant.MovementType;
 import com.stockline.inventory.entity.StockLevel;
@@ -36,10 +38,11 @@ import java.util.Optional;
 public class StockReserver {
 
 	/**
-	 * What reserving gave. A {@code sealed} interface (Java 17): these two records are the only results, so a
-	 * {@code switch} over a result handles both and needs no {@code default}.
+	 * What reserving gave. A {@code sealed} interface (Java 17): these records are the only results, so a
+	 * {@code switch} over a result must handle all of them and needs no {@code default}. Adding AlreadyProcessed in T6.4
+	 * made the listener's switch fail to compile until it handled the new case.
 	 */
-	public sealed interface Result permits Reserved, Failed {
+	public sealed interface Result permits Reserved, Failed, AlreadyProcessed {
 	}
 
 	public record Reserved(long orderId) implements Result {
@@ -48,22 +51,28 @@ public class StockReserver {
 	public record Failed(long orderId, String reason) implements Result {
 	}
 
+	/** A redelivery of an order already handled: nothing changed, and the answer was sent the first time. */
+	public record AlreadyProcessed(long orderId) implements Result {
+	}
+
 	private final StockLevelRepository stockLevelRepository;
 	private final StockMovementRepository stockMovementRepository;
 	private final StockReservationRepository stockReservationRepository;
 	private final WarehouseRepository warehouseRepository;
 	private final MessageSource messageSource;
 	private final TransactionOperations transaction;
+	private final ProcessedEvents processedEvents;
 
 	public StockReserver(StockLevelRepository stockLevelRepository, StockMovementRepository stockMovementRepository,
 						 StockReservationRepository stockReservationRepository, WarehouseRepository warehouseRepository,
-						 MessageSource messageSource, TransactionOperations transaction) {
+						 MessageSource messageSource, TransactionOperations transaction, ProcessedEvents processedEvents) {
 		this.stockLevelRepository = stockLevelRepository;
 		this.stockMovementRepository = stockMovementRepository;
 		this.stockReservationRepository = stockReservationRepository;
 		this.warehouseRepository = warehouseRepository;
 		this.messageSource = messageSource;
 		this.transaction = transaction;
+		this.processedEvents = processedEvents;
 	}
 
 	/**
@@ -73,15 +82,24 @@ public class StockReserver {
 	 * <p>Retry outside, transaction inside (like StockAdjuster): a version conflict or a deadlock rolls the attempt
 	 * back, and the next attempt starts a new transaction that reads the stock again. Only after all retries does the
 	 * exception reach the listener, and Kafka delivers the message again.
+	 *
+	 * <p>Idempotent (T6.4): the event is claimed in {@code processed_events} in the same transaction, so a redelivery is
+	 * answered with AlreadyProcessed and changes nothing. That holds for failed orders too: a replay after new stock
+	 * arrived must not reserve stock for an order that was already rejected.
 	 */
 	@Retryable(includes = ConcurrencyFailureException.class, maxRetries = StockRetry.MAX_RETRIES,
 			delay = StockRetry.DELAY_MS, jitter = StockRetry.JITTER_MS, multiplier = StockRetry.MULTIPLIER,
 			maxDelay = StockRetry.MAX_DELAY_MS)
-	public Result reserve(OrderCreatedEvent order) {
-		return transaction.execute(status -> reserveOnce(order));
+	public Result reserve(EventEnvelope<OrderCreatedEvent> event) {
+		return transaction.execute(status -> reserveOnce(event));
 	}
 
-	private Result reserveOnce(OrderCreatedEvent order) {
+	private Result reserveOnce(EventEnvelope<OrderCreatedEvent> event) {
+		OrderCreatedEvent order = event.payload();
+		if (!processedEvents.claim(event)) {
+			return new AlreadyProcessed(order.orderId());
+		}
+
 		Optional<Warehouse> warehouse = warehouseRepository.findById(order.warehouseId());
 		if (warehouse.isEmpty()) {
 			return new Failed(order.orderId(), text(CommonMessageKeys.RESOURCE_NOT_FOUND, "Warehouse", order.warehouseId()));

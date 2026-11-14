@@ -1,5 +1,7 @@
 package com.stockline.inventory;
 
+import com.stockline.common.event.EventEnvelope;
+import com.stockline.common.event.KafkaTopics;
 import com.stockline.inventory.dto.AdjustStockRequest;
 import com.stockline.inventory.dto.ProductSnapshot;
 import com.stockline.inventory.entity.StockLevel;
@@ -19,6 +21,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.resilience.retry.MethodRetryEvent;
 
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -139,9 +142,9 @@ class StockConcurrencyTest {
 		return stockLevelRepository.findById(levelId).orElseThrow().getReserved();
 	}
 
-	private OrderCreatedEvent order(long orderId, long productId, int quantity) {
-		return new OrderCreatedEvent(orderId, "SO-" + orderId, warehouse.getId(),
-				List.of(new OrderCreatedEvent.Item(productId, "Concurrency " + productId, quantity)));
+	private EventEnvelope<OrderCreatedEvent> order(long orderId, long productId, int quantity) {
+		return EventEnvelope.of(KafkaTopics.ORDER_CREATED, new OrderCreatedEvent(orderId, "SO-" + orderId, warehouse.getId(),
+				List.of(new OrderCreatedEvent.Item(productId, "Concurrency " + productId, quantity))), Clock.systemUTC());
 	}
 
 	interface Task<T> {

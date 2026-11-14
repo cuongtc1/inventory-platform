@@ -39,7 +39,8 @@ class MigrationsTest {
 	void allTablesExist() {
 		assertThat(jdbcTemplate.queryForList(
 				"SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE()", String.class))
-				.contains("customers", "sales_orders", "sales_order_items", "order_status_history", "number_sequences");
+				.contains("customers", "sales_orders", "sales_order_items", "order_status_history", "number_sequences",
+						"processed_events");
 	}
 
 	@Test
@@ -52,6 +53,18 @@ class MigrationsTest {
 	void numberSequence_nameIsUnique() {
 		assertRejected(() -> jdbcTemplate.update("INSERT INTO number_sequences (name, next_value, " + AUDIT_COLUMNS
 				+ ") VALUES ('sales_order', 1, " + AUDIT_VALUES + ")"), "uk_number_sequences_name");
+	}
+
+	@Test
+	void processedEvent_idIsUnique() {
+		// given
+		jdbcTemplate.update("INSERT INTO processed_events (event_id, event_type, " + AUDIT_COLUMNS
+				+ ") VALUES ('6f1c2a1e-6a43-4c3e-9b8a-0d6f4b1e2c55', 'stock.reserved', " + AUDIT_VALUES + ")");
+
+		// when / then
+		assertRejected(() -> jdbcTemplate.update("INSERT INTO processed_events (event_id, event_type, " + AUDIT_COLUMNS
+				+ ") VALUES ('6f1c2a1e-6a43-4c3e-9b8a-0d6f4b1e2c55', 'stock.reserved', " + AUDIT_VALUES + ")"),
+				"uk_processed_events_event_id");
 	}
 
 	@Test

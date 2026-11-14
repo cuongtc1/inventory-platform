@@ -1,5 +1,8 @@
 package com.stockline.inventory.service;
 
+import com.stockline.common.event.EventEnvelope;
+import com.stockline.common.event.KafkaTopics;
+import com.stockline.common.event.ProcessedEvents;
 import com.stockline.inventory.constant.MovementType;
 import com.stockline.inventory.entity.StockLevel;
 import com.stockline.inventory.entity.StockMovement;
@@ -19,6 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.transaction.support.TransactionOperations;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -49,6 +54,9 @@ class StockReserverTest {
 	@Mock
 	private WarehouseRepository warehouseRepository;
 
+	@Mock
+	private ProcessedEvents processedEvents;
+
 	private StockReserver reserver;
 
 	@BeforeEach
@@ -58,7 +66,22 @@ class StockReserverTest {
 		messages.setDefaultEncoding("UTF-8");
 		messages.setFallbackToSystemLocale(false);
 		reserver = new StockReserver(stockLevelRepository, stockMovementRepository, stockReservationRepository,
-				warehouseRepository, messages, TransactionOperations.withoutTransaction());
+				warehouseRepository, messages, TransactionOperations.withoutTransaction(), processedEvents);
+		// Every event is new unless a test says otherwise
+		when(processedEvents.claim(any())).thenReturn(true);
+	}
+
+	@Test
+	void eventSeenBefore_changesNothing() {
+		// given: a redelivery
+		when(processedEvents.claim(any())).thenReturn(false);
+
+		// when
+		StockReserver.Result result = reserver.reserve(order(item(6L, "Wireless Mouse", 3)));
+
+		// then: not even the stock was read
+		assertThat(result).isEqualTo(new StockReserver.AlreadyProcessed(1042));
+		verifyNoInteractions(warehouseRepository, stockLevelRepository, stockReservationRepository, stockMovementRepository);
 	}
 
 	@Test
@@ -156,7 +179,8 @@ class StockReserverTest {
 		return new OrderCreatedEvent.Item(productId, name, quantity);
 	}
 
-	private static OrderCreatedEvent order(OrderCreatedEvent.Item... items) {
-		return new OrderCreatedEvent(1042, "SO-1042", 2L, List.of(items));
+	private static EventEnvelope<OrderCreatedEvent> order(OrderCreatedEvent.Item... items) {
+		return EventEnvelope.of(KafkaTopics.ORDER_CREATED, new OrderCreatedEvent(1042, "SO-1042", 2L, List.of(items)),
+				Clock.systemUTC());
 	}
 }
